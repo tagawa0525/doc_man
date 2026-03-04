@@ -77,7 +77,7 @@ def format_table(table_lines: list[str]) -> list[str]:
     if len(rows) < 2:
         return table_lines
 
-    ncols = len(rows[0])
+    ncols = max(len(row) for row in rows)
 
     # Detect alignment from separator row
     alignments = []
