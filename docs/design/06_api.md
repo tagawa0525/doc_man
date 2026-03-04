@@ -456,6 +456,7 @@
     {
       "id": "uuid",
       "doc_number": "内設計-2603001",
+      "revision": 1,
       "title": "〇〇設備 外形図",
       "file_path": "/nas/projects/2026/drawing/cad001.dwg",
       "status": "draft",
@@ -507,20 +508,23 @@
 - 文書ステータスが `draft` または `rejected`
 - `approved` または `circulating` を経由していない
 
+`revision` は `draft` または `rejected` 状態のみ更新可能。変更する場合は `revision + 1` の値のみ受け付ける（スキップ不可）。
+
+`status` は承認・回覧 API からのみ更新可能とし、`PUT /documents/:id` では変更不可。
+
 **リクエスト**（変更したいフィールドのみ）:
 
 ```json
 {
-  "title": "〇〇設備 外形図 Rev.1",
-  "file_path": "/nas/projects/2026/drawing/cad001_r1.dwg",
+  "revision": 2,
+  "title": "〇〇設備 外形図",
+  "file_path": "/nas/projects/2026/drawing/cad001_r2.dwg",
   "confidentiality": "restricted",
   "doc_kind_id": "uuid",
   "project_id": "uuid",
-  "tags": ["外形図", "設備", "Rev1"]
+  "tags": ["外形図", "設備"]
 }
 ```
-
-`status` は承認・回覧 API からのみ更新可能とし、`PUT /documents/:id` では変更不可。
 
 ### DELETE /documents/:id
 
@@ -543,6 +547,7 @@
   {
     "id": "uuid",
     "route_revision": 1,
+    "document_revision": 1,
     "step_order": 1,
     "approver": { "id": "uuid", "name": "佐藤 部長" },
     "status": "approved",
@@ -552,6 +557,7 @@
   {
     "id": "uuid",
     "route_revision": 2,
+    "document_revision": 1,
     "step_order": 2,
     "approver": { "id": "uuid", "name": "鈴木 役員" },
     "status": "pending",
@@ -563,7 +569,7 @@
 
 ### POST /documents/:id/approval-steps
 
-承認ルートを設定する。文書が `draft` または `rejected` 状態のみ可能。既存ステップは削除せず、`route_revision = MAX + 1` で新規登録する。
+承認ルートを設定する。文書が `draft` または `rejected` 状態のみ可能。既存ステップは削除せず、`route_revision = MAX + 1` で新規登録する。各ステップの `document_revision` にはこの時点の `documents.revision` を自動的に記録する。
 
 **必要ロール**: `admin`, `project_manager`
 

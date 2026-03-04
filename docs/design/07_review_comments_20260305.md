@@ -64,7 +64,7 @@
 
 ---
 
-## 今回の直接修正ファイル
+## 今回の直接修正ファイル（初回レビュー）
 
 - `docs/design/02_er.md`
 - `docs/design/03_tables.md`
@@ -72,6 +72,26 @@
 - `docs/design/05_approval_flow.md`
 - `docs/design/06_api.md`
 - `docs/design/07_review_comments_20260305.md`（本レビュー記録）
+
+---
+
+## 追加対応（GPT-5.3-codex レビューを受けての見直し）
+
+### 9) 文書リビジョンが未定義（High）
+
+- **問題**: `approval_steps.route_revision`（承認ルートの改版）は管理されていたが、文書内容自体の改版番号が存在しなかった。同一文書改版に対して承認ルートが複数回走るユースケース（承認者の差し替え等）も通常の運用で発生するため、2つの軸を独立して管理する必要がある。
+- **影響**: 「文書改版 N に対して何回承認ルートが走ったか」が追跡できず、監査時に承認されたファイルの特定が困難。
+- **対応**:
+  - `documents.revision` を追加（登録時 `1`、文書内容修正時のみインクリメント）
+  - `approval_steps.document_revision` を追加（ルート設定時点の `documents.revision` を凍結記録）
+  - 05_approval_flow.md に「文書を修正した場合」「承認者だけ変えた場合」の再提出フローを整理
+
+### 修正ファイル
+
+- `docs/design/02_er.md`
+- `docs/design/03_tables.md`
+- `docs/design/05_approval_flow.md`
+- `docs/design/06_api.md`
 
 ---
 

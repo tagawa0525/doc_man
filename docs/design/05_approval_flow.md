@@ -79,12 +79,30 @@ stateDiagram-v2
 
 ### 再提出
 
-差し戻し（`rejected`）後に文書を修正して再提出する場合:
+差し戻し（`rejected`）後に再提出する場合:
 
-1. 文書作成者が文書を修正する
+**文書内容（ファイル等）を修正した場合:**
+
+1. 文書作成者が `PUT /documents/:id` で `file_path`、`title` 等を更新し、`revision` をインクリメントする
 2. 既存 `approval_steps` は削除しない（監査履歴として保持）
-3. 新しい承認ルートを `route_revision = 直近 + 1` で登録する（または同じルートを再設定する）
+3. 新しい承認ルートを `route_revision = 直近 + 1` で登録する（`document_revision` には更新後の `documents.revision` が記録される）
 4. 文書ステータスを `under_review` に変更する
+
+**文書内容を変えずに承認ルートだけ変更する場合（承認者の差し替えなど）:**
+
+1. 文書の `revision` は変更しない
+2. 既存 `approval_steps` は削除しない（監査履歴として保持）
+3. 新しい承認ルートを `route_revision = 直近 + 1` で登録する（`document_revision` は変わらず同じ値が記録される）
+4. 文書ステータスを `under_review` に変更する
+
+`route_revision` と `document_revision` の関係例:
+
+| route_revision | document_revision | 状況                                            |
+| :------------: | :---------------: | ----------------------------------------------- |
+|       1        |         1         | 初回提出（文書 rev.1 に対する最初の承認ルート） |
+|       2        |         1         | 差し戻し後、文書を変えずに承認者だけ変更        |
+|       3        |         2         | 差し戻し後、文書を修正して再提出（rev.2）       |
+|       4        |         2         | rev.2 に対して再度承認ルートを変更              |
 
 ---
 
