@@ -495,7 +495,7 @@
 
 登録時に `status = draft` を自動設定する。
 
-**レスポンス 201**: 採番済み `doc_number` と `status` を含む文書詳細オブジェクト
+**レスポンス 201**: 採番済み `doc_number`、`status`、`revision = 1` を含む文書詳細オブジェクト
 
 ### GET /documents/:id
 
@@ -506,9 +506,11 @@
 `doc_kind_id` は原則不変だが、`admin` のみ以下条件を満たす場合に更新可能:
 
 - 文書ステータスが `draft` または `rejected`
-- `approved` または `circulating` を経由していない
+- 既存の `approval_steps` または `circulations` レコードが存在しない
 
-`revision` は `draft` または `rejected` 状態のみ更新可能。変更する場合は `revision + 1` の値のみ受け付ける（スキップ不可）。
+`revision` はクライアントから更新しない（読み取り専用）。
+
+`draft` または `rejected` 状態で文書内容（`title`, `file_path`, `confidentiality`, `tags`）が変更された場合、サーバー側で `revision` を 1 だけ自動インクリメントする。
 
 `status` は承認・回覧 API からのみ更新可能とし、`PUT /documents/:id` では変更不可。
 
@@ -516,7 +518,6 @@
 
 ```json
 {
-  "revision": 2,
   "title": "〇〇設備 外形図",
   "file_path": "/nas/projects/2026/drawing/cad001_r2.dwg",
   "confidentiality": "restricted",
@@ -586,9 +587,11 @@
 
 文書ステータスを `under_review` に変更する。
 
-### POST /documents/:id/approval-steps/:step_order/approve
+### POST /documents/:id/approval-steps/:approval_step_id/approve
 
-アクティブステップの承認者が承認する。
+アクティブステップの承認者が承認する。対象ステップは `approval_step_id` で一意に指定する。
+
+指定したステップが最新 `route_revision` のアクティブステップでない場合は `422 UNPROCESSABLE` を返す。
 
 **リクエスト**:
 
@@ -602,9 +605,11 @@
 
 全ステップ承認完了時、文書ステータスを `approved` に変更する。
 
-### POST /documents/:id/approval-steps/:step_order/reject
+### POST /documents/:id/approval-steps/:approval_step_id/reject
 
-アクティブステップの承認者が差し戻す。
+アクティブステップの承認者が差し戻す。対象ステップは `approval_step_id` で一意に指定する。
+
+指定したステップが最新 `route_revision` のアクティブステップでない場合は `422 UNPROCESSABLE` を返す。
 
 **リクエスト**:
 
