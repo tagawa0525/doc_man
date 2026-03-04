@@ -304,7 +304,7 @@ def main():
             if dry_run:
                 print(f"Would fix: {filepath}")
             else:
-                path.write_text(fixed, encoding="utf-8")
+                path.write_text(fixed, encoding="utf-8", newline="\n")
                 print(f"Fixed: {filepath}")
             fixed_count += 1
         else:
