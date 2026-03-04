@@ -209,9 +209,9 @@
 
 ---
 
-## 業務種別 /business-categories
+## 業務種別（disciplines） /disciplines
 
-### GET /business-categories
+### GET /disciplines
 
 **クエリパラメータ**:
 
@@ -237,7 +237,7 @@
 }
 ```
 
-### POST /business-categories
+### POST /disciplines
 
 **必要ロール**: `admin`
 
@@ -251,9 +251,9 @@
 }
 ```
 
-### GET /business-categories/:id
+### GET /disciplines/:id
 
-### PUT /business-categories/:id
+### PUT /disciplines/:id
 
 **必要ロール**: `admin`
 
@@ -268,7 +268,7 @@
 **クエリパラメータ**:
 
 - `status` -ステータスフィルタ（`planning|active|completed|cancelled`）
-- `business_category_id` -業務種別フィルタ
+- `discipline_id` -業務種別フィルタ
 - `wbs_code` -WBS コード検索
 
 **レスポンス 200**:
@@ -283,7 +283,7 @@
       "start_date": "2026-01-10",
       "end_date": "2026-12-31",
       "wbs_code": "P-2026-001",
-      "business_category": {
+      "discipline": {
         "id": "uuid",
         "code": "MECH",
         "name": "機械補修",
@@ -315,7 +315,7 @@
   "start_date": "2026-01-10",
   "end_date": "2026-12-31",
   "wbs_code": "P-2026-001",
-  "business_category_id": "uuid",
+  "discipline_id": "uuid",
   "manager_id": "uuid"
 }
 ```
@@ -347,7 +347,7 @@
 **クエリパラメータ**:
 
 - `project_id` -プロジェクトフィルタ
-- `business_category_id` -業務種別フィルタ（プロジェクト経由で JOIN）
+- `discipline_id` -業務種別フィルタ（プロジェクト経由で JOIN）
 - `confidentiality` -機密グレードフィルタ
 - `author_id` -作成者フィルタ
 - `tag` -タグ名フィルタ（複数指定可: `tag=CAD&tag=FEM`）
@@ -365,7 +365,7 @@
       "file_path": "/nas/projects/2026/drawing/cad001.dwg",
       "confidentiality": "internal",
       "author": { "id": "uuid", "name": "山田 太郎" },
-      "business_category": { "id": "uuid", "code": "CAD", "name": "CAD 設計" },
+      "discipline": { "id": "uuid", "code": "CAD", "name": "CAD 設計" },
       "project": { "id": "uuid", "name": "〇〇設備更新工事" },
       "tags": ["外形図", "設備"],
       "created_at": "2026-02-15T10:30:00Z",
