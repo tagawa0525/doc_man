@@ -49,12 +49,12 @@
 
 **ページネーション対象外エンドポイント**（配列を直接返す）:
 
-| エンドポイント | 理由 |
-| --- | --- |
-| `GET /departments` | ツリー構造で返す。全件一括取得が前提 |
-| `GET /disciplines` | マスタデータ。件数少数固定 |
-| `GET /documents/:id/approval-steps` | 1 文書あたりのステップ数は少数固定 |
-| `GET /documents/:id/circulations` | 1 文書あたりの宛先数は少数固定 |
+| エンドポイント                      | 理由                                 |
+| ----------------------------------- | ------------------------------------ |
+| `GET /departments`                  | ツリー構造で返す。全件一括取得が前提 |
+| `GET /disciplines`                  | マスタデータ。件数少数固定           |
+| `GET /documents/:id/approval-steps` | 1 文書あたりのステップ数は少数固定   |
+| `GET /documents/:id/circulations`   | 1 文書あたりの宛先数は少数固定       |
 
 ### エラーレスポンス
 
