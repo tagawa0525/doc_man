@@ -28,13 +28,14 @@ FEM002-2603001   # FEM部門002番、2026年3月、1件目
 
 文書登録リクエストを受けた際、以下の順序で採番する。
 
-1. リクエストから `business_category_id` を取得する
-2. `business_categories` テーブルから当該レコードの `department_id` を取得する
-3. `departments` テーブルから `code`（部署コード）を取得する
-4. 登録日時から `YYMM` を生成する（サーバー時刻の UTC → JST 変換後の年月）
-5. `documents` テーブルで `frozen_dept_code = {部署コード}` かつ `doc_number LIKE '{種別コード}{部署コード}-{YYMM}%'` となる最大連番を取得する
-6. 連番をインクリメントし、3 桁以上にゼロ埋めして文書番号を生成する
-7. 生成した文書番号を `doc_number` に、部署コードを `frozen_dept_code` にセットして保存する
+1. リクエストから `project_id` を取得する
+2. `projects` テーブルから `business_category_id` を取得する
+3. `business_categories` テーブルから `code`（種別コード）と `department_id` を取得する
+4. `departments` テーブルから `code`（部署コード）を取得する
+5. 登録日時から `YYMM` を生成する（サーバー時刻の UTC → JST 変換後の年月）
+6. `documents` テーブルで `frozen_dept_code = {部署コード}` かつ `doc_number LIKE '{種別コード}{部署コード}-{YYMM}%'` となる最大連番を取得する
+7. 連番をインクリメントし、3 桁以上にゼロ埋めして文書番号を生成する
+8. 生成した文書番号を `doc_number` に、部署コードを `frozen_dept_code` にセットして保存する
 
 ### 採番のアトミック性
 
@@ -46,7 +47,7 @@ FEM002-2603001   # FEM部門002番、2026年3月、1件目
 
 採番後の `doc_number` および `frozen_dept_code` は**変更不可**とする。
 
-- `PUT /api/v1/documents/:id` では `doc_number`, `frozen_dept_code`, `business_category_id` を更新対象から除外する
+- `PUT /api/v1/documents/:id` では `doc_number`, `frozen_dept_code` を更新対象から除外する
 - アプリケーション層でこれらのフィールドを無視し、DB に反映しない
 
 ---

@@ -347,7 +347,7 @@
 **クエリパラメータ**:
 
 - `project_id` -プロジェクトフィルタ
-- `business_category_id` -業務種別フィルタ
+- `business_category_id` -業務種別フィルタ（プロジェクト経由で JOIN）
 - `confidentiality` -機密グレードフィルタ
 - `author_id` -作成者フィルタ
 - `tag` -タグ名フィルタ（複数指定可: `tag=CAD&tag=FEM`）
@@ -388,7 +388,6 @@
 {
   "title": "〇〇設備 外形図",
   "file_path": "/nas/projects/2026/drawing/cad001.dwg",
-  "business_category_id": "uuid",
   "confidentiality": "internal",
   "project_id": "uuid",
   "tags": ["外形図", "設備"]
@@ -401,7 +400,7 @@
 
 ### PUT /documents/:id
 
-`doc_number`, `frozen_dept_code`, `business_category_id` は変更不可（422 を返す）。
+`doc_number`, `frozen_dept_code` は変更不可（422 を返す）。
 
 **リクエスト**（変更したいフィールドのみ）:
 
