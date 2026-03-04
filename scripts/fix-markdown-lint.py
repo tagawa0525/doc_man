@@ -49,7 +49,10 @@ def is_separator_row(line: str) -> bool:
     if not is_table_row(line):
         return False
     cells = [c.strip() for c in line.strip().strip("|").split("|")]
-    return all(re.match(r"^:?-+:?$", c) for c in cells if c)
+    pattern = re.compile(r"^:?-+:?$")
+    non_empty_cells = [c for c in cells if c]
+    dash_cells = [c for c in non_empty_cells if pattern.match(c)]
+    return bool(dash_cells) and len(dash_cells) == len(non_empty_cells)
 
 
 def is_heading(line: str) -> bool:
