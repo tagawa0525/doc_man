@@ -83,7 +83,7 @@ stateDiagram-v2
 
 **文書内容（ファイル等）を修正した場合:**
 
-1. 文書作成者が `PUT /documents/:id` で `file_path`、`title` 等を更新し、`revision` をインクリメントする
+1. 文書作成者が `PUT /documents/:id` で `file_path`、`title` 等を更新する（`revision` はサーバー側で自動インクリメントされる）
 2. 既存 `approval_steps` は削除しない（監査履歴として保持）
 3. 新しい承認ルートを `route_revision = 直近 + 1` で登録する（`document_revision` には更新後の `documents.revision` が記録される）
 4. 文書ステータスを `under_review` に変更する
