@@ -49,7 +49,10 @@ def is_separator_row(line: str) -> bool:
     if not is_table_row(line):
         return False
     cells = [c.strip() for c in line.strip().strip("|").split("|")]
-    return all(re.match(r"^:?-+:?$", c) for c in cells if c)
+    pattern = re.compile(r"^:?-+:?$")
+    non_empty_cells = [c for c in cells if c]
+    dash_cells = [c for c in non_empty_cells if pattern.match(c)]
+    return bool(dash_cells) and len(dash_cells) == len(non_empty_cells)
 
 
 def is_heading(line: str) -> bool:
@@ -74,7 +77,7 @@ def format_table(table_lines: list[str]) -> list[str]:
     if len(rows) < 2:
         return table_lines
 
-    ncols = len(rows[0])
+    ncols = max(len(row) for row in rows)
 
     # Detect alignment from separator row
     alignments = []
@@ -294,14 +297,14 @@ def main():
             print(f"Skip: {filepath} (not found)")
             continue
 
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         fixed = fix_markdown(content)
 
         if content != fixed:
             if dry_run:
                 print(f"Would fix: {filepath}")
             else:
-                path.write_text(fixed)
+                path.write_text(fixed, encoding="utf-8", newline="\n")
                 print(f"Fixed: {filepath}")
             fixed_count += 1
         else:
