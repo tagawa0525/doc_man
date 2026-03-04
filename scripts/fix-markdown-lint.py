@@ -297,14 +297,14 @@ def main():
             print(f"Skip: {filepath} (not found)")
             continue
 
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         fixed = fix_markdown(content)
 
         if content != fixed:
             if dry_run:
                 print(f"Would fix: {filepath}")
             else:
-                path.write_text(fixed)
+                path.write_text(fixed, encoding="utf-8")
                 print(f"Fixed: {filepath}")
             fixed_count += 1
         else:
