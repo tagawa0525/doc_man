@@ -340,6 +340,99 @@
 
 ---
 
+## 文書種別 /document-kinds
+
+### GET /document-kinds
+
+文書種別一覧を返す。
+
+**レスポンス 200**:
+
+```json
+{
+  "data": [
+    { "id": "uuid", "code": "内", "name": "社内", "seq_digits": 3 },
+    { "id": "uuid", "code": "議", "name": "議事録", "seq_digits": 2 }
+  ],
+  "meta": { "total": 8, "page": 1, "per_page": 20 }
+}
+```
+
+### POST /document-kinds
+
+**必要ロール**: `admin`
+
+**リクエスト**:
+
+```json
+{
+  "code": "内",
+  "name": "社内",
+  "seq_digits": 3
+}
+```
+
+### PUT /document-kinds/:id
+
+**必要ロール**: `admin`
+
+`code` は変更不可。`name`, `seq_digits` のみ更新可能。
+
+---
+
+## 文書台帳 /document-registers
+
+### GET /document-registers
+
+**クエリパラメータ**:
+
+- `doc_kind_id` -文書種別フィルタ
+- `department_id` -部署フィルタ
+
+**レスポンス 200**:
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "register_code": "内設計",
+      "doc_kind": { "id": "uuid", "code": "内", "name": "社内" },
+      "department": { "id": "uuid", "code": "設計", "name": "設計" },
+      "file_server_root": "/nas/tech/design",
+      "new_doc_sub_path": "{YYYY}/{project_code}",
+      "doc_number_pattern": "^内設計-[0-9]{4}[0-9]{3}$"
+    }
+  ],
+  "meta": { "total": 12, "page": 1, "per_page": 20 }
+}
+```
+
+### POST /document-registers
+
+**必要ロール**: `admin`
+
+**リクエスト**:
+
+```json
+{
+  "register_code": "内設計",
+  "doc_kind_id": "uuid",
+  "department_id": "uuid",
+  "file_server_root": "/nas/tech/design",
+  "new_doc_sub_path": "{YYYY}/{project_code}",
+  "doc_number_pattern": "^内設計-[0-9]{4}[0-9]{3}$"
+}
+```
+
+### PUT /document-registers/:id
+
+**必要ロール**: `admin`
+
+`register_code` は変更不可。
+
+---
+
 ## 文書 /documents
 
 ### GET /documents
@@ -348,7 +441,9 @@
 
 - `project_id` -プロジェクトフィルタ
 - `discipline_id` -業務種別フィルタ（プロジェクト経由で JOIN）
+- `doc_kind_id` -文書種別フィルタ
 - `confidentiality` -機密グレードフィルタ
+- `status` -文書ステータスフィルタ
 - `author_id` -作成者フィルタ
 - `tag` -タグ名フィルタ（複数指定可: `tag=CAD&tag=FEM`）
 - `q` -タイトルキーワード検索
@@ -360,11 +455,13 @@
   "data": [
     {
       "id": "uuid",
-      "doc_number": "CAD001-2602001",
+      "doc_number": "内設計-2603001",
       "title": "〇〇設備 外形図",
       "file_path": "/nas/projects/2026/drawing/cad001.dwg",
+      "status": "draft",
       "confidentiality": "internal",
       "author": { "id": "uuid", "name": "山田 太郎" },
+      "doc_kind": { "id": "uuid", "code": "内", "name": "社内" },
       "discipline": { "id": "uuid", "code": "CAD", "name": "CAD 設計" },
       "project": { "id": "uuid", "name": "〇〇設備更新工事" },
       "tags": ["外形図", "設備"],
@@ -389,18 +486,26 @@
   "title": "〇〇設備 外形図",
   "file_path": "/nas/projects/2026/drawing/cad001.dwg",
   "confidentiality": "internal",
+  "doc_kind_id": "uuid",
   "project_id": "uuid",
   "tags": ["外形図", "設備"]
 }
 ```
 
-**レスポンス 201**: 採番済み `doc_number` を含む文書詳細オブジェクト
+登録時に `status = draft` を自動設定する。
+
+**レスポンス 201**: 採番済み `doc_number` と `status` を含む文書詳細オブジェクト
 
 ### GET /documents/:id
 
 ### PUT /documents/:id
 
 `doc_number`, `frozen_dept_code` は変更不可（422 を返す）。
+
+`doc_kind_id` は原則不変だが、`admin` のみ以下条件を満たす場合に更新可能:
+
+- 文書ステータスが `draft` または `rejected`
+- `approved` または `circulating` を経由していない
 
 **リクエスト**（変更したいフィールドのみ）:
 
@@ -409,10 +514,13 @@
   "title": "〇〇設備 外形図 Rev.1",
   "file_path": "/nas/projects/2026/drawing/cad001_r1.dwg",
   "confidentiality": "restricted",
+  "doc_kind_id": "uuid",
   "project_id": "uuid",
   "tags": ["外形図", "設備", "Rev1"]
 }
 ```
+
+`status` は承認・回覧 API からのみ更新可能とし、`PUT /documents/:id` では変更不可。
 
 ### DELETE /documents/:id
 
@@ -434,6 +542,7 @@
 [
   {
     "id": "uuid",
+    "route_revision": 1,
     "step_order": 1,
     "approver": { "id": "uuid", "name": "佐藤 部長" },
     "status": "approved",
@@ -442,6 +551,7 @@
   },
   {
     "id": "uuid",
+    "route_revision": 2,
     "step_order": 2,
     "approver": { "id": "uuid", "name": "鈴木 役員" },
     "status": "pending",
@@ -453,7 +563,7 @@
 
 ### POST /documents/:id/approval-steps
 
-承認ルートを設定する。文書が `draft` 状態のみ可能。既存のステップは全削除して置き換える。
+承認ルートを設定する。文書が `draft` または `rejected` 状態のみ可能。既存ステップは削除せず、`route_revision = MAX + 1` で新規登録する。
 
 **必要ロール**: `admin`, `project_manager`
 
@@ -499,6 +609,17 @@
 ```
 
 文書ステータスを `rejected` に変更する。
+
+同一 `route_revision` に残る `pending` ステップは `rejected` へ更新する。
+
+---
+
+## スキャン要確認（運用）
+
+`path_scan_issues` は夜間バッチ（非同期ジョブ）で作成・更新する運用とし、公開 REST API は提供しない。
+
+- 参照は運用者向けレポート（DBビューまたは管理画面）で実施
+- 解決は運用バッチまたは管理画面の内部機能で実施
 
 ---
 

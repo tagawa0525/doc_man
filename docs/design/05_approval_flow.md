@@ -22,13 +22,15 @@ stateDiagram-v2
 | `circulating`  | 回覧中。未確認の宛先が残っている           |
 | `completed`    | 全宛先が確認済み                           |
 
+上記ステータスは `documents.status` に保存する。
+
 ---
 
 ## 段階承認
 
 ### 承認ルートの定義
 
-`approval_steps` テーブルに承認者を `step_order` 順で登録する。
+`approval_steps` テーブルに承認者を `route_revision`, `step_order` 順で登録する。
 
 ```text
 Step 1: 直属上長（step_order = 1）
@@ -36,8 +38,8 @@ Step 2: 部門長（step_order = 2）
 Step 3: 技術担当役員（step_order = 3）
 ```
 
-承認ルートの設定は文書の `draft` 状態中のみ可能とする。
-`under_review` 以降は承認ルートを変更できない。
+承認ルートの設定は文書の `draft` または `rejected` 状態中のみ可能とする。
+再提出時は旧承認ルートを削除せず、新しい `route_revision` として追加する。
 
 ### アクティブステップの特定
 
@@ -47,18 +49,23 @@ Step 3: 技術担当役員（step_order = 3）
 SELECT *
 FROM approval_steps
 WHERE document_id = :document_id
+  AND route_revision = (
+      SELECT MAX(route_revision)
+      FROM approval_steps
+      WHERE document_id = :document_id
+  )
   AND status = 'pending'
 ORDER BY step_order
 LIMIT 1
 ```
 
-最小 `step_order` の `pending` ステップが現在のアクティブステップ。
+最新 `route_revision` の中で、最小 `step_order` の `pending` ステップが現在のアクティブステップ。
 
 ### 承認処理のルール
 
 1. アクティブステップの承認者のみが操作できる（他のステップの承認者は操作不可）
 2. 承認（`approved`）: `approved_at` を現在時刻にセットし、次のステップを確認する
-3. 差し戻し（`rejected`): `approved_at` を現在時刻にセットし、文書ステータスを `rejected` に変更する
+3. 差し戻し（`rejected`): `approved_at` を現在時刻にセットし、同一 `route_revision` の未処理 `pending` ステップを `rejected` に更新したうえで文書ステータスを `rejected` に変更する
 4. 全ステップが `approved` になった場合、文書ステータスを `approved` に変更する
 
 ### ステータス遷移図（承認ステップ）
@@ -75,8 +82,8 @@ stateDiagram-v2
 差し戻し（`rejected`）後に文書を修正して再提出する場合:
 
 1. 文書作成者が文書を修正する
-2. 全 `approval_steps` レコードを削除する
-3. 新しい承認ルートを設定する（または同じルートを再設定する）
+2. 既存 `approval_steps` は削除しない（監査履歴として保持）
+3. 新しい承認ルートを `route_revision = 直近 + 1` で登録する（または同じルートを再設定する）
 4. 文書ステータスを `under_review` に変更する
 
 ---
