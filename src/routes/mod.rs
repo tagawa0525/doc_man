@@ -20,12 +20,12 @@ async fn health() -> Json<serde_json::Value> {
 #[derive(serde::Serialize)]
 struct MeResponse {
     id: Uuid,
-    role: String,
+    role: serde_json::Value,
 }
 
 async fn me(user: AuthenticatedUser) -> Json<MeResponse> {
     Json(MeResponse {
         id: user.id,
-        role: format!("{:?}", user.role).to_lowercase(),
+        role: json!(user.role),
     })
 }
