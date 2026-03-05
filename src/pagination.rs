@@ -18,17 +18,17 @@ fn default_per_page() -> u32 {
 
 impl PaginationParams {
     pub fn validate(&self) -> Result<(), String> {
-        if self.page < 1 {
+        if self.page == 0 {
             return Err("page must be >= 1".to_string());
         }
-        if self.per_page < 1 || self.per_page > 100 {
+        if self.per_page == 0 || self.per_page > 100 {
             return Err("per_page must be between 1 and 100".to_string());
         }
         Ok(())
     }
 
     pub fn offset(&self) -> i64 {
-        ((self.page - 1) * self.per_page) as i64
+        ((self.page.saturating_sub(1)) * self.per_page) as i64
     }
 
     pub fn limit(&self) -> i64 {
