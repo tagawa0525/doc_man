@@ -1,33 +1,27 @@
-use axum::body::to_bytes;
 use axum::http::{Request, StatusCode};
 use sqlx::PgPool;
 use tower::ServiceExt;
 
 mod helpers;
 
-// テスト用エンドポイント: GET /api/v1/me
-// → 認証済みユーザーのIDを返す (PR-1で /api/v1/me を追加する)
-
-#[sqlx::test(migrations = "migrations")]
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn valid_token_returns_200(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
 
-    // テスト用社員を挿入
-    let employee_code = "E001";
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO employees (name, employee_code, role, is_active) VALUES ($1, $2, $3, $4)",
-        "Test User",
-        employee_code,
-        "general",
-        true
     )
+    .bind("Test User")
+    .bind("E001")
+    .bind("general")
+    .bind(true)
     .execute(&pool)
     .await
     .unwrap();
 
     let request = Request::builder()
         .uri("/api/v1/me")
-        .header("Authorization", format!("Bearer {}", employee_code))
+        .header("Authorization", "Bearer E001")
         .body(axum::body::Body::empty())
         .unwrap();
 
@@ -35,7 +29,7 @@ async fn valid_token_returns_200(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::OK);
 }
 
-#[sqlx::test(migrations = "migrations")]
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn invalid_token_returns_401(pool: PgPool) {
     let app = helpers::build_test_app(pool);
 
@@ -49,25 +43,24 @@ async fn invalid_token_returns_401(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "migrations")]
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn inactive_user_returns_401(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
 
-    let employee_code = "E002";
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO employees (name, employee_code, role, is_active) VALUES ($1, $2, $3, $4)",
-        "Retired User",
-        employee_code,
-        "general",
-        false
     )
+    .bind("Retired User")
+    .bind("E002")
+    .bind("general")
+    .bind(false)
     .execute(&pool)
     .await
     .unwrap();
 
     let request = Request::builder()
         .uri("/api/v1/me")
-        .header("Authorization", format!("Bearer {}", employee_code))
+        .header("Authorization", "Bearer E002")
         .body(axum::body::Body::empty())
         .unwrap();
 
@@ -75,7 +68,7 @@ async fn inactive_user_returns_401(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test(migrations = "migrations")]
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn missing_auth_header_returns_401(pool: PgPool) {
     let app = helpers::build_test_app(pool);
 
