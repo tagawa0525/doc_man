@@ -1,0 +1,249 @@
+use axum::Json;
+use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
+use chrono::NaiveDate;
+use serde::Deserialize;
+use uuid::Uuid;
+
+use crate::auth::{AuthenticatedUser, Role};
+use crate::error::AppError;
+use crate::models::department::{
+    CreateDepartmentRequest, DepartmentResponse, DepartmentRow, DepartmentTree,
+    UpdateDepartmentRequest,
+};
+use crate::state::AppState;
+
+#[derive(Debug, Deserialize)]
+pub struct DepartmentListQuery {
+    #[serde(default)]
+    pub include_inactive: bool,
+}
+
+/// GET /api/v1/departments
+pub async fn list_departments(
+    _user: AuthenticatedUser,
+    Query(params): Query<DepartmentListQuery>,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DepartmentTree>>, AppError> {
+    let rows = fetch_department_rows(&state, params.include_inactive).await?;
+    let tree = build_tree(rows);
+    Ok(Json(tree))
+}
+
+/// POST /api/v1/departments
+pub async fn create_department(
+    user: AuthenticatedUser,
+    State(state): State<AppState>,
+    Json(req): Json<CreateDepartmentRequest>,
+) -> Result<(StatusCode, Json<DepartmentResponse>), AppError> {
+    if user.role != Role::Admin {
+        return Err(AppError::Forbidden("admin role required".to_string()));
+    }
+
+    let row = sqlx::query(
+        "INSERT INTO departments (code, name, parent_id, effective_from)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, code, name, parent_id, effective_from, effective_to, merged_into_id",
+    )
+    .bind(&req.code)
+    .bind(&req.name)
+    .bind(req.parent_id)
+    .bind(req.effective_from)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| match &e {
+        sqlx::Error::Database(db_err) if db_err.constraint().is_some() => {
+            AppError::Conflict(format!("department code '{}' already exists", req.code))
+        }
+        _ => AppError::Database(e),
+    })?;
+
+    use sqlx::Row;
+    let dept = DepartmentRow {
+        id: row.get("id"),
+        code: row.get("code"),
+        name: row.get("name"),
+        parent_id: row.get("parent_id"),
+        effective_from: row.get("effective_from"),
+        effective_to: row.get("effective_to"),
+        merged_into_id: row.get("merged_into_id"),
+    };
+
+    Ok((StatusCode::CREATED, Json(DepartmentResponse::from(dept))))
+}
+
+/// GET /api/v1/departments/:id
+pub async fn get_department(
+    _user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<Json<DepartmentResponse>, AppError> {
+    let row = sqlx::query(
+        "SELECT id, code, name, parent_id, effective_from, effective_to, merged_into_id
+         FROM departments WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or_else(|| AppError::NotFound(format!("department {} not found", id)))?;
+
+    use sqlx::Row;
+    let dept = DepartmentRow {
+        id: row.get("id"),
+        code: row.get("code"),
+        name: row.get("name"),
+        parent_id: row.get("parent_id"),
+        effective_from: row.get("effective_from"),
+        effective_to: row.get("effective_to"),
+        merged_into_id: row.get("merged_into_id"),
+    };
+
+    Ok(Json(DepartmentResponse::from(dept)))
+}
+
+/// PUT /api/v1/departments/:id
+pub async fn update_department(
+    user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+    Json(req): Json<UpdateDepartmentRequest>,
+) -> Result<Json<DepartmentResponse>, AppError> {
+    if user.role != Role::Admin {
+        return Err(AppError::Forbidden("admin role required".to_string()));
+    }
+
+    // 存在チェック
+    let existing = sqlx::query(
+        "SELECT id, code, name, parent_id, effective_from, effective_to, merged_into_id
+         FROM departments WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or_else(|| AppError::NotFound(format!("department {} not found", id)))?;
+
+    use sqlx::Row;
+    let current_name: String = existing.get("name");
+    let current_effective_to: Option<NaiveDate> = existing.get("effective_to");
+    let current_merged_into_id: Option<Uuid> = existing.get("merged_into_id");
+
+    let new_name = req.name.unwrap_or(current_name);
+    let new_effective_to = req.effective_to.or(current_effective_to);
+    let new_merged_into_id = req.merged_into_id.or(current_merged_into_id);
+
+    let updated = sqlx::query(
+        "UPDATE departments
+         SET name = $1, effective_to = $2, merged_into_id = $3, updated_at = now()
+         WHERE id = $4
+         RETURNING id, code, name, parent_id, effective_from, effective_to, merged_into_id",
+    )
+    .bind(&new_name)
+    .bind(new_effective_to)
+    .bind(new_merged_into_id)
+    .bind(id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(AppError::Database)?;
+
+    let dept = DepartmentRow {
+        id: updated.get("id"),
+        code: updated.get("code"),
+        name: updated.get("name"),
+        parent_id: updated.get("parent_id"),
+        effective_from: updated.get("effective_from"),
+        effective_to: updated.get("effective_to"),
+        merged_into_id: updated.get("merged_into_id"),
+    };
+
+    Ok(Json(DepartmentResponse::from(dept)))
+}
+
+// ──────────────── 内部ヘルパー ────────────────
+
+async fn fetch_department_rows(
+    state: &AppState,
+    include_inactive: bool,
+) -> Result<Vec<DepartmentRow>, AppError> {
+    let query = if include_inactive {
+        "SELECT id, code, name, parent_id, effective_from, effective_to, merged_into_id
+         FROM departments ORDER BY code"
+    } else {
+        "SELECT id, code, name, parent_id, effective_from, effective_to, merged_into_id
+         FROM departments WHERE effective_to IS NULL ORDER BY code"
+    };
+
+    let rows = sqlx::query(query)
+        .fetch_all(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    use sqlx::Row;
+    Ok(rows
+        .into_iter()
+        .map(|r| DepartmentRow {
+            id: r.get("id"),
+            code: r.get("code"),
+            name: r.get("name"),
+            parent_id: r.get("parent_id"),
+            effective_from: r.get("effective_from"),
+            effective_to: r.get("effective_to"),
+            merged_into_id: r.get("merged_into_id"),
+        })
+        .collect())
+}
+
+/// フラットなリストをツリーに組み立てる
+fn build_tree(rows: Vec<DepartmentRow>) -> Vec<DepartmentTree> {
+    use std::collections::HashMap;
+
+    let mut nodes: HashMap<Uuid, DepartmentTree> = rows
+        .iter()
+        .map(|r| {
+            (
+                r.id,
+                DepartmentTree {
+                    id: r.id,
+                    code: r.code.clone(),
+                    name: r.name.clone(),
+                    parent_id: r.parent_id,
+                    effective_from: r.effective_from,
+                    effective_to: r.effective_to,
+                    children: vec![],
+                },
+            )
+        })
+        .collect();
+
+    let mut roots: Vec<Uuid> = Vec::new();
+
+    // 子の id と parent_id の対応を収集
+    let parent_map: Vec<(Uuid, Option<Uuid>)> = rows.iter().map(|r| (r.id, r.parent_id)).collect();
+
+    for (id, parent_id) in &parent_map {
+        if parent_id.is_none() {
+            roots.push(*id);
+        }
+    }
+
+    // 親子関係を構築（親から子を取り出して挿入）
+    for (id, parent_id) in &parent_map {
+        if let Some(pid) = parent_id {
+            if let Some(child) = nodes.remove(id) {
+                if let Some(parent) = nodes.get_mut(pid) {
+                    parent.children.push(child);
+                } else {
+                    // 親が既に取り出されている場合はルートに追加
+                    roots.push(*id);
+                    nodes.insert(*id, child);
+                }
+            }
+        }
+    }
+
+    roots
+        .into_iter()
+        .filter_map(|id| nodes.remove(&id))
+        .collect()
+}
