@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
+use tracing::error;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -48,11 +49,14 @@ impl IntoResponse for AppError {
             AppError::Unprocessable(msg) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, "UNPROCESSABLE", msg)
             }
-            AppError::Database(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "INTERNAL_ERROR",
-                err.to_string(),
-            ),
+            AppError::Database(err) => {
+                error!("database error: {}", err);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INTERNAL_ERROR",
+                    "An internal error occurred".to_string(),
+                )
+            }
             AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", msg),
         };
 
