@@ -28,7 +28,7 @@ impl std::str::FromStr for Role {
             "project_manager" => Ok(Role::ProjectManager),
             "general" => Ok(Role::General),
             "viewer" => Ok(Role::Viewer),
-            _ => Err(AppError::Internal(format!("unknown role: {}", s))),
+            _ => Err(AppError::Unauthorized),
         }
     }
 }
