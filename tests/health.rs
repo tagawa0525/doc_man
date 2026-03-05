@@ -1,11 +1,13 @@
 use axum::body::to_bytes;
 use axum::http::{Request, StatusCode};
-use doc_man::app;
+use sqlx::PgPool;
 use tower::ServiceExt;
 
-#[tokio::test]
-async fn health_check_returns_200() {
-    let app = app();
+mod helpers;
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn health_check_returns_200(pool: PgPool) {
+    let app = helpers::build_test_app(pool);
     let request = Request::builder()
         .uri("/health")
         .body(axum::body::Body::empty())

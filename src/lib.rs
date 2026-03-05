@@ -4,8 +4,12 @@ pub mod pagination;
 pub mod routes;
 pub mod state;
 
-use axum::Router;
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
 
-pub fn app() -> Router {
-    routes::build_router()
+use axum::Router;
+use state::AppState;
+
+/// DB接続込みのアプリを構築して返す（本番・統合テスト共通）
+pub fn app_with_state(state: AppState) -> Router {
+    routes::build_router(state)
 }
