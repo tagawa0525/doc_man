@@ -26,7 +26,7 @@ pub struct DepartmentTree {
     pub children: Vec<DepartmentTree>,
 }
 
-/// レスポンス型（GET/POST/PUT /departments/:id）フラット
+/// レスポンス型（GET/POST/PUT /departments/{id}）フラット
 #[derive(Debug, Serialize)]
 pub struct DepartmentResponse {
     pub id: Uuid,
@@ -35,6 +35,7 @@ pub struct DepartmentResponse {
     pub parent_id: Option<Uuid>,
     pub effective_from: NaiveDate,
     pub effective_to: Option<NaiveDate>,
+    pub merged_into_id: Option<Uuid>,
 }
 
 impl From<DepartmentRow> for DepartmentResponse {
@@ -46,6 +47,7 @@ impl From<DepartmentRow> for DepartmentResponse {
             parent_id: row.parent_id,
             effective_from: row.effective_from,
             effective_to: row.effective_to,
+            merged_into_id: row.merged_into_id,
         }
     }
 }
