@@ -42,6 +42,45 @@ async fn get_departments_returns_tree(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_departments_returns_deep_tree(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+
+    // 祖父部署
+    let grandparent_id = helpers::insert_department(&pool, "001", "技術部", None).await;
+    // 親部署
+    let parent_id = helpers::insert_department(&pool, "002", "設計課", Some(grandparent_id)).await;
+    // 子部署
+    helpers::insert_department(&pool, "003", "サブ設計班", Some(parent_id)).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/departments")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    let roots = body.as_array().unwrap();
+    // ルートには祖父部署のみ
+    assert_eq!(roots.len(), 1);
+    assert_eq!(roots[0]["code"], "001");
+    // 祖父部署の children に親部署
+    let level1 = roots[0]["children"].as_array().unwrap();
+    assert_eq!(level1.len(), 1);
+    assert_eq!(level1[0]["code"], "002");
+    // 親部署の children に子部署
+    let level2 = level1[0]["children"].as_array().unwrap();
+    assert_eq!(level2.len(), 1);
+    assert_eq!(level2[0]["code"], "003");
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn get_departments_excludes_inactive_by_default(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
