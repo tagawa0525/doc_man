@@ -216,34 +216,32 @@ fn build_tree(rows: Vec<DepartmentRow>) -> Vec<DepartmentTree> {
         })
         .collect();
 
-    let mut roots: Vec<Uuid> = Vec::new();
-
-    // 子の id と parent_id の対応を収集
-    let parent_map: Vec<(Uuid, Option<Uuid>)> = rows.iter().map(|r| (r.id, r.parent_id)).collect();
-
-    for (id, parent_id) in &parent_map {
-        if parent_id.is_none() {
-            roots.push(*id);
-        }
+    // 親ID -> 子ID一覧 のマップを構築（None はルート）
+    let mut children_map: HashMap<Option<Uuid>, Vec<Uuid>> = HashMap::new();
+    for r in &rows {
+        children_map.entry(r.parent_id).or_default().push(r.id);
     }
 
-    // 親子関係を構築（親から子を取り出して挿入）
-    for (id, parent_id) in &parent_map {
-        if let Some(pid) = parent_id {
-            if let Some(child) = nodes.remove(id) {
-                if let Some(parent) = nodes.get_mut(pid) {
-                    parent.children.push(child);
-                } else {
-                    // 親が既に取り出されている場合はルートに追加
-                    roots.push(*id);
-                    nodes.insert(*id, child);
-                }
-            }
+    let roots: Vec<Uuid> = children_map.get(&None).cloned().unwrap_or_default();
+
+    // 再帰的にサブツリーを構築する内部関数
+    fn build_subtree(
+        id: Uuid,
+        nodes: &mut HashMap<Uuid, DepartmentTree>,
+        children_map: &HashMap<Option<Uuid>, Vec<Uuid>>,
+    ) -> DepartmentTree {
+        let mut node = nodes.remove(&id).expect("node must exist");
+        if let Some(child_ids) = children_map.get(&Some(id)) {
+            node.children = child_ids
+                .iter()
+                .map(|&child_id| build_subtree(child_id, nodes, children_map))
+                .collect();
         }
+        node
     }
 
     roots
         .into_iter()
-        .filter_map(|id| nodes.remove(&id))
+        .map(|id| build_subtree(id, &mut nodes, &children_map))
         .collect()
 }
