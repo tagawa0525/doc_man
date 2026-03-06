@@ -145,7 +145,14 @@ pub async fn update_department(
     .bind(id)
     .fetch_one(&state.db)
     .await
-    .map_err(AppError::Database)?;
+    .map_err(|e| match &e {
+        sqlx::Error::Database(db_err) if db_err.code().as_deref() == Some("23503") => {
+            AppError::InvalidRequest(
+                "merged_into_id references a non-existent department".to_string(),
+            )
+        }
+        _ => AppError::Database(e),
+    })?;
 
     let dept = DepartmentRow {
         id: updated.get("id"),
