@@ -52,9 +52,12 @@ pub async fn create_department(
     .fetch_one(&state.db)
     .await
     .map_err(|e| match &e {
-        sqlx::Error::Database(db_err) if db_err.constraint().is_some() => {
-            AppError::Conflict(format!("department code '{}' already exists", req.code))
-        }
+        sqlx::Error::Database(db_err) => match db_err.constraint() {
+            Some("departments_code_unique") => {
+                AppError::Conflict(format!("department code '{}' already exists", req.code))
+            }
+            _ => AppError::Database(e),
+        },
         _ => AppError::Database(e),
     })?;
 
