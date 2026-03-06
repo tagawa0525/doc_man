@@ -75,7 +75,7 @@ pub async fn create_department(
     Ok((StatusCode::CREATED, Json(DepartmentResponse::from(dept))))
 }
 
-/// GET /api/v1/departments/:id
+/// GET /api/v1/departments/{id}
 pub async fn get_department(
     _user: AuthenticatedUser,
     Path(id): Path<Uuid>,
@@ -105,7 +105,7 @@ pub async fn get_department(
     Ok(Json(DepartmentResponse::from(dept)))
 }
 
-/// PUT /api/v1/departments/:id
+/// PUT /api/v1/departments/{id}
 pub async fn update_department(
     user: AuthenticatedUser,
     Path(id): Path<Uuid>,
