@@ -4,12 +4,21 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::auth::AuthenticatedUser;
+use crate::handlers::departments;
 use crate::state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/api/v1/me", get(me))
+        .route(
+            "/api/v1/departments",
+            get(departments::list_departments).post(departments::create_department),
+        )
+        .route(
+            "/api/v1/departments/{id}",
+            get(departments::get_department).put(departments::update_department),
+        )
         .with_state(state)
 }
 

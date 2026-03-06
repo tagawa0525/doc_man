@@ -1,5 +1,7 @@
 pub mod auth;
 pub mod error;
+pub mod handlers;
+pub mod models;
 pub mod pagination;
 pub mod routes;
 pub mod state;
