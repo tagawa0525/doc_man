@@ -71,6 +71,44 @@ pub async fn insert_department(
     row.get("id")
 }
 
+pub async fn insert_employee_inactive(pool: &PgPool, code: &str, role: &str) -> TestUser {
+    let row = sqlx::query(
+        "INSERT INTO employees (name, employee_code, role, is_active)
+         VALUES ($1, $2, $3, false)
+         RETURNING id",
+    )
+    .bind(format!("Test {}", code))
+    .bind(code)
+    .bind(role)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    TestUser {
+        id: row.get("id"),
+        employee_code: code.to_string(),
+    }
+}
+
+pub async fn assign_department(
+    pool: &PgPool,
+    employee_id: Uuid,
+    department_id: Uuid,
+    is_primary: bool,
+) {
+    sqlx::query(
+        "INSERT INTO employee_departments (employee_id, department_id, is_primary, effective_from)
+         VALUES ($1, $2, $3, CURRENT_DATE)",
+    )
+    .bind(employee_id)
+    .bind(department_id)
+    .bind(is_primary)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
