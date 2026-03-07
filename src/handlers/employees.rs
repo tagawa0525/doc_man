@@ -56,7 +56,7 @@ pub async fn list_employees(
                AND ed.effective_to IS NULL AND ed.is_primary = true
              LEFT JOIN departments d ON d.id = ed.department_id
              WHERE e.is_active = $1 AND ed.department_id = $2
-             ORDER BY e.employee_code
+             ORDER BY e.employee_code NULLS LAST, e.id
              LIMIT $3 OFFSET $4",
         )
         .bind(params.is_active)
@@ -83,7 +83,7 @@ pub async fn list_employees(
                AND ed.effective_to IS NULL AND ed.is_primary = true
              LEFT JOIN departments d ON d.id = ed.department_id
              WHERE e.is_active = $1
-             ORDER BY e.employee_code
+             ORDER BY e.employee_code NULLS LAST, e.id
              LIMIT $2 OFFSET $3",
         )
         .bind(params.is_active)
