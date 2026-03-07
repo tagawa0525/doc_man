@@ -85,6 +85,32 @@ async fn get_projects_with_discipline_filter(pool: PgPool) {
     assert_eq!(body["data"][0]["name"], "プロジェクトA");
 }
 
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_with_wbs_code_filter(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    helpers::insert_project_with_wbs(&pool, "プロジェクトA", disc, None, "WBS-001").await;
+    helpers::insert_project_with_wbs(&pool, "プロジェクトB", disc, None, "WBS-002").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?wbs_code=WBS-001")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["name"], "プロジェクトA");
+}
+
 // ── POST /projects ──────────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
@@ -433,4 +459,40 @@ async fn delete_project_not_found_returns_404(pool: PgPool) {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn delete_project_with_documents_returns_409(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj_id = helpers::insert_project(&pool, "文書あり", disc, None).await;
+
+    // 文書を直接挿入
+    sqlx::query(
+        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
+         VALUES ('内技術-2603001', 'テスト文書', '/path/to/file', $1, $2, '001', $3)",
+    )
+    .bind(admin.id)
+    .bind(kind)
+    .bind(proj_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/projects/{}", proj_id))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
 }
