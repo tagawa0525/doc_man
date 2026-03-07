@@ -255,7 +255,18 @@ pub async fn update_employee(
     .bind(id)
     .execute(&mut *tx)
     .await
-    .map_err(AppError::Database)?;
+    .map_err(|e| match &e {
+        sqlx::Error::Database(db_err) => {
+            if db_err.code().as_deref() == Some("23514") {
+                return AppError::InvalidRequest("invalid role".to_string());
+            }
+            if db_err.constraint() == Some("employees_ad_account_key") {
+                return AppError::Conflict("ad_account already exists".to_string());
+            }
+            AppError::Database(e)
+        }
+        _ => AppError::Database(e),
+    })?;
 
     // 退職処理: is_active が false になる場合、有効な所属レコードを閉じる
     if !new_is_active && current_is_active {
