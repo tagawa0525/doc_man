@@ -126,6 +126,45 @@ pub async fn insert_discipline(pool: &PgPool, code: &str, name: &str, department
     row.get("id")
 }
 
+pub async fn insert_document_kind(pool: &PgPool, code: &str, name: &str, seq_digits: i32) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO document_kinds (code, name, seq_digits)
+         VALUES ($1, $2, $3)
+         RETURNING id",
+    )
+    .bind(code)
+    .bind(name)
+    .bind(seq_digits)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
+pub async fn insert_document_register(
+    pool: &PgPool,
+    register_code: &str,
+    doc_kind_id: Uuid,
+    department_id: Uuid,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO document_registers (register_code, doc_kind_id, department_id, file_server_root)
+         VALUES ($1, $2, $3, '/default/path')
+         RETURNING id",
+    )
+    .bind(register_code)
+    .bind(doc_kind_id)
+    .bind(department_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
