@@ -22,31 +22,18 @@ pub async fn list_disciplines(
     Query(params): Query<DisciplineListQuery>,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<DisciplineResponse>>, AppError> {
-    let rows = if let Some(dept_id) = params.department_id {
-        sqlx::query(
-            "SELECT di.id, di.code, di.name,
-                    d.id as dept_id, d.code as dept_code, d.name as dept_name
-             FROM disciplines di
-             JOIN departments d ON d.id = di.department_id
-             WHERE di.department_id = $1
-             ORDER BY di.code",
-        )
-        .bind(dept_id)
-        .fetch_all(&state.db)
-        .await
-        .map_err(AppError::Database)?
-    } else {
-        sqlx::query(
-            "SELECT di.id, di.code, di.name,
-                    d.id as dept_id, d.code as dept_code, d.name as dept_name
-             FROM disciplines di
-             JOIN departments d ON d.id = di.department_id
-             ORDER BY di.code",
-        )
-        .fetch_all(&state.db)
-        .await
-        .map_err(AppError::Database)?
-    };
+    let rows = sqlx::query(
+        "SELECT di.id, di.code, di.name,
+                d.id as dept_id, d.code as dept_code, d.name as dept_name
+         FROM disciplines di
+         JOIN departments d ON d.id = di.department_id
+         WHERE ($1::uuid IS NULL OR di.department_id = $1)
+         ORDER BY di.code",
+    )
+    .bind(params.department_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(AppError::Database)?;
 
     use sqlx::Row;
     let data: Vec<DisciplineResponse> = rows
