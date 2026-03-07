@@ -109,6 +109,23 @@ pub async fn assign_department(
     .unwrap();
 }
 
+pub async fn insert_discipline(pool: &PgPool, code: &str, name: &str, department_id: Uuid) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO disciplines (code, name, department_id)
+         VALUES ($1, $2, $3)
+         RETURNING id",
+    )
+    .bind(code)
+    .bind(name)
+    .bind(department_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
