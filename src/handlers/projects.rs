@@ -114,6 +114,13 @@ pub async fn create_project(
 
     let status = req.status.as_deref().unwrap_or("planning");
 
+    // project_manager が manager_id を省略した場合、自身を設定
+    let manager_id = req.manager_id.or(if user.role == Role::ProjectManager {
+        Some(user.id)
+    } else {
+        None
+    });
+
     let row = sqlx::query(
         "INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_id, manager_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -125,7 +132,7 @@ pub async fn create_project(
     .bind(req.end_date)
     .bind(&req.wbs_code)
     .bind(req.discipline_id)
-    .bind(req.manager_id)
+    .bind(manager_id)
     .fetch_one(&state.db)
     .await
     .map_err(|e| match &e {
