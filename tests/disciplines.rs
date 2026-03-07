@@ -153,6 +153,59 @@ async fn post_discipline_duplicate_code_returns_409(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::CONFLICT);
 }
 
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn post_discipline_invalid_department_returns_400(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/disciplines")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({
+                        "code": "MECH",
+                        "name": "機械設計",
+                        "department_id": "00000000-0000-0000-0000-000000000000"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn put_discipline_invalid_department_returns_400(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc_id = helpers::insert_discipline(&pool, "MECH", "機械設計", dept).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/v1/disciplines/{}", disc_id))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({ "department_id": "00000000-0000-0000-0000-000000000000" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
 // ── GET /disciplines/{id} ─────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
