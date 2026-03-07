@@ -146,17 +146,24 @@ pub async fn create_employee(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| match &e {
-        sqlx::Error::Database(db_err) => match db_err.constraint() {
-            Some("employees_employee_code_key") => AppError::Conflict(format!(
-                "employee code '{}' already exists",
-                req.employee_code.as_deref().unwrap_or("")
-            )),
-            Some("employees_ad_account_key") => AppError::Conflict(format!(
-                "ad_account '{}' already exists",
-                req.ad_account.as_deref().unwrap_or("")
-            )),
-            _ => AppError::Database(e),
-        },
+        sqlx::Error::Database(db_err) => {
+            if db_err.code().as_deref() == Some("23514") {
+                return AppError::InvalidRequest(
+                    "invalid employee data (check constraint violated)".to_string(),
+                );
+            }
+            match db_err.constraint() {
+                Some("employees_employee_code_key") => AppError::Conflict(format!(
+                    "employee code '{}' already exists",
+                    req.employee_code.as_deref().unwrap_or("")
+                )),
+                Some("employees_ad_account_key") => AppError::Conflict(format!(
+                    "ad_account '{}' already exists",
+                    req.ad_account.as_deref().unwrap_or("")
+                )),
+                _ => AppError::Database(e),
+            }
+        }
         _ => AppError::Database(e),
     })?;
 
