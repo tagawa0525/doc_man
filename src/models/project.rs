@@ -14,6 +14,7 @@ pub struct ProjectRow {
     pub disc_code: String,
     pub disc_name: String,
     pub dept_id: Uuid,
+    pub dept_code: String,
     pub dept_name: String,
     pub manager_id: Option<Uuid>,
     pub manager_name: Option<String>,
@@ -30,6 +31,7 @@ pub struct DisciplineBrief {
 #[derive(Debug, Serialize)]
 pub struct DepartmentBrief {
     pub id: Uuid,
+    pub code: String,
     pub name: String,
 }
 
@@ -67,6 +69,7 @@ impl From<ProjectRow> for ProjectResponse {
                 name: row.disc_name,
                 department: DepartmentBrief {
                     id: row.dept_id,
+                    code: row.dept_code,
                     name: row.dept_name,
                 },
             },

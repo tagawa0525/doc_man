@@ -47,7 +47,7 @@ pub async fn list_projects(
     let rows = sqlx::query(
         "SELECT p.id, p.name, p.status, p.start_date, p.end_date, p.wbs_code,
                 di.id as disc_id, di.code as disc_code, di.name as disc_name,
-                d.id as dept_id, d.name as dept_name,
+                d.id as dept_id, d.code as dept_code, d.name as dept_name,
                 e.id as manager_id, e.name as manager_name
          FROM projects p
          JOIN disciplines di ON di.id = p.discipline_id
@@ -83,6 +83,7 @@ pub async fn list_projects(
                 disc_code: r.get("disc_code"),
                 disc_name: r.get("disc_name"),
                 dept_id: r.get("dept_id"),
+                dept_code: r.get("dept_code"),
                 dept_name: r.get("dept_name"),
                 manager_id: r.get("manager_id"),
                 manager_name: r.get("manager_name"),
@@ -317,7 +318,7 @@ async fn fetch_project_by_id(
     let row = sqlx::query(
         "SELECT p.id, p.name, p.status, p.start_date, p.end_date, p.wbs_code,
                 di.id as disc_id, di.code as disc_code, di.name as disc_name,
-                d.id as dept_id, d.name as dept_name,
+                d.id as dept_id, d.code as dept_code, d.name as dept_name,
                 e.id as manager_id, e.name as manager_name
          FROM projects p
          JOIN disciplines di ON di.id = p.discipline_id
@@ -343,6 +344,7 @@ async fn fetch_project_by_id(
             disc_code: r.get("disc_code"),
             disc_name: r.get("disc_name"),
             dept_id: r.get("dept_id"),
+            dept_code: r.get("dept_code"),
             dept_name: r.get("dept_name"),
             manager_id: r.get("manager_id"),
             manager_name: r.get("manager_name"),
