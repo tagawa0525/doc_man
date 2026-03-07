@@ -165,6 +165,76 @@ pub async fn insert_document_register(
     row.get("id")
 }
 
+pub async fn insert_project(
+    pool: &PgPool,
+    name: &str,
+    discipline_id: Uuid,
+    manager_id: Option<Uuid>,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO projects (name, discipline_id, manager_id)
+         VALUES ($1, $2, $3)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(discipline_id)
+    .bind(manager_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
+pub async fn insert_project_with_status(
+    pool: &PgPool,
+    name: &str,
+    discipline_id: Uuid,
+    manager_id: Option<Uuid>,
+    status: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO projects (name, discipline_id, manager_id, status)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(discipline_id)
+    .bind(manager_id)
+    .bind(status)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
+pub async fn insert_project_with_wbs(
+    pool: &PgPool,
+    name: &str,
+    discipline_id: Uuid,
+    manager_id: Option<Uuid>,
+    wbs_code: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO projects (name, discipline_id, manager_id, wbs_code)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(discipline_id)
+    .bind(manager_id)
+    .bind(wbs_code)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
