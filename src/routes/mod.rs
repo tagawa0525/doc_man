@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::auth::AuthenticatedUser;
 use crate::handlers::departments;
+use crate::handlers::employees;
 use crate::state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
@@ -18,6 +19,14 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/departments/{id}",
             get(departments::get_department).put(departments::update_department),
+        )
+        .route(
+            "/api/v1/employees",
+            get(employees::list_employees).post(employees::create_employee),
+        )
+        .route(
+            "/api/v1/employees/{id}",
+            get(employees::get_employee).put(employees::update_employee),
         )
         .with_state(state)
 }
