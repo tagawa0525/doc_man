@@ -235,6 +235,17 @@ pub async fn insert_project_with_wbs(
     row.get("id")
 }
 
+pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
+    let row = sqlx::query("INSERT INTO tags (name) VALUES ($1) RETURNING id")
+        .bind(name)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
