@@ -270,12 +270,14 @@ pub async fn update_document(
 
     use sqlx::Row;
 
+    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
+
     let existing = sqlx::query(
         "SELECT title, file_path, confidentiality, status, revision
-         FROM documents WHERE id = $1",
+         FROM documents WHERE id = $1 FOR UPDATE",
     )
     .bind(id)
-    .fetch_optional(&state.db)
+    .fetch_optional(tx.as_mut())
     .await
     .map_err(AppError::Database)?
     .ok_or_else(|| AppError::NotFound(format!("document {} not found", id)))?;
@@ -292,11 +294,24 @@ pub async fn update_document(
         .confidentiality
         .unwrap_or(current_confidentiality.clone());
 
+    // タグの変更を実際に比較
+    let tags_changed = if let Some(ref new_tags) = req.tags {
+        let current_tags = fetch_tags(&state.db, id).await?;
+        let mut sorted_new: Vec<&str> = new_tags.iter().map(|s| s.as_str()).collect();
+        sorted_new.sort();
+        sorted_new.dedup();
+        let mut sorted_current: Vec<&str> = current_tags.iter().map(|s| s.as_str()).collect();
+        sorted_current.sort();
+        sorted_new != sorted_current
+    } else {
+        false
+    };
+
     // draft/rejected 状態で内容変更がある場合に revision +1
     let content_changed = new_title != current_title
         || new_file_path != current_file_path
         || new_confidentiality != current_confidentiality
-        || req.tags.is_some();
+        || tags_changed;
 
     let new_revision =
         if content_changed && (current_status == "draft" || current_status == "rejected") {
@@ -304,8 +319,6 @@ pub async fn update_document(
         } else {
             current_revision
         };
-
-    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     sqlx::query(
         "UPDATE documents
