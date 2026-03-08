@@ -189,9 +189,16 @@ pub async fn create_document(
 
     let doc_id: Uuid = doc_row.get("id");
 
-    // タグの関連付け
+    // タグの関連付け（重複排除）
     if let Some(ref tag_names) = req.tags {
-        for tag_name in tag_names {
+        let unique_tags: Vec<&String> = {
+            let mut seen = std::collections::HashSet::new();
+            tag_names
+                .iter()
+                .filter(|t| seen.insert(t.as_str()))
+                .collect()
+        };
+        for tag_name in unique_tags {
             let tag_id: Option<Uuid> = sqlx::query_scalar("SELECT id FROM tags WHERE name = $1")
                 .bind(tag_name)
                 .fetch_optional(tx.as_mut())
@@ -325,7 +332,7 @@ pub async fn update_document(
         _ => AppError::Database(e),
     })?;
 
-    // タグの更新（指定されていれば全件差し替え）
+    // タグの更新（指定されていれば全件差し替え、重複排除）
     if let Some(ref tag_names) = req.tags {
         sqlx::query("DELETE FROM document_tags WHERE document_id = $1")
             .bind(id)
@@ -333,7 +340,14 @@ pub async fn update_document(
             .await
             .map_err(AppError::Database)?;
 
-        for tag_name in tag_names {
+        let unique_tags: Vec<&String> = {
+            let mut seen = std::collections::HashSet::new();
+            tag_names
+                .iter()
+                .filter(|t| seen.insert(t.as_str()))
+                .collect()
+        };
+        for tag_name in unique_tags {
             let tag_id: Option<Uuid> = sqlx::query_scalar("SELECT id FROM tags WHERE name = $1")
                 .bind(tag_name)
                 .fetch_optional(tx.as_mut())
