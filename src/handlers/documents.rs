@@ -174,7 +174,18 @@ pub async fn create_document(
     .bind(req.project_id)
     .fetch_one(tx.as_mut())
     .await
-    .map_err(AppError::Database)?;
+    .map_err(|e| match &e {
+        sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
+            Some("23514") => {
+                AppError::InvalidRequest("invalid document data (check constraint violated)".to_string())
+            }
+            Some("23503") => {
+                AppError::InvalidRequest("referenced entity does not exist".to_string())
+            }
+            _ => AppError::Database(e),
+        },
+        _ => AppError::Database(e),
+    })?;
 
     let doc_id: Uuid = doc_row.get("id");
 
@@ -301,7 +312,18 @@ pub async fn update_document(
     .bind(id)
     .execute(tx.as_mut())
     .await
-    .map_err(AppError::Database)?;
+    .map_err(|e| match &e {
+        sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
+            Some("23514") => AppError::InvalidRequest(
+                "invalid document data (check constraint violated)".to_string(),
+            ),
+            Some("23503") => {
+                AppError::InvalidRequest("referenced entity does not exist".to_string())
+            }
+            _ => AppError::Database(e),
+        },
+        _ => AppError::Database(e),
+    })?;
 
     // タグの更新（指定されていれば全件差し替え）
     if let Some(ref tag_names) = req.tags {
