@@ -6,7 +6,7 @@ use crate::error::AppError;
 /// 例: `内設計-2603001`
 ///
 /// `tx` はトランザクション内で呼び出す必要がある。
-/// `SELECT ... FOR UPDATE` で排他ロックを取得し、連番の一意性を保証する。
+/// `pg_advisory_xact_lock` でprefix単位の排他ロックを取得し、連番の一意性を保証する。
 pub async fn assign_doc_number(
     tx: &mut sqlx::PgConnection,
     doc_kind_code: &str,
@@ -14,6 +14,13 @@ pub async fn assign_doc_number(
     seq_digits: i32,
     registered_at_jst: chrono::NaiveDateTime,
 ) -> Result<String, AppError> {
+    if !(2..=3).contains(&seq_digits) {
+        return Err(AppError::InvalidRequest(format!(
+            "seq_digits must be 2 or 3, got {}",
+            seq_digits
+        )));
+    }
+
     let yymm = format!(
         "{:02}{:02}",
         registered_at_jst.format("%y"),
@@ -21,12 +28,23 @@ pub async fn assign_doc_number(
     );
     let prefix = format!("{}{}-{}", doc_kind_code, dept_code, yymm);
 
+    // prefix をハッシュ化してアドバイザリロックのキーとする
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    prefix.hash(&mut hasher);
+    let lock_key = hasher.finish() as i64;
+
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(lock_key)
+        .execute(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
     let last_doc: Option<String> = sqlx::query_scalar(
         "SELECT doc_number FROM documents
          WHERE doc_number LIKE $1
          ORDER BY doc_number DESC
-         LIMIT 1
-         FOR UPDATE",
+         LIMIT 1",
     )
     .bind(format!("{}%", prefix))
     .fetch_optional(&mut *tx)
@@ -38,7 +56,7 @@ pub async fn assign_doc_number(
             let seq_str = &last[prefix.len()..];
             let current: i32 = seq_str
                 .parse()
-                .map_err(|_| AppError::Internal(format!("invalid seq in doc_number: {}", last)))?;
+                .map_err(|_| AppError::Internal("invalid seq in doc_number".to_string()))?;
             current + 1
         }
         None => 1,
@@ -173,14 +191,72 @@ mod tests {
     async fn different_month_starts_at_one(pool: PgPool) {
         let (kind_code, dept_code, seq_digits) = setup_test_data(&pool).await;
 
-        // 4月で採番（3月のデータがあっても関係ない）
-        let dt = chrono::NaiveDate::from_ymd_opt(2026, 4, 1)
+        // まず3月の文書を採番して保存
+        let march_dt = chrono::NaiveDate::from_ymd_opt(2026, 3, 15)
             .unwrap()
             .and_hms_opt(10, 0, 0)
             .unwrap();
-
         let mut tx = pool.begin().await.unwrap();
-        let result = assign_doc_number(tx.as_mut(), &kind_code, &dept_code, seq_digits, dt)
+        let march_num =
+            assign_doc_number(tx.as_mut(), &kind_code, &dept_code, seq_digits, march_dt)
+                .await
+                .unwrap();
+        // 文書テーブルに保存するため依存データを作成
+        use sqlx::Row;
+        let emp_id: uuid::Uuid = sqlx::query(
+            "INSERT INTO employees (name, employee_code, role, is_active)
+             VALUES ('Test', 'T001', 'admin', true) RETURNING id",
+        )
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap()
+        .get("id");
+        let dept_id: uuid::Uuid =
+            sqlx::query_scalar("SELECT id FROM departments WHERE code = '設計'")
+                .fetch_one(tx.as_mut())
+                .await
+                .unwrap();
+        let disc_id: uuid::Uuid = sqlx::query(
+            "INSERT INTO disciplines (code, name, department_id) VALUES ('MECH', '機械', $1) RETURNING id",
+        )
+        .bind(dept_id)
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap()
+        .get("id");
+        let proj_id: uuid::Uuid = sqlx::query(
+            "INSERT INTO projects (name, discipline_id) VALUES ('テスト', $1) RETURNING id",
+        )
+        .bind(disc_id)
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap()
+        .get("id");
+        let dk_id: uuid::Uuid =
+            sqlx::query_scalar("SELECT id FROM document_kinds WHERE code = '内'")
+                .fetch_one(tx.as_mut())
+                .await
+                .unwrap();
+        sqlx::query(
+            "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
+             VALUES ($1, 'test', '/path', $2, $3, '設計', $4)",
+        )
+        .bind(&march_num)
+        .bind(emp_id)
+        .bind(dk_id)
+        .bind(proj_id)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+
+        // 4月で採番 → 3月のデータがあっても001から始まる
+        let april_dt = chrono::NaiveDate::from_ymd_opt(2026, 4, 1)
+            .unwrap()
+            .and_hms_opt(10, 0, 0)
+            .unwrap();
+        let mut tx = pool.begin().await.unwrap();
+        let result = assign_doc_number(tx.as_mut(), &kind_code, &dept_code, seq_digits, april_dt)
             .await
             .unwrap();
         tx.commit().await.unwrap();
