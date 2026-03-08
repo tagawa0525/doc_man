@@ -222,11 +222,17 @@ pub async fn get_document(
 
 /// PUT /api/v1/documents/{id}
 pub async fn update_document(
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     Path(id): Path<Uuid>,
     State(state): State<AppState>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>, AppError> {
+    if user.role == Role::Viewer {
+        return Err(AppError::Forbidden(
+            "viewer role cannot update documents".to_string(),
+        ));
+    }
+
     // 変更不可フィールドのチェック
     if req.doc_number.is_some() {
         return Err(AppError::Unprocessable(
