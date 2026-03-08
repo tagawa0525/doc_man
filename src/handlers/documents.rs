@@ -63,37 +63,44 @@ pub async fn list_documents(
     .map_err(AppError::Database)?;
 
     use sqlx::Row;
-    let mut data = Vec::new();
-    for r in rows {
-        let doc_id: Uuid = r.get("id");
-        let tags = fetch_tags(&state.db, doc_id).await?;
-        data.push(DocumentResponse {
-            id: doc_id,
-            doc_number: r.get("doc_number"),
-            revision: r.get("revision"),
-            title: r.get("title"),
-            file_path: r.get("file_path"),
-            status: r.get("status"),
-            confidentiality: r.get("confidentiality"),
-            frozen_dept_code: r.get("frozen_dept_code"),
-            author: AuthorBrief {
-                id: r.get("author_id"),
-                name: r.get("author_name"),
-            },
-            doc_kind: DocKindBrief {
-                id: r.get("doc_kind_id"),
-                code: r.get("doc_kind_code"),
-                name: r.get("doc_kind_name"),
-            },
-            project: ProjectBrief {
-                id: r.get("project_id"),
-                name: r.get("project_name"),
-            },
-            tags,
-            created_at: r.get("created_at"),
-            updated_at: r.get("updated_at"),
-        });
-    }
+
+    // 全文書IDに対するタグを一括取得（N+1回避）
+    let doc_ids: Vec<Uuid> = rows.iter().map(|r| r.get("id")).collect();
+    let tags_map = fetch_tags_batch(&state.db, &doc_ids).await?;
+
+    let data: Vec<DocumentResponse> = rows
+        .into_iter()
+        .map(|r| {
+            let doc_id: Uuid = r.get("id");
+            let tags = tags_map.get(&doc_id).cloned().unwrap_or_default();
+            DocumentResponse {
+                id: doc_id,
+                doc_number: r.get("doc_number"),
+                revision: r.get("revision"),
+                title: r.get("title"),
+                file_path: r.get("file_path"),
+                status: r.get("status"),
+                confidentiality: r.get("confidentiality"),
+                frozen_dept_code: r.get("frozen_dept_code"),
+                author: AuthorBrief {
+                    id: r.get("author_id"),
+                    name: r.get("author_name"),
+                },
+                doc_kind: DocKindBrief {
+                    id: r.get("doc_kind_id"),
+                    code: r.get("doc_kind_code"),
+                    name: r.get("doc_kind_name"),
+                },
+                project: ProjectBrief {
+                    id: r.get("project_id"),
+                    name: r.get("project_name"),
+                },
+                tags,
+                created_at: r.get("created_at"),
+                updated_at: r.get("updated_at"),
+            }
+        })
+        .collect();
 
     Ok(Json(PaginatedResponse::new(
         data,
@@ -460,6 +467,37 @@ async fn fetch_tags(db: &sqlx::PgPool, document_id: Uuid) -> Result<Vec<String>,
     .map_err(AppError::Database)?;
 
     Ok(tags)
+}
+
+async fn fetch_tags_batch(
+    db: &sqlx::PgPool,
+    doc_ids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, Vec<String>>, AppError> {
+    if doc_ids.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+
+    use sqlx::Row;
+    let rows = sqlx::query(
+        "SELECT dt.document_id, t.name
+         FROM document_tags dt
+         JOIN tags t ON t.id = dt.tag_id
+         WHERE dt.document_id = ANY($1)
+         ORDER BY dt.document_id, t.name",
+    )
+    .bind(doc_ids)
+    .fetch_all(db)
+    .await
+    .map_err(AppError::Database)?;
+
+    let mut map: std::collections::HashMap<Uuid, Vec<String>> = std::collections::HashMap::new();
+    for r in rows {
+        let doc_id: Uuid = r.get("document_id");
+        let tag_name: String = r.get("name");
+        map.entry(doc_id).or_default().push(tag_name);
+    }
+
+    Ok(map)
 }
 
 async fn fetch_document_by_id(
