@@ -10,6 +10,7 @@ use crate::handlers::document_kinds;
 use crate::handlers::document_registers;
 use crate::handlers::employees;
 use crate::handlers::projects;
+use crate::handlers::tags;
 use crate::state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
@@ -68,6 +69,7 @@ pub fn build_router(state: AppState) -> Router {
                 .put(projects::update_project)
                 .delete(projects::delete_project),
         )
+        .route("/api/v1/tags", get(tags::list_tags).post(tags::create_tag))
         .with_state(state)
 }
 
