@@ -20,6 +20,7 @@
           pkgs.clippy
           pkgs.trunk
           pkgs.wasm-bindgen-cli
+          pkgs.lld
           pkgs.sqlx-cli
           pkgs.postgresql
         ];
