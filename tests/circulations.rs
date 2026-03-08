@@ -78,7 +78,9 @@ async fn post_circulations_creates_and_changes_status(pool: PgPool) {
     let body: Value = helpers::parse_body(response).await;
     let circs = body.as_array().unwrap();
     assert_eq!(circs.len(), 2);
-    assert!(circs[0]["confirmed_at"].is_null());
+    for circ in circs {
+        assert!(circ["confirmed_at"].is_null());
+    }
 
     // 文書ステータスが circulating になっている
     let doc_status: String = sqlx::query_scalar("SELECT status FROM documents WHERE id = $1")
