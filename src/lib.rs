@@ -4,6 +4,7 @@ pub mod handlers;
 pub mod models;
 pub mod pagination;
 pub mod routes;
+pub mod services;
 pub mod state;
 
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
