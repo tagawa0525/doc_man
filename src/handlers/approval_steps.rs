@@ -66,6 +66,12 @@ pub async fn create_approval_route(
         ));
     }
 
+    if req.steps.is_empty() {
+        return Err(AppError::InvalidRequest(
+            "steps must not be empty".to_string(),
+        ));
+    }
+
     use sqlx::Row;
 
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
@@ -99,31 +105,30 @@ pub async fn create_approval_route(
     let new_route_revision = max_route_rev.unwrap_or(0) + 1;
 
     // 承認ステップを挿入
-    let mut step_ids = Vec::new();
     for step in &req.steps {
-        let row = sqlx::query(
+        sqlx::query(
             "INSERT INTO approval_steps (document_id, route_revision, document_revision, step_order, approver_id)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id",
+             VALUES ($1, $2, $3, $4, $5)",
         )
         .bind(doc_id)
         .bind(new_route_revision)
         .bind(doc_revision)
         .bind(step.step_order)
         .bind(step.approver_id)
-        .fetch_one(tx.as_mut())
+        .execute(tx.as_mut())
         .await
         .map_err(|e| match &e {
             sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
                 Some("23503") => {
                     AppError::InvalidRequest("referenced approver_id does not exist".to_string())
                 }
+                Some("23505") => AppError::Conflict(
+                    "duplicate step_order in approval route".to_string(),
+                ),
                 _ => AppError::Database(e),
             },
             _ => AppError::Database(e),
         })?;
-
-        step_ids.push(row.get::<Uuid, _>("id"));
     }
 
     // 文書のステータスを under_review に変更
@@ -249,13 +254,16 @@ pub async fn approve_step(
     .await
     .map_err(AppError::Database)?;
 
-    // 最後のステップなら文書を approved に変更
+    // 最後のステップなら文書を approved に変更（under_review の場合のみ）
     if remaining_pending == 0 {
-        sqlx::query("UPDATE documents SET status = 'approved', updated_at = now() WHERE id = $1")
-            .bind(doc_id)
-            .execute(tx.as_mut())
-            .await
-            .map_err(AppError::Database)?;
+        sqlx::query(
+            "UPDATE documents SET status = 'approved', updated_at = now()
+             WHERE id = $1 AND status = 'under_review'",
+        )
+        .bind(doc_id)
+        .execute(tx.as_mut())
+        .await
+        .map_err(AppError::Database)?;
     }
 
     tx.commit().await.map_err(AppError::Database)?;
@@ -365,12 +373,15 @@ pub async fn reject_step(
     .await
     .map_err(AppError::Database)?;
 
-    // 文書を rejected に変更
-    sqlx::query("UPDATE documents SET status = 'rejected', updated_at = now() WHERE id = $1")
-        .bind(doc_id)
-        .execute(tx.as_mut())
-        .await
-        .map_err(AppError::Database)?;
+    // 文書を rejected に変更（under_review の場合のみ）
+    sqlx::query(
+        "UPDATE documents SET status = 'rejected', updated_at = now()
+         WHERE id = $1 AND status = 'under_review'",
+    )
+    .bind(doc_id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
 
     tx.commit().await.map_err(AppError::Database)?;
 
