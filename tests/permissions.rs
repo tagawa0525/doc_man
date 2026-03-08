@@ -23,7 +23,7 @@ async fn setup_master_data(pool: &PgPool) -> MasterData {
     let kind = helpers::insert_document_kind(pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(pool, "テスト", disc, None).await;
     MasterData {
-        dept,
+        _dept: dept,
         disc,
         kind,
         proj,
@@ -31,7 +31,7 @@ async fn setup_master_data(pool: &PgPool) -> MasterData {
 }
 
 struct MasterData {
-    dept: uuid::Uuid,
+    _dept: uuid::Uuid,
     disc: uuid::Uuid,
     kind: uuid::Uuid,
     proj: uuid::Uuid,
