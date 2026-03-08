@@ -1,9 +1,10 @@
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::auth::AuthenticatedUser;
+use crate::handlers::approval_steps;
 use crate::handlers::departments;
 use crate::handlers::disciplines;
 use crate::handlers::document_kinds;
@@ -79,6 +80,18 @@ pub fn build_router(state: AppState) -> Router {
             get(documents::get_document)
                 .put(documents::update_document)
                 .delete(documents::delete_document),
+        )
+        .route(
+            "/api/v1/documents/{doc_id}/approval-steps",
+            get(approval_steps::list_approval_steps).post(approval_steps::create_approval_route),
+        )
+        .route(
+            "/api/v1/documents/{doc_id}/approval-steps/{step_id}/approve",
+            post(approval_steps::approve_step),
+        )
+        .route(
+            "/api/v1/documents/{doc_id}/approval-steps/{step_id}/reject",
+            post(approval_steps::reject_step),
         )
         .route("/api/v1/tags", get(tags::list_tags).post(tags::create_tag))
         .with_state(state)

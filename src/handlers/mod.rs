@@ -1,3 +1,4 @@
+pub mod approval_steps;
 pub mod departments;
 pub mod disciplines;
 pub mod document_kinds;
