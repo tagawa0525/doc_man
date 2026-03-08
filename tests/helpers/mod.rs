@@ -235,6 +235,32 @@ pub async fn insert_project_with_wbs(
     row.get("id")
 }
 
+pub async fn insert_document(
+    pool: &PgPool,
+    doc_number: &str,
+    title: &str,
+    author_id: Uuid,
+    doc_kind_id: Uuid,
+    project_id: Uuid,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
+         VALUES ($1, $2, '/default/path', $3, $4, '設計', $5)
+         RETURNING id",
+    )
+    .bind(doc_number)
+    .bind(title)
+    .bind(author_id)
+    .bind(doc_kind_id)
+    .bind(project_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
     let row = sqlx::query("INSERT INTO tags (name) VALUES ($1) RETURNING id")
         .bind(name)
