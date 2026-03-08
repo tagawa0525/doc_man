@@ -298,6 +298,22 @@ pub async fn insert_approval_step(
     row.get("id")
 }
 
+pub async fn insert_circulation(pool: &PgPool, document_id: Uuid, recipient_id: Uuid) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO circulations (document_id, recipient_id)
+         VALUES ($1, $2)
+         RETURNING id",
+    )
+    .bind(document_id)
+    .bind(recipient_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
