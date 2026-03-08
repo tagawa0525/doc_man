@@ -164,6 +164,22 @@ pub async fn confirm_circulation(
 
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
+    // 文書の存在とステータスを確認（行ロックで並行確認を直列化）
+    let doc = sqlx::query("SELECT status FROM documents WHERE id = $1 FOR UPDATE")
+        .bind(doc_id)
+        .fetch_optional(tx.as_mut())
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound(format!("document {} not found", doc_id)))?;
+
+    let doc_status: String = doc.get("status");
+    if doc_status != "circulating" {
+        return Err(AppError::Unprocessable(format!(
+            "document is not in circulating status, current status: {}",
+            doc_status
+        )));
+    }
+
     // ユーザーの回覧レコードを取得
     let circ = sqlx::query(
         "SELECT id, confirmed_at FROM circulations
@@ -181,34 +197,30 @@ pub async fn confirm_circulation(
 
     let circ_id: Uuid = circ.get("id");
 
-    // confirmed_at を設定
-    sqlx::query("UPDATE circulations SET confirmed_at = now() WHERE id = $1")
-        .bind(circ_id)
-        .execute(tx.as_mut())
-        .await
-        .map_err(AppError::Database)?;
-
-    // 未確認の回覧が残っているか確認
-    let unconfirmed: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM circulations
-         WHERE document_id = $1 AND confirmed_at IS NULL",
+    // confirmed_at が未設定の場合のみ更新（冪等性を保証）
+    sqlx::query(
+        "UPDATE circulations SET confirmed_at = now() WHERE id = $1 AND confirmed_at IS NULL",
     )
-    .bind(doc_id)
-    .fetch_one(tx.as_mut())
+    .bind(circ_id)
+    .execute(tx.as_mut())
     .await
     .map_err(AppError::Database)?;
 
-    // 全員確認済みなら文書を completed に
-    if unconfirmed == 0 {
-        sqlx::query(
-            "UPDATE documents SET status = 'completed', updated_at = now()
-             WHERE id = $1 AND status = 'circulating'",
-        )
-        .bind(doc_id)
-        .execute(tx.as_mut())
-        .await
-        .map_err(AppError::Database)?;
-    }
+    // 全員確認済みなら文書を completed に（NOT EXISTS で原子的に判定）
+    sqlx::query(
+        "UPDATE documents SET status = 'completed', updated_at = now()
+         WHERE id = $1
+           AND status = 'circulating'
+           AND NOT EXISTS (
+               SELECT 1 FROM circulations c
+               WHERE c.document_id = $1
+                 AND c.confirmed_at IS NULL
+           )",
+    )
+    .bind(doc_id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
 
     tx.commit().await.map_err(AppError::Database)?;
 
