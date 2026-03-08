@@ -2,3 +2,4 @@
 /frontend/target
 /frontend/dist
 .direnv
+.pgdata
