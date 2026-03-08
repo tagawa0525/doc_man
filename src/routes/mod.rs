@@ -8,6 +8,7 @@ use crate::handlers::departments;
 use crate::handlers::disciplines;
 use crate::handlers::document_kinds;
 use crate::handlers::document_registers;
+use crate::handlers::documents;
 use crate::handlers::employees;
 use crate::handlers::projects;
 use crate::handlers::tags;
@@ -68,6 +69,16 @@ pub fn build_router(state: AppState) -> Router {
             get(projects::get_project)
                 .put(projects::update_project)
                 .delete(projects::delete_project),
+        )
+        .route(
+            "/api/v1/documents",
+            get(documents::list_documents).post(documents::create_document),
+        )
+        .route(
+            "/api/v1/documents/{id}",
+            get(documents::get_document)
+                .put(documents::update_document)
+                .delete(documents::delete_document),
         )
         .route("/api/v1/tags", get(tags::list_tags).post(tags::create_tag))
         .with_state(state)
