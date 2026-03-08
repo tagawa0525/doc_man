@@ -272,6 +272,32 @@ pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
     row.get("id")
 }
 
+pub async fn insert_approval_step(
+    pool: &PgPool,
+    document_id: Uuid,
+    route_revision: i32,
+    document_revision: i32,
+    step_order: i32,
+    approver_id: Uuid,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO approval_steps (document_id, route_revision, document_revision, step_order, approver_id)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id",
+    )
+    .bind(document_id)
+    .bind(route_revision)
+    .bind(document_revision)
+    .bind(step_order)
+    .bind(approver_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    use sqlx::Row;
+    row.get("id")
+}
+
 pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO departments (code, name, effective_from, effective_to)
