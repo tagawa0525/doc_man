@@ -8,6 +8,7 @@ pub struct EmployeeRow {
     pub id: Uuid,
     pub name: String,
     pub employee_code: Option<String>,
+    pub email: Option<String>,
     pub ad_account: Option<String>,
     pub role: String,
     pub is_active: bool,
@@ -27,6 +28,7 @@ pub struct EmployeeResponse {
     pub id: Uuid,
     pub name: String,
     pub employee_code: Option<String>,
+    pub email: Option<String>,
     pub ad_account: Option<String>,
     pub role: String,
     pub is_active: bool,
@@ -39,6 +41,7 @@ impl From<EmployeeRow> for EmployeeResponse {
             id: row.id,
             name: row.name,
             employee_code: row.employee_code,
+            email: row.email,
             ad_account: row.ad_account,
             role: row.role,
             is_active: row.is_active,
@@ -55,6 +58,7 @@ impl From<EmployeeRow> for EmployeeResponse {
 pub struct CreateEmployeeRequest {
     pub name: String,
     pub employee_code: Option<String>,
+    pub email: Option<String>,
     pub ad_account: Option<String>,
     pub role: Option<String>,
     pub department_id: Uuid,
@@ -65,6 +69,7 @@ pub struct CreateEmployeeRequest {
 #[derive(Debug, Deserialize)]
 pub struct UpdateEmployeeRequest {
     pub name: Option<String>,
+    pub email: Option<String>,
     pub ad_account: Option<String>,
     pub role: Option<String>,
     pub is_active: Option<bool>,

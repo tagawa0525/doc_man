@@ -49,7 +49,7 @@ pub async fn list_employees(
         .map_err(AppError::Database)?;
 
         let rows = sqlx::query(
-            "SELECT e.id, e.name, e.employee_code, e.ad_account, e.role, e.is_active,
+            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
                     ed.department_id as dept_id, d.name as dept_name
              FROM employees e
              LEFT JOIN employee_departments ed ON ed.employee_id = e.id
@@ -76,7 +76,7 @@ pub async fn list_employees(
             .map_err(AppError::Database)?;
 
         let rows = sqlx::query(
-            "SELECT e.id, e.name, e.employee_code, e.ad_account, e.role, e.is_active,
+            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
                     ed.department_id as dept_id, d.name as dept_name
              FROM employees e
              LEFT JOIN employee_departments ed ON ed.employee_id = e.id
@@ -104,6 +104,7 @@ pub async fn list_employees(
                 id: r.get("id"),
                 name: r.get("name"),
                 employee_code: r.get("employee_code"),
+                email: r.get("email"),
                 ad_account: r.get("ad_account"),
                 role: r.get("role"),
                 is_active: r.get("is_active"),
@@ -135,12 +136,13 @@ pub async fn create_employee(
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     let row = sqlx::query(
-        "INSERT INTO employees (name, employee_code, ad_account, role)
-         VALUES ($1, $2, $3, $4)
+        "INSERT INTO employees (name, employee_code, email, ad_account, role)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id",
     )
     .bind(&req.name)
     .bind(&req.employee_code)
+    .bind(&req.email)
     .bind(&req.ad_account)
     .bind(req.role.as_deref().unwrap_or("general"))
     .fetch_one(&mut *tx)
@@ -223,7 +225,7 @@ pub async fn update_employee(
     }
 
     let existing =
-        sqlx::query("SELECT name, ad_account, role, is_active FROM employees WHERE id = $1")
+        sqlx::query("SELECT name, email, ad_account, role, is_active FROM employees WHERE id = $1")
             .bind(id)
             .fetch_optional(&state.db)
             .await
@@ -232,11 +234,13 @@ pub async fn update_employee(
 
     use sqlx::Row;
     let current_name: String = existing.get("name");
+    let current_email: Option<String> = existing.get("email");
     let current_ad_account: Option<String> = existing.get("ad_account");
     let current_role: String = existing.get("role");
     let current_is_active: bool = existing.get("is_active");
 
     let new_name = req.name.unwrap_or(current_name);
+    let new_email = req.email.or(current_email);
     let new_ad_account = req.ad_account.or(current_ad_account);
     let new_role = req.role.unwrap_or(current_role);
     let new_is_active = req.is_active.unwrap_or(current_is_active);
@@ -245,10 +249,11 @@ pub async fn update_employee(
 
     sqlx::query(
         "UPDATE employees
-         SET name = $1, ad_account = $2, role = $3, is_active = $4, updated_at = now()
-         WHERE id = $5",
+         SET name = $1, email = $2, ad_account = $3, role = $4, is_active = $5, updated_at = now()
+         WHERE id = $6",
     )
     .bind(&new_name)
+    .bind(&new_email)
     .bind(&new_ad_account)
     .bind(&new_role)
     .bind(new_is_active)
@@ -297,7 +302,7 @@ async fn fetch_employee_by_id(
     id: Uuid,
 ) -> Result<Option<EmployeeResponse>, AppError> {
     let row = sqlx::query(
-        "SELECT e.id, e.name, e.employee_code, e.ad_account, e.role, e.is_active,
+        "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
                 ed.department_id as dept_id, d.name as dept_name
          FROM employees e
          LEFT JOIN employee_departments ed ON ed.employee_id = e.id
@@ -316,6 +321,7 @@ async fn fetch_employee_by_id(
             id: r.get("id"),
             name: r.get("name"),
             employee_code: r.get("employee_code"),
+            email: r.get("email"),
             ad_account: r.get("ad_account"),
             role: r.get("role"),
             is_active: r.get("is_active"),
