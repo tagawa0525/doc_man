@@ -15,13 +15,11 @@ pub fn TagsPage() -> impl IntoView {
     let new_tag_name = RwSignal::new(String::new());
     let creating = RwSignal::new(false);
 
-    let tags_resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::tags::list(p, 20).await }
-        },
-    );
+    let tags_resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::tags::list(p, 20).await }
+    });
 
     let on_create = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();

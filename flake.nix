@@ -70,7 +70,7 @@
 
             # マイグレーション
             echo "==> マイグレーションを実行..."
-            sqlx migrate run --source migrations 2>&1 | grep -v "^Applied" || true
+            sqlx migrate run --source server/migrations 2>&1 | grep -v "^Applied" || true
             echo "==> DB 準備完了"
           }
 
@@ -84,19 +84,19 @@
             echo "==> DB をリセット..."
             dropdb -h localhost -U doc_man doc_man 2>/dev/null || true
             createdb -h localhost -U doc_man doc_man
-            sqlx migrate run --source migrations
+            sqlx migrate run --source server/migrations
             echo "==> リセット完了"
           }
 
           dm-db-seed() {
             echo "==> シードデータを投入..."
-            psql -h localhost -U doc_man -d doc_man -f scripts/seed.sql
+            psql -h localhost -U doc_man -d doc_man -f server/scripts/seed.sql
             echo "==> シード完了"
           }
 
           echo ""
           echo "  利用可能なコマンド:"
-          echo "    cargo run          バックエンド起動 (localhost:3000)"
+          echo "    cargo run -p doc_man   バックエンド起動 (localhost:3000)"
           echo "    trunk serve        フロントエンド起動 (frontend/ で実行)"
           echo "    dm-db-stop         PostgreSQL を停止"
           echo "    dm-db-reset        DB を削除して再作成+マイグレーション"

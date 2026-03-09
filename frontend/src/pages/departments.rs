@@ -3,7 +3,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::CreateDepartmentRequest;
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
 use crate::components::loading::Loading;
@@ -24,26 +24,22 @@ pub fn DepartmentsPage() -> impl IntoView {
     let form_effective_from = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let _ = refresh.get();
-            async move { api::departments::list_include_inactive().await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let _ = refresh.get();
+        async move { api::departments::list_include_inactive().await }
+    });
 
-    let selected_dept = LocalResource::new(
-        move || {
-            let id = selected_id.get();
-            async move {
-                match id {
-                    Some(id) => api::departments::get(id).await.ok(),
-                    None => None,
-                }
+    let selected_dept = LocalResource::new(move || {
+        let id = selected_id.get();
+        async move {
+            match id {
+                Some(id) => api::departments::get(id).await.ok(),
+                None => None,
             }
-        },
-    );
+        }
+    });
 
     let reset_form = move || {
         form_code.set(String::new());
@@ -64,21 +60,30 @@ pub fn DepartmentsPage() -> impl IntoView {
             return;
         }
 
-        let effective_from = match chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") {
-            Ok(d) => d,
-            Err(_) => { toast.error("日付形式が不正です"); return; }
+        let Ok(effective_from) = chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") else {
+            toast.error("日付形式が不正です");
+            return;
         };
 
         let parent_id = {
             let pid = form_parent_id.get_untracked();
-            if pid.is_empty() { None } else { Uuid::parse_str(&pid).ok() }
+            if pid.is_empty() {
+                None
+            } else {
+                Uuid::parse_str(&pid).ok()
+            }
         };
 
         saving.set(true);
         leptos::task::spawn_local(async move {
             match api::departments::create(&CreateDepartmentRequest {
-                code, name, parent_id, effective_from,
-            }).await {
+                code,
+                name,
+                parent_id,
+                effective_from,
+            })
+            .await
+            {
                 Ok(_) => {
                     toast.success("部署を作成しました");
                     reset_form();
@@ -171,7 +176,7 @@ pub fn DepartmentsPage() -> impl IntoView {
                                                 <tr><th>"コード"</th><td>{d.code}</td></tr>
                                                 <tr><th>"名前"</th><td>{d.name}</td></tr>
                                                 <tr><th>"有効開始日"</th><td>{d.effective_from.to_string()}</td></tr>
-                                                <tr><th>"有効終了日"</th><td>{d.effective_to.map(|d| d.to_string()).unwrap_or_else(|| "-".to_string())}</td></tr>
+                                                <tr><th>"有効終了日"</th><td>{d.effective_to.map_or_else(|| "-".to_string(), |d| d.to_string())}</td></tr>
                                                 <tr><th>"ID"</th><td class="is-size-7 has-text-grey">{d.id.to_string()}</td></tr>
                                             </tbody>
                                         </table>

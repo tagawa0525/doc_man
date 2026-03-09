@@ -2,7 +2,9 @@ use leptos::prelude::*;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{
+    flatten_dept_tree, CreateDisciplineRequest, DisciplineResponse, UpdateDisciplineRequest,
+};
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
 use crate::components::loading::Loading;
@@ -23,19 +25,15 @@ pub fn DisciplinesPage() -> impl IntoView {
     let form_dept_id = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::disciplines::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::disciplines::list(p, 20).await }
+    });
 
-    let depts_resource = LocalResource::new(
-        || async move { api::departments::list().await },
-    );
+    let depts_resource = LocalResource::new(|| async move { api::departments::list().await });
 
     let reset_form = move || {
         form_code.set(String::new());
@@ -56,9 +54,9 @@ pub fn DisciplinesPage() -> impl IntoView {
             return;
         }
 
-        let department_id = match uuid::Uuid::parse_str(&dept_id_str) {
-            Ok(id) => id,
-            Err(_) => { toast.error("部署を選択してください"); return; }
+        let Ok(department_id) = uuid::Uuid::parse_str(&dept_id_str) else {
+            toast.error("部署を選択してください");
+            return;
         };
 
         saving.set(true);
@@ -66,18 +64,31 @@ pub fn DisciplinesPage() -> impl IntoView {
 
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
-                api::disciplines::update(id, &UpdateDisciplineRequest {
-                    code: None, name: Some(name), department_id: Some(department_id),
-                }).await
+                api::disciplines::update(
+                    id,
+                    &UpdateDisciplineRequest {
+                        code: None,
+                        name: Some(name),
+                        department_id: Some(department_id),
+                    },
+                )
+                .await
             } else {
                 api::disciplines::create(&CreateDisciplineRequest {
-                    code, name, department_id,
-                }).await
+                    code,
+                    name,
+                    department_id,
+                })
+                .await
             };
 
             match result {
                 Ok(_) => {
-                    toast.success(if eid.is_some() { "更新しました" } else { "作成しました" });
+                    toast.success(if eid.is_some() {
+                        "更新しました"
+                    } else {
+                        "作成しました"
+                    });
                     reset_form();
                     refresh.update(|v| *v += 1);
                 }
@@ -94,23 +105,6 @@ pub fn DisciplinesPage() -> impl IntoView {
         edit_id.set(Some(d.id));
         show_form.set(true);
     };
-
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {} ({})", prefix, d.name, d.code)
-            };
-            result.push((d.id.to_string(), label));
-            let next_prefix = if prefix.is_empty() {
-                d.name.clone()
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            flatten_depts(&d.children, result, &next_prefix);
-        }
-    }
 
     view! {
         <div>
@@ -129,9 +123,9 @@ pub fn DisciplinesPage() -> impl IntoView {
             </div>
 
             {move || if show_form.get() {
-                let dept_options = depts_resource.get().and_then(|r| r.ok()).map(|depts| {
+                let dept_options = depts_resource.get().and_then(std::result::Result::ok).map(|depts| {
                     let mut opts = Vec::new();
-                    flatten_depts(&depts, &mut opts, "");
+                    flatten_dept_tree(&depts, &mut opts, "");
                     opts
                 }).unwrap_or_default();
 

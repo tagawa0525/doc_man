@@ -13,15 +13,13 @@ pub fn EmployeeListPage() -> impl IntoView {
     let page = RwSignal::new(1u32);
     let refresh = RwSignal::new(0u32);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::employees::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::employees::list(p, 20).await }
+    });
 
     view! {
         <div>
@@ -67,7 +65,7 @@ pub fn EmployeeListPage() -> impl IntoView {
                                                         <td><a href=detail_url>{emp.name}</a></td>
                                                         <td>{emp.employee_code.unwrap_or_else(|| "-".to_string())}</td>
                                                         <td><span class="tag is-light">{emp.role}</span></td>
-                                                        <td>{emp.current_department.map(|d| d.name).unwrap_or_else(|| "-".to_string())}</td>
+                                                        <td>{emp.current_department.map_or_else(|| "-".to_string(), |d| d.name)}</td>
                                                         <td>
                                                             {if emp.is_active {
                                                                 view! { <span class="tag is-success is-light">"有効"</span> }.into_any()

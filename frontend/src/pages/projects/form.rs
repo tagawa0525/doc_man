@@ -4,7 +4,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{CreateProjectRequest, UpdateProjectRequest};
 use crate::components::form::FormField;
 use crate::components::toast::ToastContext;
 
@@ -13,7 +13,12 @@ pub fn ProjectFormPage() -> impl IntoView {
     let toast = expect_context::<ToastContext>();
     let params = use_params_map();
 
-    let project_id = move || params.read().get("id").and_then(|id| Uuid::parse_str(&id).ok());
+    let project_id = move || {
+        params
+            .read()
+            .get("id")
+            .and_then(|id| Uuid::parse_str(&id).ok())
+    };
     let is_edit = move || project_id().is_some();
 
     let form_name = RwSignal::new(String::new());
@@ -36,11 +41,13 @@ pub fn ProjectFormPage() -> impl IntoView {
                     if let Ok(p) = api::projects::get(id).await {
                         form_name.set(p.name);
                         form_status.set(p.status);
-                        form_start_date.set(p.start_date.map(|d| d.to_string()).unwrap_or_default());
+                        form_start_date
+                            .set(p.start_date.map(|d| d.to_string()).unwrap_or_default());
                         form_end_date.set(p.end_date.map(|d| d.to_string()).unwrap_or_default());
                         form_wbs_code.set(p.wbs_code.unwrap_or_default());
                         form_discipline_id.set(p.discipline.id.to_string());
-                        form_manager_id.set(p.manager.map(|m| m.id.to_string()).unwrap_or_default());
+                        form_manager_id
+                            .set(p.manager.map(|m| m.id.to_string()).unwrap_or_default());
                         loaded.set(true);
                     }
                 });
@@ -67,19 +74,32 @@ pub fn ProjectFormPage() -> impl IntoView {
 
         leptos::task::spawn_local(async move {
             let parse_date = |s: &str| -> Option<chrono::NaiveDate> {
-                if s.is_empty() { None } else { chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok() }
+                if s.is_empty() {
+                    None
+                } else {
+                    chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
+                }
             };
 
             let result = if let Some(id) = eid {
-                api::projects::update(id, &UpdateProjectRequest {
-                    name: Some(name),
-                    status: Some(status),
-                    start_date: parse_date(&sd),
-                    end_date: parse_date(&ed),
-                    wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
-                    discipline_id: Uuid::parse_str(&did).ok(),
-                    manager_id: if mid.is_empty() { None } else { Uuid::parse_str(&mid).ok() },
-                }).await.map(|_| ())
+                api::projects::update(
+                    id,
+                    &UpdateProjectRequest {
+                        name: Some(name),
+                        status: Some(status),
+                        start_date: parse_date(&sd),
+                        end_date: parse_date(&ed),
+                        wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
+                        discipline_id: Uuid::parse_str(&did).ok(),
+                        manager_id: if mid.is_empty() {
+                            None
+                        } else {
+                            Uuid::parse_str(&mid).ok()
+                        },
+                    },
+                )
+                .await
+                .map(|_| ())
             } else {
                 if did.is_empty() {
                     toast.error("専門分野は必須です");
@@ -88,17 +108,27 @@ pub fn ProjectFormPage() -> impl IntoView {
                 }
                 api::projects::create(&CreateProjectRequest {
                     name,
-                    status: if status.is_empty() { None } else { Some(status) },
+                    status: if status.is_empty() {
+                        None
+                    } else {
+                        Some(status)
+                    },
                     start_date: parse_date(&sd),
                     end_date: parse_date(&ed),
                     wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
                     discipline_id: Uuid::parse_str(&did).unwrap(),
-                    manager_id: if mid.is_empty() { None } else { Uuid::parse_str(&mid).ok() },
-                }).await.map(|_| ())
+                    manager_id: if mid.is_empty() {
+                        None
+                    } else {
+                        Uuid::parse_str(&mid).ok()
+                    },
+                })
+                .await
+                .map(|_| ())
             };
 
             match result {
-                Ok(_) => {
+                Ok(()) => {
                     toast.success("保存しました");
                     if let Some(window) = web_sys::window() {
                         let _ = window.location().set_href("/projects");
@@ -162,7 +192,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                                     <select prop:value=move || form_discipline_id.get()
                                         on:change=move |ev| form_discipline_id.set(event_target_value(&ev))>
                                         <option value="">"-- 選択 --"</option>
-                                        {move || disciplines_resource.get().and_then(|r| r.ok()).map(|p| {
+                                        {move || disciplines_resource.get().and_then(std::result::Result::ok).map(|p| {
                                             p.data.into_iter().map(|d| {
                                                 view! { <option value=d.id.to_string()>{format!("{} ({})", d.name, d.code)}</option> }
                                             }).collect_view()
@@ -177,7 +207,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                                     <select prop:value=move || form_manager_id.get()
                                         on:change=move |ev| form_manager_id.set(event_target_value(&ev))>
                                         <option value="">"-- なし --"</option>
-                                        {move || employees_resource.get().and_then(|r| r.ok()).map(|p| {
+                                        {move || employees_resource.get().and_then(std::result::Result::ok).map(|p| {
                                             p.data.into_iter().map(|e| {
                                                 view! { <option value=e.id.to_string()>{e.name}</option> }
                                             }).collect_view()

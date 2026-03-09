@@ -3,9 +3,9 @@ use leptos::prelude::*;
 use crate::api;
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
+use crate::components::modal::ConfirmModal;
 use crate::components::pagination::Pagination;
 use crate::components::toast::ToastContext;
-use crate::components::modal::ConfirmModal;
 
 #[component]
 pub fn ProjectListPage() -> impl IntoView {
@@ -15,20 +15,21 @@ pub fn ProjectListPage() -> impl IntoView {
     let refresh = RwSignal::new(0u32);
     let delete_target = RwSignal::new(Option::<(uuid::Uuid, String)>::None);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::projects::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::projects::list(p, 20).await }
+    });
 
     let do_delete = move |id: uuid::Uuid| {
         leptos::task::spawn_local(async move {
             match api::projects::delete(id).await {
-                Ok(_) => { toast.success("削除しました"); refresh.update(|v| *v += 1); }
+                Ok(()) => {
+                    toast.success("削除しました");
+                    refresh.update(|v| *v += 1);
+                }
                 Err(e) => toast.error(format!("削除失敗: {}", e.message)),
             }
             delete_target.set(None);
@@ -56,8 +57,8 @@ pub fn ProjectListPage() -> impl IntoView {
                     <ConfirmModal
                         title="プロジェクト削除"
                         message=format!("「{}」を削除しますか？", name)
-                        on_confirm=Callback::new(move |_| do_delete(id))
-                        on_cancel=Callback::new(move |_| delete_target.set(None))
+                        on_confirm=Callback::new(move |()| do_delete(id))
+                        on_cancel=Callback::new(move |()| delete_target.set(None))
                         danger=true
                     />
                 }
@@ -90,7 +91,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                                         <td><span class="tag is-light">{p.status}</span></td>
                                                         <td>{p.discipline.name}</td>
                                                         <td>{p.discipline.department.name}</td>
-                                                        <td>{p.manager.map(|m| m.name).unwrap_or_else(|| "-".to_string())}</td>
+                                                        <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
                                                         <td>
                                                             <div class="buttons are-small">
                                                                 <a href=format!("/projects/{}", id) class="button is-info is-outlined">

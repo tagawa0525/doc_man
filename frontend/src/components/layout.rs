@@ -46,7 +46,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
                             };
 
                             let show = if admin_only {
-                                auth.role().map_or(false, |r| r.is_admin())
+                                auth.role().is_some_and(|r| r.is_admin())
                             } else {
                                 true
                             };

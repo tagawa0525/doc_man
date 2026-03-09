@@ -43,7 +43,7 @@ pub fn DashboardPage() -> impl IntoView {
             </div>
             {move || {
                 let role = auth.role();
-                if role.map_or(false, |r| r.is_admin()) {
+                if role.is_some_and(|r| r.is_admin()) {
                     view! {
                         <div class="columns">
                             <div class="column is-4">

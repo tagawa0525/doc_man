@@ -7,7 +7,7 @@ pub fn Pagination(
     per_page: u32,
     #[prop(into)] on_page_change: Callback<u32>,
 ) -> impl IntoView {
-    let total_pages = ((total as f64) / (per_page as f64)).ceil() as u32;
+    let total_pages = ((total as f64) / f64::from(per_page)).ceil() as u32;
 
     if total_pages <= 1 {
         return view! { <div></div> }.into_any();

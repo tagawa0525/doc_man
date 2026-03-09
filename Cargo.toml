@@ -1,24 +1,55 @@
-[package]
-name = "doc_man"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = ["server", "frontend"]
+default-members = ["server"]
+resolver = "3"
 
-[lib]
-name = "doc_man"
-path = "src/lib.rs"
+[workspace.dependencies]
+# === 共通 ===
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+uuid = { version = "1.22.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.44", features = ["serde"] }
 
-[dependencies]
-axum            = { version = "0.8.8", features = ["macros"] }
-tower           = { version = "0.5.3", features = ["util"] }
-tower-http      = { version = "0.6.8", features = ["trace", "cors", "fs"] }
-tokio           = { version = "1.50.0",   features = ["full"] }
-sqlx            = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
-serde           = { version = "1.0.228",   features = ["derive"] }
-serde_json      = "1.0.149"
-uuid            = { version = "1.22.0",   features = ["v4", "serde"] }
-chrono          = { version = "0.4.44", features = ["serde"] }
-thiserror       = "2.0.18"
-tracing         = "0.1.44"
+# === server ===
+axum = { version = "0.8.8", features = ["macros"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.6.8", features = ["trace", "cors", "fs"] }
+tokio = { version = "1.50.0", features = ["full"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
+thiserror = "2.0.18"
+tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
 
+# === frontend ===
+leptos = { version = "0.8.17", features = ["csr"] }
+leptos_router = "0.8.12"
+leptos_meta = "0.8.6"
+gloo-net = { version = "0.6.0", features = ["json"] }
+gloo-storage = "0.3.0"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+wasm-bindgen = "0.2.114"
+wasm-bindgen-futures = "0.4.64"
+web-sys = { version = "0.3.91", features = ["Window", "Location", "Storage", "HtmlInputElement", "HtmlSelectElement", "console"] }
+console_error_panic_hook = "0.1.7"
 
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+# Leptos コンポーネントは構造上長くなる
+too_many_lines = "allow"
+# 内部ハンドラーにドキュメント要件は不要
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# axum extractor は by-value 必須
+needless_pass_by_value = "allow"
+# 内部コードに #[must_use] は不要
+must_use_candidate = "allow"
+# パス文字列へのバックティック強制は不適切
+doc_markdown = "allow"
+# 変数名の類似検知は誤検知が多い
+similar_names = "allow"
+# 安全なキャストへの警告は不要
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"

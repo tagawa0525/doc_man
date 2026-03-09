@@ -8,7 +8,11 @@ pub fn ConfirmModal(
     #[prop(into)] on_cancel: Callback<()>,
     #[prop(optional)] danger: bool,
 ) -> impl IntoView {
-    let confirm_class = if danger { "button is-danger" } else { "button is-primary" };
+    let confirm_class = if danger {
+        "button is-danger"
+    } else {
+        "button is-primary"
+    };
 
     view! {
         <div class="modal is-active">

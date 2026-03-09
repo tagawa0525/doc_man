@@ -4,7 +4,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{flatten_dept_tree, CreateEmployeeRequest, UpdateEmployeeRequest};
 use crate::components::form::FormField;
 use crate::components::toast::ToastContext;
 
@@ -14,7 +14,10 @@ pub fn EmployeeFormPage() -> impl IntoView {
     let params = use_params_map();
 
     let employee_id = move || {
-        params.read().get("id").and_then(|id| Uuid::parse_str(&id).ok())
+        params
+            .read()
+            .get("id")
+            .and_then(|id| Uuid::parse_str(&id).ok())
     };
 
     let is_edit = move || employee_id().is_some();
@@ -52,19 +55,6 @@ pub fn EmployeeFormPage() -> impl IntoView {
         }
     });
 
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            result.push((d.id.to_string(), label.clone()));
-            let next_prefix = if prefix.is_empty() { d.name.clone() } else { format!("{} > {}", prefix, d.name) };
-            flatten_depts(&d.children, result, &next_prefix);
-        }
-    }
-
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         let name = form_name.get_untracked();
@@ -81,12 +71,17 @@ pub fn EmployeeFormPage() -> impl IntoView {
                 let ad = form_ad_account.get_untracked();
                 let role = form_role.get_untracked();
                 let active = form_is_active.get_untracked();
-                api::employees::update(id, &UpdateEmployeeRequest {
-                    name: Some(name),
-                    ad_account: if ad.is_empty() { None } else { Some(ad) },
-                    role: Some(role),
-                    is_active: Some(active),
-                }).await.map(|_| ())
+                api::employees::update(
+                    id,
+                    &UpdateEmployeeRequest {
+                        name: Some(name),
+                        ad_account: if ad.is_empty() { None } else { Some(ad) },
+                        role: Some(role),
+                        is_active: Some(active),
+                    },
+                )
+                .await
+                .map(|_| ())
             } else {
                 let ec = form_employee_code.get_untracked();
                 let ad = form_ad_account.get_untracked();
@@ -100,13 +95,15 @@ pub fn EmployeeFormPage() -> impl IntoView {
                     return;
                 }
 
-                let department_id = match Uuid::parse_str(&dept_str) {
-                    Ok(id) => id,
-                    Err(_) => { toast.error("部署を選択してください"); saving.set(false); return; }
+                let Ok(department_id) = Uuid::parse_str(&dept_str) else {
+                    toast.error("部署を選択してください");
+                    saving.set(false);
+                    return;
                 };
-                let effective_from = match chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") {
-                    Ok(d) => d,
-                    Err(_) => { toast.error("日付形式が不正です"); saving.set(false); return; }
+                let Ok(effective_from) = chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") else {
+                    toast.error("日付形式が不正です");
+                    saving.set(false);
+                    return;
                 };
 
                 api::employees::create(&CreateEmployeeRequest {
@@ -116,12 +113,18 @@ pub fn EmployeeFormPage() -> impl IntoView {
                     role: Some(role),
                     department_id,
                     effective_from,
-                }).await.map(|_| ())
+                })
+                .await
+                .map(|_| ())
             };
 
             match result {
-                Ok(_) => {
-                    toast.success(if eid.is_some() { "更新しました" } else { "作成しました" });
+                Ok(()) => {
+                    toast.success(if eid.is_some() {
+                        "更新しました"
+                    } else {
+                        "作成しました"
+                    });
                     if let Some(window) = web_sys::window() {
                         let _ = window.location().set_href("/employees");
                     }
@@ -148,7 +151,7 @@ pub fn EmployeeFormPage() -> impl IntoView {
                         <div class="column">
                             <FormField label="社員コード">
                                 <input class="input" type="text" prop:value=move || form_employee_code.get()
-                                    prop:disabled=move || is_edit()
+                                    prop:disabled=is_edit
                                     on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_employee_code.set(t.value()); } />
                             </FormField>
                         </div>
@@ -175,10 +178,20 @@ pub fn EmployeeFormPage() -> impl IntoView {
                         </div>
                     </div>
 
-                    {move || if !is_edit() {
-                        let dept_options = depts_resource.get().and_then(|r| r.ok()).map(|depts| {
+                    {move || if is_edit() {
+                        view! {
+                            <FormField label="状態">
+                                <label class="checkbox">
+                                    <input type="checkbox" prop:checked=move || form_is_active.get()
+                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_is_active.set(t.checked()); } />
+                                    " 有効"
+                                </label>
+                            </FormField>
+                        }.into_any()
+                    } else {
+                        let dept_options = depts_resource.get().and_then(std::result::Result::ok).map(|depts| {
                             let mut opts = Vec::new();
-                            flatten_depts(&depts, &mut opts, "");
+                            flatten_dept_tree(&depts, &mut opts, "");
                             opts
                         }).unwrap_or_default();
 
@@ -204,16 +217,6 @@ pub fn EmployeeFormPage() -> impl IntoView {
                                     </FormField>
                                 </div>
                             </div>
-                        }.into_any()
-                    } else {
-                        view! {
-                            <FormField label="状態">
-                                <label class="checkbox">
-                                    <input type="checkbox" prop:checked=move || form_is_active.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_is_active.set(t.checked()); } />
-                                    " 有効"
-                                </label>
-                            </FormField>
                         }.into_any()
                     }}
 
