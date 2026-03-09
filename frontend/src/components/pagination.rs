@@ -27,7 +27,7 @@ pub fn Pagination(
         <nav class="pagination is-centered" role="navigation" aria-label="pagination">
             <button
                 class="pagination-previous"
-                disabled=move || current_page <= 1
+                prop:disabled=move || current_page <= 1
                 on:click=move |_| {
                     if current_page > 1 {
                         on_page_change.run(current_page - 1);
@@ -38,7 +38,7 @@ pub fn Pagination(
             </button>
             <button
                 class="pagination-next"
-                disabled=move || current_page >= total_pages
+                prop:disabled=move || current_page >= total_pages
                 on:click=move |_| {
                     if current_page < total_pages {
                         on_page_change.run(current_page + 1);
