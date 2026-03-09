@@ -122,8 +122,8 @@ pub fn DocumentFormPage() -> impl IntoView {
                                         on:change=move |ev| form_confidentiality.set(event_target_value(&ev))>
                                         <option value="public">"公開"</option>
                                         <option value="internal">"社内"</option>
+                                        <option value="restricted">"限定"</option>
                                         <option value="confidential">"機密"</option>
-                                        <option value="strictly_confidential">"厳秘"</option>
                                     </select>
                                 </div>
                             </FormField>
