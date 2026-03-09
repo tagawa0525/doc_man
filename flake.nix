@@ -88,12 +88,19 @@
             echo "==> リセット完了"
           }
 
+          dm-db-seed() {
+            echo "==> シードデータを投入..."
+            psql -h localhost -U doc_man -d doc_man -f scripts/seed.sql
+            echo "==> シード完了"
+          }
+
           echo ""
           echo "  利用可能なコマンド:"
           echo "    cargo run          バックエンド起動 (localhost:3000)"
           echo "    trunk serve        フロントエンド起動 (frontend/ で実行)"
           echo "    dm-db-stop         PostgreSQL を停止"
           echo "    dm-db-reset        DB を削除して再作成+マイグレーション"
+          echo "    dm-db-seed         シードデータを投入"
           echo ""
         '';
       };
