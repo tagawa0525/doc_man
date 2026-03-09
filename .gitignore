@@ -2,3 +2,4 @@
 /frontend/dist
 .direnv
 .pgdata
+.claude
