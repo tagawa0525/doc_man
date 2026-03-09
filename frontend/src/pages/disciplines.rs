@@ -23,19 +23,15 @@ pub fn DisciplinesPage() -> impl IntoView {
     let form_dept_id = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::disciplines::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::disciplines::list(p, 20).await }
+    });
 
-    let depts_resource = LocalResource::new(
-        || async move { api::departments::list().await },
-    );
+    let depts_resource = LocalResource::new(|| async move { api::departments::list().await });
 
     let reset_form = move || {
         form_code.set(String::new());
@@ -58,7 +54,10 @@ pub fn DisciplinesPage() -> impl IntoView {
 
         let department_id = match uuid::Uuid::parse_str(&dept_id_str) {
             Ok(id) => id,
-            Err(_) => { toast.error("部署を選択してください"); return; }
+            Err(_) => {
+                toast.error("部署を選択してください");
+                return;
+            }
         };
 
         saving.set(true);
@@ -66,18 +65,31 @@ pub fn DisciplinesPage() -> impl IntoView {
 
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
-                api::disciplines::update(id, &UpdateDisciplineRequest {
-                    code: None, name: Some(name), department_id: Some(department_id),
-                }).await
+                api::disciplines::update(
+                    id,
+                    &UpdateDisciplineRequest {
+                        code: None,
+                        name: Some(name),
+                        department_id: Some(department_id),
+                    },
+                )
+                .await
             } else {
                 api::disciplines::create(&CreateDisciplineRequest {
-                    code, name, department_id,
-                }).await
+                    code,
+                    name,
+                    department_id,
+                })
+                .await
             };
 
             match result {
                 Ok(_) => {
-                    toast.success(if eid.is_some() { "更新しました" } else { "作成しました" });
+                    toast.success(if eid.is_some() {
+                        "更新しました"
+                    } else {
+                        "作成しました"
+                    });
                     reset_form();
                     refresh.update(|v| *v += 1);
                 }

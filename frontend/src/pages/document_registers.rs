@@ -26,15 +26,13 @@ pub fn DocumentRegistersPage() -> impl IntoView {
     let form_dept_id = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::document_registers::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::document_registers::list(p, 20).await }
+    });
 
     let doc_kinds_resource = LocalResource::new(|| async { api::document_kinds::list_all().await });
     let depts_resource = LocalResource::new(|| async { api::departments::list().await });
@@ -52,9 +50,17 @@ pub fn DocumentRegistersPage() -> impl IntoView {
 
     fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
         for d in depts {
-            let label = if prefix.is_empty() { format!("{} ({})", d.name, d.code) } else { format!("{} > {}", prefix, d.name) };
+            let label = if prefix.is_empty() {
+                format!("{} ({})", d.name, d.code)
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
             result.push((d.id.to_string(), label.clone()));
-            let next = if prefix.is_empty() { d.name.clone() } else { format!("{} > {}", prefix, d.name) };
+            let next = if prefix.is_empty() {
+                d.name.clone()
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
             flatten_depts(&d.children, result, &next);
         }
     }
@@ -76,12 +82,16 @@ pub fn DocumentRegistersPage() -> impl IntoView {
 
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
-                api::document_registers::update(id, &UpdateDocumentRegisterRequest {
-                    register_code: None,
-                    file_server_root: Some(fsr),
-                    new_doc_sub_path: if ndsp.is_empty() { None } else { Some(ndsp) },
-                    doc_number_pattern: if dnp.is_empty() { None } else { Some(dnp) },
-                }).await
+                api::document_registers::update(
+                    id,
+                    &UpdateDocumentRegisterRequest {
+                        register_code: None,
+                        file_server_root: Some(fsr),
+                        new_doc_sub_path: if ndsp.is_empty() { None } else { Some(ndsp) },
+                        doc_number_pattern: if dnp.is_empty() { None } else { Some(dnp) },
+                    },
+                )
+                .await
             } else {
                 let dki = form_doc_kind_id.get_untracked();
                 let di = form_dept_id.get_untracked();
@@ -93,14 +103,22 @@ pub fn DocumentRegistersPage() -> impl IntoView {
                 let doc_kind_id = uuid::Uuid::parse_str(&dki).unwrap();
                 let department_id = uuid::Uuid::parse_str(&di).unwrap();
                 api::document_registers::create(&CreateDocumentRegisterRequest {
-                    register_code: rc, doc_kind_id, department_id, file_server_root: fsr,
+                    register_code: rc,
+                    doc_kind_id,
+                    department_id,
+                    file_server_root: fsr,
                     new_doc_sub_path: if ndsp.is_empty() { None } else { Some(ndsp) },
                     doc_number_pattern: if dnp.is_empty() { None } else { Some(dnp) },
-                }).await
+                })
+                .await
             };
 
             match result {
-                Ok(_) => { toast.success("保存しました"); reset_form(); refresh.update(|v| *v += 1); }
+                Ok(_) => {
+                    toast.success("保存しました");
+                    reset_form();
+                    refresh.update(|v| *v += 1);
+                }
                 Err(e) => toast.error(format!("失敗: {}", e.message)),
             }
             saving.set(false);

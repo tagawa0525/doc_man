@@ -2,8 +2,14 @@ use super::client::{self, ApiError};
 use super::types::*;
 use uuid::Uuid;
 
-pub async fn list(page: u32, per_page: u32) -> Result<PaginatedResponse<EmployeeResponse>, ApiError> {
-    client::get(&format!("/api/v1/employees?page={page}&per_page={per_page}")).await
+pub async fn list(
+    page: u32,
+    per_page: u32,
+) -> Result<PaginatedResponse<EmployeeResponse>, ApiError> {
+    client::get(&format!(
+        "/api/v1/employees?page={page}&per_page={per_page}"
+    ))
+    .await
 }
 
 pub async fn list_active() -> Result<PaginatedResponse<EmployeeResponse>, ApiError> {

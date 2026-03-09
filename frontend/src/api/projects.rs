@@ -2,7 +2,10 @@ use super::client::{self, ApiError};
 use super::types::*;
 use uuid::Uuid;
 
-pub async fn list(page: u32, per_page: u32) -> Result<PaginatedResponse<ProjectResponse>, ApiError> {
+pub async fn list(
+    page: u32,
+    per_page: u32,
+) -> Result<PaginatedResponse<ProjectResponse>, ApiError> {
     client::get(&format!("/api/v1/projects?page={page}&per_page={per_page}")).await
 }
 

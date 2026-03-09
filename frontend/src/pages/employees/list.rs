@@ -13,15 +13,13 @@ pub fn EmployeeListPage() -> impl IntoView {
     let page = RwSignal::new(1u32);
     let refresh = RwSignal::new(0u32);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::employees::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::employees::list(p, 20).await }
+    });
 
     view! {
         <div>

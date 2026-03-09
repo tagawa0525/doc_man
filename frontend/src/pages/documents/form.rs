@@ -13,7 +13,12 @@ pub fn DocumentFormPage() -> impl IntoView {
     let toast = expect_context::<ToastContext>();
     let params = use_params_map();
 
-    let doc_id = move || params.read().get("id").and_then(|id| Uuid::parse_str(&id).ok());
+    let doc_id = move || {
+        params
+            .read()
+            .get("id")
+            .and_then(|id| Uuid::parse_str(&id).ok())
+    };
     let is_edit = move || doc_id().is_some();
 
     let form_title = RwSignal::new(String::new());
@@ -61,18 +66,29 @@ pub fn DocumentFormPage() -> impl IntoView {
         let dki = form_doc_kind_id.get_untracked();
         let pi = form_project_id.get_untracked();
         let tags_str = form_tags.get_untracked();
-        let tags: Vec<String> = tags_str.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        let tags: Vec<String> = tags_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         let eid = doc_id();
 
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
-                api::documents::update(id, &UpdateDocumentRequest {
-                    title: Some(title),
-                    file_path: Some(file_path),
-                    confidentiality: Some(confidentiality),
-                    tags: Some(tags),
-                    doc_number: None, frozen_dept_code: None, status: None,
-                }).await.map(|_| ())
+                api::documents::update(
+                    id,
+                    &UpdateDocumentRequest {
+                        title: Some(title),
+                        file_path: Some(file_path),
+                        confidentiality: Some(confidentiality),
+                        tags: Some(tags),
+                        doc_number: None,
+                        frozen_dept_code: None,
+                        status: None,
+                    },
+                )
+                .await
+                .map(|_| ())
             } else {
                 if dki.is_empty() || pi.is_empty() {
                     toast.error("文書種別とプロジェクトは必須です");
@@ -80,12 +96,19 @@ pub fn DocumentFormPage() -> impl IntoView {
                     return;
                 }
                 api::documents::create(&CreateDocumentRequest {
-                    title, file_path,
-                    confidentiality: if confidentiality.is_empty() { None } else { Some(confidentiality) },
+                    title,
+                    file_path,
+                    confidentiality: if confidentiality.is_empty() {
+                        None
+                    } else {
+                        Some(confidentiality)
+                    },
                     doc_kind_id: Uuid::parse_str(&dki).unwrap(),
                     project_id: Uuid::parse_str(&pi).unwrap(),
                     tags: if tags.is_empty() { None } else { Some(tags) },
-                }).await.map(|_| ())
+                })
+                .await
+                .map(|_| ())
             };
 
             match result {

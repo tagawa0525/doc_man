@@ -24,26 +24,22 @@ pub fn DepartmentsPage() -> impl IntoView {
     let form_effective_from = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let _ = refresh.get();
-            async move { api::departments::list_include_inactive().await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let _ = refresh.get();
+        async move { api::departments::list_include_inactive().await }
+    });
 
-    let selected_dept = LocalResource::new(
-        move || {
-            let id = selected_id.get();
-            async move {
-                match id {
-                    Some(id) => api::departments::get(id).await.ok(),
-                    None => None,
-                }
+    let selected_dept = LocalResource::new(move || {
+        let id = selected_id.get();
+        async move {
+            match id {
+                Some(id) => api::departments::get(id).await.ok(),
+                None => None,
             }
-        },
-    );
+        }
+    });
 
     let reset_form = move || {
         form_code.set(String::new());
@@ -66,19 +62,31 @@ pub fn DepartmentsPage() -> impl IntoView {
 
         let effective_from = match chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") {
             Ok(d) => d,
-            Err(_) => { toast.error("日付形式が不正です"); return; }
+            Err(_) => {
+                toast.error("日付形式が不正です");
+                return;
+            }
         };
 
         let parent_id = {
             let pid = form_parent_id.get_untracked();
-            if pid.is_empty() { None } else { Uuid::parse_str(&pid).ok() }
+            if pid.is_empty() {
+                None
+            } else {
+                Uuid::parse_str(&pid).ok()
+            }
         };
 
         saving.set(true);
         leptos::task::spawn_local(async move {
             match api::departments::create(&CreateDepartmentRequest {
-                code, name, parent_id, effective_from,
-            }).await {
+                code,
+                name,
+                parent_id,
+                effective_from,
+            })
+            .await
+            {
                 Ok(_) => {
                     toast.success("部署を作成しました");
                     reset_form();

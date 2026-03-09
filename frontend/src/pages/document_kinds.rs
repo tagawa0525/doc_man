@@ -23,15 +23,13 @@ pub fn DocumentKindsPage() -> impl IntoView {
     let form_seq_digits = RwSignal::new("2".to_string());
     let saving = RwSignal::new(false);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::document_kinds::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::document_kinds::list(p, 20).await }
+    });
 
     let reset_form = move || {
         form_code.set(String::new());
@@ -57,18 +55,31 @@ pub fn DocumentKindsPage() -> impl IntoView {
 
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
-                api::document_kinds::update(id, &UpdateDocumentKindRequest {
-                    code: None, name: Some(name), seq_digits: Some(seq),
-                }).await
+                api::document_kinds::update(
+                    id,
+                    &UpdateDocumentKindRequest {
+                        code: None,
+                        name: Some(name),
+                        seq_digits: Some(seq),
+                    },
+                )
+                .await
             } else {
                 api::document_kinds::create(&CreateDocumentKindRequest {
-                    code, name, seq_digits: seq,
-                }).await
+                    code,
+                    name,
+                    seq_digits: seq,
+                })
+                .await
             };
 
             match result {
                 Ok(_) => {
-                    toast.success(if eid.is_some() { "更新しました" } else { "作成しました" });
+                    toast.success(if eid.is_some() {
+                        "更新しました"
+                    } else {
+                        "作成しました"
+                    });
                     reset_form();
                     refresh.update(|v| *v += 1);
                 }

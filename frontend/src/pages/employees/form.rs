@@ -14,7 +14,10 @@ pub fn EmployeeFormPage() -> impl IntoView {
     let params = use_params_map();
 
     let employee_id = move || {
-        params.read().get("id").and_then(|id| Uuid::parse_str(&id).ok())
+        params
+            .read()
+            .get("id")
+            .and_then(|id| Uuid::parse_str(&id).ok())
     };
 
     let is_edit = move || employee_id().is_some();
@@ -60,7 +63,11 @@ pub fn EmployeeFormPage() -> impl IntoView {
                 format!("{} > {}", prefix, d.name)
             };
             result.push((d.id.to_string(), label.clone()));
-            let next_prefix = if prefix.is_empty() { d.name.clone() } else { format!("{} > {}", prefix, d.name) };
+            let next_prefix = if prefix.is_empty() {
+                d.name.clone()
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
             flatten_depts(&d.children, result, &next_prefix);
         }
     }
@@ -81,12 +88,17 @@ pub fn EmployeeFormPage() -> impl IntoView {
                 let ad = form_ad_account.get_untracked();
                 let role = form_role.get_untracked();
                 let active = form_is_active.get_untracked();
-                api::employees::update(id, &UpdateEmployeeRequest {
-                    name: Some(name),
-                    ad_account: if ad.is_empty() { None } else { Some(ad) },
-                    role: Some(role),
-                    is_active: Some(active),
-                }).await.map(|_| ())
+                api::employees::update(
+                    id,
+                    &UpdateEmployeeRequest {
+                        name: Some(name),
+                        ad_account: if ad.is_empty() { None } else { Some(ad) },
+                        role: Some(role),
+                        is_active: Some(active),
+                    },
+                )
+                .await
+                .map(|_| ())
             } else {
                 let ec = form_employee_code.get_untracked();
                 let ad = form_ad_account.get_untracked();
@@ -102,11 +114,19 @@ pub fn EmployeeFormPage() -> impl IntoView {
 
                 let department_id = match Uuid::parse_str(&dept_str) {
                     Ok(id) => id,
-                    Err(_) => { toast.error("部署を選択してください"); saving.set(false); return; }
+                    Err(_) => {
+                        toast.error("部署を選択してください");
+                        saving.set(false);
+                        return;
+                    }
                 };
                 let effective_from = match chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") {
                     Ok(d) => d,
-                    Err(_) => { toast.error("日付形式が不正です"); saving.set(false); return; }
+                    Err(_) => {
+                        toast.error("日付形式が不正です");
+                        saving.set(false);
+                        return;
+                    }
                 };
 
                 api::employees::create(&CreateEmployeeRequest {
@@ -116,12 +136,18 @@ pub fn EmployeeFormPage() -> impl IntoView {
                     role: Some(role),
                     department_id,
                     effective_from,
-                }).await.map(|_| ())
+                })
+                .await
+                .map(|_| ())
             };
 
             match result {
                 Ok(_) => {
-                    toast.success(if eid.is_some() { "更新しました" } else { "作成しました" });
+                    toast.success(if eid.is_some() {
+                        "更新しました"
+                    } else {
+                        "作成しました"
+                    });
                     if let Some(window) = web_sys::window() {
                         let _ = window.location().set_href("/employees");
                     }
@@ -148,7 +174,7 @@ pub fn EmployeeFormPage() -> impl IntoView {
                         <div class="column">
                             <FormField label="社員コード">
                                 <input class="input" type="text" prop:value=move || form_employee_code.get()
-                                    prop:disabled=move || is_edit()
+                                    prop:disabled=is_edit
                                     on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_employee_code.set(t.value()); } />
                             </FormField>
                         </div>

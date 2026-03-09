@@ -15,21 +15,26 @@ pub fn DocumentDetailPage() -> impl IntoView {
     let params = use_params_map();
     let refresh = RwSignal::new(0u32);
 
-    let doc_id = move || params.read().get("id").and_then(|id| Uuid::parse_str(&id).ok());
-    let can_edit = auth.role().map_or(false, |r| !matches!(r, crate::auth::Role::Viewer));
+    let doc_id = move || {
+        params
+            .read()
+            .get("id")
+            .and_then(|id| Uuid::parse_str(&id).ok())
+    };
+    let can_edit = auth
+        .role()
+        .is_some_and(|r| !matches!(r, crate::auth::Role::Viewer));
 
-    let doc_resource = LocalResource::new(
-        move || {
-            let id = doc_id();
-            let _ = refresh.get();
-            async move {
-                match id {
-                    Some(id) => api::documents::get(id).await.ok(),
-                    None => None,
-                }
+    let doc_resource = LocalResource::new(move || {
+        let id = doc_id();
+        let _ = refresh.get();
+        async move {
+            match id {
+                Some(id) => api::documents::get(id).await.ok(),
+                None => None,
             }
-        },
-    );
+        }
+    });
 
     view! {
         <div>

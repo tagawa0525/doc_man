@@ -18,6 +18,9 @@ pub async fn create(req: &CreateDepartmentRequest) -> Result<DepartmentResponse,
     client::post("/api/v1/departments", req).await
 }
 
-pub async fn update(id: Uuid, req: &UpdateDepartmentRequest) -> Result<DepartmentResponse, ApiError> {
+pub async fn update(
+    id: Uuid,
+    req: &UpdateDepartmentRequest,
+) -> Result<DepartmentResponse, ApiError> {
     client::put(&format!("/api/v1/departments/{id}"), req).await
 }

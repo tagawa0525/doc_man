@@ -20,17 +20,15 @@ pub fn ApprovalSection(
     let show_create = RwSignal::new(false);
     let comment = RwSignal::new(String::new());
 
-    let can_manage = auth.role().map_or(false, |r| r.can_manage());
+    let can_manage = auth.role().is_some_and(|r| r.can_manage());
     let can_create_route = can_manage && (doc_status == "draft" || doc_status == "rejected");
 
     let user_id = auth.user.get_untracked().map(|u| u.id);
 
-    let steps_resource = LocalResource::new(
-        move || {
-            let _ = refresh.get();
-            async move { api::approval_steps::list(doc_id).await }
-        },
-    );
+    let steps_resource = LocalResource::new(move || {
+        let _ = refresh.get();
+        async move { api::approval_steps::list(doc_id).await }
+    });
 
     let employees_resource = LocalResource::new(|| async { api::employees::list_active().await });
 
@@ -45,9 +43,24 @@ pub fn ApprovalSection(
         let s2 = step2_id.get_untracked();
         let s3 = step3_id.get_untracked();
 
-        if let Ok(id) = Uuid::parse_str(&s1) { steps.push(StepInput { step_order: 1, approver_id: id }); }
-        if let Ok(id) = Uuid::parse_str(&s2) { steps.push(StepInput { step_order: 2, approver_id: id }); }
-        if let Ok(id) = Uuid::parse_str(&s3) { steps.push(StepInput { step_order: 3, approver_id: id }); }
+        if let Ok(id) = Uuid::parse_str(&s1) {
+            steps.push(StepInput {
+                step_order: 1,
+                approver_id: id,
+            });
+        }
+        if let Ok(id) = Uuid::parse_str(&s2) {
+            steps.push(StepInput {
+                step_order: 2,
+                approver_id: id,
+            });
+        }
+        if let Ok(id) = Uuid::parse_str(&s3) {
+            steps.push(StepInput {
+                step_order: 3,
+                approver_id: id,
+            });
+        }
 
         if steps.is_empty() {
             toast.error("少なくとも1人の承認者を選択してください");
@@ -55,7 +68,9 @@ pub fn ApprovalSection(
         }
 
         leptos::task::spawn_local(async move {
-            match api::approval_steps::create_route(doc_id, &CreateApprovalRouteRequest { steps }).await {
+            match api::approval_steps::create_route(doc_id, &CreateApprovalRouteRequest { steps })
+                .await
+            {
                 Ok(_) => {
                     toast.success("承認ルートを作成しました");
                     show_create.set(false);
@@ -70,9 +85,15 @@ pub fn ApprovalSection(
     let do_approve = move |step_id: Uuid| {
         let c = comment.get_untracked();
         leptos::task::spawn_local(async move {
-            match api::approval_steps::approve(doc_id, step_id, &ApprovalActionRequest {
-                comment: if c.is_empty() { None } else { Some(c) },
-            }).await {
+            match api::approval_steps::approve(
+                doc_id,
+                step_id,
+                &ApprovalActionRequest {
+                    comment: if c.is_empty() { None } else { Some(c) },
+                },
+            )
+            .await
+            {
                 Ok(_) => {
                     toast.success("承認しました");
                     comment.set(String::new());
@@ -87,9 +108,15 @@ pub fn ApprovalSection(
     let do_reject = move |step_id: Uuid| {
         let c = comment.get_untracked();
         leptos::task::spawn_local(async move {
-            match api::approval_steps::reject(doc_id, step_id, &ApprovalActionRequest {
-                comment: if c.is_empty() { None } else { Some(c) },
-            }).await {
+            match api::approval_steps::reject(
+                doc_id,
+                step_id,
+                &ApprovalActionRequest {
+                    comment: if c.is_empty() { None } else { Some(c) },
+                },
+            )
+            .await
+            {
                 Ok(_) => {
                     toast.success("却下しました");
                     comment.set(String::new());

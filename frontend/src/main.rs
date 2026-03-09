@@ -37,11 +37,11 @@ fn App() -> impl IntoView {
     let auth_ctx = AuthContext::new();
     let toast_ctx = ToastContext::new();
 
-    provide_context(auth_ctx.clone());
-    provide_context(toast_ctx.clone());
+    provide_context(auth_ctx);
+    provide_context(toast_ctx);
 
     // Check auth on mount
-    let auth = auth_ctx.clone();
+    let auth = auth_ctx;
     leptos::task::spawn_local(async move {
         if let Some(me) = auth::verify_token().await {
             auth.user.set(Some(UserInfo {

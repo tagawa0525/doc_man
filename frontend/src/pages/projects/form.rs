@@ -13,7 +13,12 @@ pub fn ProjectFormPage() -> impl IntoView {
     let toast = expect_context::<ToastContext>();
     let params = use_params_map();
 
-    let project_id = move || params.read().get("id").and_then(|id| Uuid::parse_str(&id).ok());
+    let project_id = move || {
+        params
+            .read()
+            .get("id")
+            .and_then(|id| Uuid::parse_str(&id).ok())
+    };
     let is_edit = move || project_id().is_some();
 
     let form_name = RwSignal::new(String::new());
@@ -36,11 +41,13 @@ pub fn ProjectFormPage() -> impl IntoView {
                     if let Ok(p) = api::projects::get(id).await {
                         form_name.set(p.name);
                         form_status.set(p.status);
-                        form_start_date.set(p.start_date.map(|d| d.to_string()).unwrap_or_default());
+                        form_start_date
+                            .set(p.start_date.map(|d| d.to_string()).unwrap_or_default());
                         form_end_date.set(p.end_date.map(|d| d.to_string()).unwrap_or_default());
                         form_wbs_code.set(p.wbs_code.unwrap_or_default());
                         form_discipline_id.set(p.discipline.id.to_string());
-                        form_manager_id.set(p.manager.map(|m| m.id.to_string()).unwrap_or_default());
+                        form_manager_id
+                            .set(p.manager.map(|m| m.id.to_string()).unwrap_or_default());
                         loaded.set(true);
                     }
                 });
@@ -67,19 +74,32 @@ pub fn ProjectFormPage() -> impl IntoView {
 
         leptos::task::spawn_local(async move {
             let parse_date = |s: &str| -> Option<chrono::NaiveDate> {
-                if s.is_empty() { None } else { chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok() }
+                if s.is_empty() {
+                    None
+                } else {
+                    chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
+                }
             };
 
             let result = if let Some(id) = eid {
-                api::projects::update(id, &UpdateProjectRequest {
-                    name: Some(name),
-                    status: Some(status),
-                    start_date: parse_date(&sd),
-                    end_date: parse_date(&ed),
-                    wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
-                    discipline_id: Uuid::parse_str(&did).ok(),
-                    manager_id: if mid.is_empty() { None } else { Uuid::parse_str(&mid).ok() },
-                }).await.map(|_| ())
+                api::projects::update(
+                    id,
+                    &UpdateProjectRequest {
+                        name: Some(name),
+                        status: Some(status),
+                        start_date: parse_date(&sd),
+                        end_date: parse_date(&ed),
+                        wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
+                        discipline_id: Uuid::parse_str(&did).ok(),
+                        manager_id: if mid.is_empty() {
+                            None
+                        } else {
+                            Uuid::parse_str(&mid).ok()
+                        },
+                    },
+                )
+                .await
+                .map(|_| ())
             } else {
                 if did.is_empty() {
                     toast.error("専門分野は必須です");
@@ -88,13 +108,23 @@ pub fn ProjectFormPage() -> impl IntoView {
                 }
                 api::projects::create(&CreateProjectRequest {
                     name,
-                    status: if status.is_empty() { None } else { Some(status) },
+                    status: if status.is_empty() {
+                        None
+                    } else {
+                        Some(status)
+                    },
                     start_date: parse_date(&sd),
                     end_date: parse_date(&ed),
                     wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
                     discipline_id: Uuid::parse_str(&did).unwrap(),
-                    manager_id: if mid.is_empty() { None } else { Uuid::parse_str(&mid).ok() },
-                }).await.map(|_| ())
+                    manager_id: if mid.is_empty() {
+                        None
+                    } else {
+                        Uuid::parse_str(&mid).ok()
+                    },
+                })
+                .await
+                .map(|_| ())
             };
 
             match result {

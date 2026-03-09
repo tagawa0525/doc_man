@@ -20,21 +20,21 @@ pub fn CirculationSection(
     let show_create = RwSignal::new(false);
     let selected_ids = RwSignal::new(Vec::<String>::new());
 
-    let can_manage = auth.role().map_or(false, |r| r.can_manage());
+    let can_manage = auth.role().is_some_and(|r| r.can_manage());
     let can_create = can_manage && doc_status == "approved";
     let user_id = auth.user.get_untracked().map(|u| u.id);
 
-    let circ_resource = LocalResource::new(
-        move || {
-            let _ = refresh.get();
-            async move { api::circulations::list(doc_id).await }
-        },
-    );
+    let circ_resource = LocalResource::new(move || {
+        let _ = refresh.get();
+        async move { api::circulations::list(doc_id).await }
+    });
 
     let employees_resource = LocalResource::new(|| async { api::employees::list_active().await });
 
     let create_circulations = move |_: leptos::ev::MouseEvent| {
-        let ids: Vec<Uuid> = selected_ids.get_untracked().iter()
+        let ids: Vec<Uuid> = selected_ids
+            .get_untracked()
+            .iter()
             .filter_map(|s| Uuid::parse_str(s).ok())
             .collect();
 
@@ -44,7 +44,12 @@ pub fn CirculationSection(
         }
 
         leptos::task::spawn_local(async move {
-            match api::circulations::create(doc_id, &CreateCirculationRequest { recipient_ids: ids }).await {
+            match api::circulations::create(
+                doc_id,
+                &CreateCirculationRequest { recipient_ids: ids },
+            )
+            .await
+            {
                 Ok(_) => {
                     toast.success("回覧を開始しました");
                     show_create.set(false);

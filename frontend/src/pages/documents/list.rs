@@ -16,20 +16,23 @@ pub fn DocumentListPage() -> impl IntoView {
     let refresh = RwSignal::new(0u32);
     let delete_target = RwSignal::new(Option::<(uuid::Uuid, String)>::None);
 
-    let can_create = auth.role().map_or(false, |r| !matches!(r, crate::auth::Role::Viewer));
+    let can_create = auth
+        .role()
+        .is_some_and(|r| !matches!(r, crate::auth::Role::Viewer));
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::documents::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::documents::list(p, 20).await }
+    });
 
     let do_delete = move |id: uuid::Uuid| {
         leptos::task::spawn_local(async move {
             match api::documents::delete(id).await {
-                Ok(_) => { toast.success("削除しました"); refresh.update(|v| *v += 1); }
+                Ok(_) => {
+                    toast.success("削除しました");
+                    refresh.update(|v| *v += 1);
+                }
                 Err(e) => toast.error(format!("削除失敗: {}", e.message)),
             }
             delete_target.set(None);

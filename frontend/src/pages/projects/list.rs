@@ -3,9 +3,9 @@ use leptos::prelude::*;
 use crate::api;
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
+use crate::components::modal::ConfirmModal;
 use crate::components::pagination::Pagination;
 use crate::components::toast::ToastContext;
-use crate::components::modal::ConfirmModal;
 
 #[component]
 pub fn ProjectListPage() -> impl IntoView {
@@ -15,20 +15,21 @@ pub fn ProjectListPage() -> impl IntoView {
     let refresh = RwSignal::new(0u32);
     let delete_target = RwSignal::new(Option::<(uuid::Uuid, String)>::None);
 
-    let is_admin = auth.role().map_or(false, |r| r.is_admin());
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
-    let resource = LocalResource::new(
-        move || {
-            let p = page.get();
-            let _ = refresh.get();
-            async move { api::projects::list(p, 20).await }
-        },
-    );
+    let resource = LocalResource::new(move || {
+        let p = page.get();
+        let _ = refresh.get();
+        async move { api::projects::list(p, 20).await }
+    });
 
     let do_delete = move |id: uuid::Uuid| {
         leptos::task::spawn_local(async move {
             match api::projects::delete(id).await {
-                Ok(_) => { toast.success("削除しました"); refresh.update(|v| *v += 1); }
+                Ok(_) => {
+                    toast.success("削除しました");
+                    refresh.update(|v| *v += 1);
+                }
                 Err(e) => toast.error(format!("削除失敗: {}", e.message)),
             }
             delete_target.set(None);
