@@ -47,6 +47,10 @@ frontend-dev:
 db-migrate:
     sqlx migrate run --source server/migrations
 
+# PostgreSQL を停止
+db-stop:
+    pg_ctl stop -m fast
+
 # DB を削除して再作成しマイグレーション
 db-reset:
     dropdb -h localhost -U doc_man doc_man || true
