@@ -136,7 +136,7 @@ pub fn DocumentKindsPage() -> impl IntoView {
                                         <div class="select">
                                             <select
                                                 prop:value=move || form_seq_digits.get()
-                                                on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_seq_digits.set(t.value()); }
+                                                on:change=move |ev| form_seq_digits.set(event_target_value(&ev))
                                             >
                                                 <option value="2">"2桁"</option>
                                                 <option value="3">"3桁"</option>

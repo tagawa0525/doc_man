@@ -156,7 +156,7 @@ pub fn DisciplinesPage() -> impl IntoView {
                                     <FormField label="部署">
                                         <div class="select is-fullwidth">
                                             <select prop:value=move || form_dept_id.get()
-                                                on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_dept_id.set(t.value()); }>
+                                                on:change=move |ev| form_dept_id.set(event_target_value(&ev))>
                                                 <option value="">"-- 選択 --"</option>
                                                 {dept_options.into_iter().map(|(val, label)| {
                                                     view! { <option value=val>{label}</option> }

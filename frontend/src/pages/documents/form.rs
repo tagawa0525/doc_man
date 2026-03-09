@@ -119,7 +119,7 @@ pub fn DocumentFormPage() -> impl IntoView {
                             <FormField label="機密区分">
                                 <div class="select is-fullwidth">
                                     <select prop:value=move || form_confidentiality.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_confidentiality.set(t.value()); }>
+                                        on:change=move |ev| form_confidentiality.set(event_target_value(&ev))>
                                         <option value="public">"公開"</option>
                                         <option value="internal">"社内"</option>
                                         <option value="confidential">"機密"</option>
@@ -132,7 +132,7 @@ pub fn DocumentFormPage() -> impl IntoView {
                             <FormField label="文書種別 *">
                                 <div class="select is-fullwidth">
                                     <select prop:value=move || form_doc_kind_id.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_doc_kind_id.set(t.value()); }>
+                                        on:change=move |ev| form_doc_kind_id.set(event_target_value(&ev))>
                                         <option value="">"-- 選択 --"</option>
                                         {move || doc_kinds_resource.get().and_then(|r| r.ok()).map(|p| {
                                             p.data.into_iter().map(|dk| view! { <option value=dk.id.to_string()>{format!("{} ({})", dk.name, dk.code)}</option> }).collect_view()
@@ -145,7 +145,7 @@ pub fn DocumentFormPage() -> impl IntoView {
                             <FormField label="プロジェクト *">
                                 <div class="select is-fullwidth">
                                     <select prop:value=move || form_project_id.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_project_id.set(t.value()); }>
+                                        on:change=move |ev| form_project_id.set(event_target_value(&ev))>
                                         <option value="">"-- 選択 --"</option>
                                         {move || projects_resource.get().and_then(|r| r.ok()).map(|p| {
                                             p.data.into_iter().map(|proj| view! { <option value=proj.id.to_string()>{proj.name}</option> }).collect_view()

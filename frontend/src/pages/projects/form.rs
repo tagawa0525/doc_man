@@ -126,7 +126,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                             <FormField label="ステータス">
                                 <div class="select is-fullwidth">
                                     <select prop:value=move || form_status.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_status.set(t.value()); }>
+                                        on:change=move |ev| form_status.set(event_target_value(&ev))>
                                         <option value="active">"進行中"</option>
                                         <option value="completed">"完了"</option>
                                         <option value="suspended">"中断"</option>
@@ -160,7 +160,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                             <FormField label="専門分野 *">
                                 <div class="select is-fullwidth">
                                     <select prop:value=move || form_discipline_id.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_discipline_id.set(t.value()); }>
+                                        on:change=move |ev| form_discipline_id.set(event_target_value(&ev))>
                                         <option value="">"-- 選択 --"</option>
                                         {move || disciplines_resource.get().and_then(|r| r.ok()).map(|p| {
                                             p.data.into_iter().map(|d| {
@@ -175,7 +175,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                             <FormField label="マネージャー">
                                 <div class="select is-fullwidth">
                                     <select prop:value=move || form_manager_id.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_manager_id.set(t.value()); }>
+                                        on:change=move |ev| form_manager_id.set(event_target_value(&ev))>
                                         <option value="">"-- なし --"</option>
                                         {move || employees_resource.get().and_then(|r| r.ok()).map(|p| {
                                             p.data.into_iter().map(|e| {

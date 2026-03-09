@@ -126,7 +126,7 @@ pub fn ApprovalSection(
                         <div class="field">
                             <label class="label is-small">"承認者1"</label>
                             <div class="select is-small is-fullwidth">
-                                <select on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); step1_id.set(t.value()); }>
+                                <select on:change=move |ev| step1_id.set(event_target_value(&ev))>
                                     <option value="">"-- 選択 --"</option>
                                     {emps.into_iter().map(|e| view! { <option value=e.id.to_string()>{e.name}</option> }).collect_view()}
                                 </select>
@@ -135,7 +135,7 @@ pub fn ApprovalSection(
                         <div class="field">
                             <label class="label is-small">"承認者2（任意）"</label>
                             <div class="select is-small is-fullwidth">
-                                <select on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); step2_id.set(t.value()); }>
+                                <select on:change=move |ev| step2_id.set(event_target_value(&ev))>
                                     <option value="">"-- なし --"</option>
                                     {emps2.into_iter().map(|e| view! { <option value=e.id.to_string()>{e.name}</option> }).collect_view()}
                                 </select>
@@ -144,7 +144,7 @@ pub fn ApprovalSection(
                         <div class="field">
                             <label class="label is-small">"承認者3（任意）"</label>
                             <div class="select is-small is-fullwidth">
-                                <select on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); step3_id.set(t.value()); }>
+                                <select on:change=move |ev| step3_id.set(event_target_value(&ev))>
                                     <option value="">"-- なし --"</option>
                                     {emps3.into_iter().map(|e| view! { <option value=e.id.to_string()>{e.name}</option> }).collect_view()}
                                 </select>

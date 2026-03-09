@@ -144,8 +144,8 @@ pub fn DocumentRegistersPage() -> impl IntoView {
                                 let dept_opts = dept_opts.clone();
                                 view! {
                                     <div class="columns">
-                                        <div class="column"><FormField label="文書種別 *"><div class="select is-fullwidth"><select prop:value=move || form_doc_kind_id.get() on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_doc_kind_id.set(t.value()); }><option value="">"-- 選択 --"</option>{dk_opts.into_iter().map(|dk| view! { <option value=dk.id.to_string()>{format!("{} ({})", dk.name, dk.code)}</option> }).collect_view()}</select></div></FormField></div>
-                                        <div class="column"><FormField label="部署 *"><div class="select is-fullwidth"><select prop:value=move || form_dept_id.get() on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_dept_id.set(t.value()); }><option value="">"-- 選択 --"</option>{dept_opts.into_iter().map(|(v, l)| view! { <option value=v>{l}</option> }).collect_view()}</select></div></FormField></div>
+                                        <div class="column"><FormField label="文書種別 *"><div class="select is-fullwidth"><select prop:value=move || form_doc_kind_id.get() on:change=move |ev| form_doc_kind_id.set(event_target_value(&ev))><option value="">"-- 選択 --"</option>{dk_opts.into_iter().map(|dk| view! { <option value=dk.id.to_string()>{format!("{} ({})", dk.name, dk.code)}</option> }).collect_view()}</select></div></FormField></div>
+                                        <div class="column"><FormField label="部署 *"><div class="select is-fullwidth"><select prop:value=move || form_dept_id.get() on:change=move |ev| form_dept_id.set(event_target_value(&ev))><option value="">"-- 選択 --"</option>{dept_opts.into_iter().map(|(v, l)| view! { <option value=v>{l}</option> }).collect_view()}</select></div></FormField></div>
                                     </div>
                                 }.into_any()
                             } else { view! { <div></div> }.into_any() }}
