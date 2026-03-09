@@ -4,6 +4,21 @@ use uuid::Uuid;
 
 // --- 共通 ---
 
+/// `{ id, code, name }` の共通Brief型
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodeBrief {
+    pub id: Uuid,
+    pub code: String,
+    pub name: String,
+}
+
+/// `{ id, name }` の共通Brief型
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NameBrief {
+    pub id: Uuid,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PaginatedResponse<T> {
     pub data: Vec<T>,
@@ -89,12 +104,6 @@ pub struct UpdateDepartmentRequest {
 // --- Employees ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DepartmentSummary {
-    pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmployeeResponse {
     pub id: Uuid,
     pub name: String,
@@ -102,7 +111,7 @@ pub struct EmployeeResponse {
     pub ad_account: Option<String>,
     pub role: String,
     pub is_active: bool,
-    pub current_department: Option<DepartmentSummary>,
+    pub current_department: Option<NameBrief>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -126,18 +135,11 @@ pub struct UpdateEmployeeRequest {
 // --- Disciplines ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DisciplineDepartmentBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisciplineResponse {
     pub id: Uuid,
     pub code: String,
     pub name: String,
-    pub department: DisciplineDepartmentBrief,
+    pub department: CodeBrief,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -181,28 +183,14 @@ pub struct UpdateDocumentKindRequest {
 // --- Document Registers ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocKindBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisterDepartmentBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentRegisterResponse {
     pub id: Uuid,
     pub register_code: String,
     pub file_server_root: String,
     pub new_doc_sub_path: Option<String>,
     pub doc_number_pattern: Option<String>,
-    pub doc_kind: DocKindBrief,
-    pub department: RegisterDepartmentBrief,
+    pub doc_kind: CodeBrief,
+    pub department: CodeBrief,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -226,24 +214,11 @@ pub struct UpdateDocumentRegisterRequest {
 // --- Projects ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProjectDepartmentBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectDisciplineBrief {
     pub id: Uuid,
     pub code: String,
     pub name: String,
-    pub department: ProjectDepartmentBrief,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ManagerBrief {
-    pub id: Uuid,
-    pub name: String,
+    pub department: CodeBrief,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -255,7 +230,7 @@ pub struct ProjectResponse {
     pub end_date: Option<NaiveDate>,
     pub wbs_code: Option<String>,
     pub discipline: ProjectDisciplineBrief,
-    pub manager: Option<ManagerBrief>,
+    pub manager: Option<NameBrief>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -283,25 +258,6 @@ pub struct UpdateProjectRequest {
 // --- Documents ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuthorBrief {
-    pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocumentDocKindBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocumentProjectBrief {
-    pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentResponse {
     pub id: Uuid,
     pub doc_number: String,
@@ -311,9 +267,9 @@ pub struct DocumentResponse {
     pub status: String,
     pub confidentiality: String,
     pub frozen_dept_code: String,
-    pub author: AuthorBrief,
-    pub doc_kind: DocumentDocKindBrief,
-    pub project: DocumentProjectBrief,
+    pub author: NameBrief,
+    pub doc_kind: CodeBrief,
+    pub project: NameBrief,
     pub tags: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -343,18 +299,12 @@ pub struct UpdateDocumentRequest {
 // --- Approval Steps ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApproverBrief {
-    pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApprovalStepResponse {
     pub id: Uuid,
     pub route_revision: i32,
     pub document_revision: i32,
     pub step_order: i32,
-    pub approver: ApproverBrief,
+    pub approver: NameBrief,
     pub status: String,
     pub approved_at: Option<DateTime<Utc>>,
     pub comment: Option<String>,
@@ -380,15 +330,9 @@ pub struct ApprovalActionRequest {
 // --- Circulations ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RecipientBrief {
-    pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CirculationResponse {
     pub id: Uuid,
-    pub recipient: RecipientBrief,
+    pub recipient: NameBrief,
     pub confirmed_at: Option<DateTime<Utc>>,
 }
 

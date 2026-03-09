@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::DocKindBrief;
+
 /// レスポンス型
 #[derive(Debug, Serialize)]
 pub struct DocumentResponse {
@@ -24,13 +26,6 @@ pub struct DocumentResponse {
 #[derive(Debug, Serialize)]
 pub struct AuthorBrief {
     pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct DocKindBrief {
-    pub id: Uuid,
-    pub code: String,
     pub name: String,
 }
 

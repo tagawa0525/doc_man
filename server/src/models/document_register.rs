@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::{DepartmentBrief, DocKindBrief};
+
 /// DB行型（document_registers + document_kinds + departments JOIN）
 #[derive(Debug, Clone)]
 pub struct DocumentRegisterRow {
@@ -15,20 +17,6 @@ pub struct DocumentRegisterRow {
     pub dept_id: Uuid,
     pub dept_code: String,
     pub dept_name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct DocKindBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct DepartmentBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
 }
 
 /// レスポンス型

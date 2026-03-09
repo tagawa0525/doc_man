@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::DepartmentBrief;
+
 /// DB行型（disciplines + departments JOIN）
 #[derive(Debug, Clone)]
 pub struct DisciplineRow {
@@ -10,13 +12,6 @@ pub struct DisciplineRow {
     pub dept_id: Uuid,
     pub dept_code: String,
     pub dept_name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct DepartmentBrief {
-    pub id: Uuid,
-    pub code: String,
-    pub name: String,
 }
 
 /// レスポンス型

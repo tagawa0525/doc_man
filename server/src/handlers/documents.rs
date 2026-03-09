@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
 use crate::error::AppError;
+use crate::models::DocKindBrief;
 use crate::models::document::{
-    AuthorBrief, CreateDocumentRequest, DocKindBrief, DocumentResponse, ProjectBrief,
-    UpdateDocumentRequest,
+    AuthorBrief, CreateDocumentRequest, DocumentResponse, ProjectBrief, UpdateDocumentRequest,
 };
 use crate::pagination::{PaginatedResponse, PaginationParams};
 use crate::services::document_numbering::assign_doc_number;
