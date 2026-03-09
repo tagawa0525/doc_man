@@ -396,3 +396,26 @@ pub struct CirculationResponse {
 pub struct CreateCirculationRequest {
     pub recipient_ids: Vec<Uuid>,
 }
+
+/// `DepartmentTree` をフラットな `(id, label)` リストに変換する。
+/// ラベルは階層を ` > ` で連結し、ルートにはコードを付与する。
+pub fn flatten_dept_tree(
+    depts: &[DepartmentTree],
+    result: &mut Vec<(String, String)>,
+    prefix: &str,
+) {
+    for d in depts {
+        let label = if prefix.is_empty() {
+            format!("{} ({})", d.name, d.code)
+        } else {
+            format!("{prefix} > {}", d.name)
+        };
+        result.push((d.id.to_string(), label));
+        let next_prefix = if prefix.is_empty() {
+            d.name.clone()
+        } else {
+            format!("{prefix} > {}", d.name)
+        };
+        flatten_dept_tree(&d.children, result, &next_prefix);
+    }
+}

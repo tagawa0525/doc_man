@@ -4,29 +4,12 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::{CreateEmployeeRequest, DepartmentTree, UpdateEmployeeRequest};
+use crate::api::types::{flatten_dept_tree, CreateEmployeeRequest, UpdateEmployeeRequest};
 use crate::components::form::FormField;
 use crate::components::toast::ToastContext;
 
 #[component]
 pub fn EmployeeFormPage() -> impl IntoView {
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            result.push((d.id.to_string(), label.clone()));
-            let next_prefix = if prefix.is_empty() {
-                d.name.clone()
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            flatten_depts(&d.children, result, &next_prefix);
-        }
-    }
-
     let toast = expect_context::<ToastContext>();
     let params = use_params_map();
 
@@ -208,7 +191,7 @@ pub fn EmployeeFormPage() -> impl IntoView {
                     } else {
                         let dept_options = depts_resource.get().and_then(std::result::Result::ok).map(|depts| {
                             let mut opts = Vec::new();
-                            flatten_depts(&depts, &mut opts, "");
+                            flatten_dept_tree(&depts, &mut opts, "");
                             opts
                         }).unwrap_or_default();
 

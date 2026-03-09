@@ -3,7 +3,7 @@ use web_sys::HtmlInputElement;
 
 use crate::api;
 use crate::api::types::{
-    CreateDisciplineRequest, DepartmentTree, DisciplineResponse, UpdateDisciplineRequest,
+    flatten_dept_tree, CreateDisciplineRequest, DisciplineResponse, UpdateDisciplineRequest,
 };
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
@@ -13,23 +13,6 @@ use crate::components::toast::ToastContext;
 
 #[component]
 pub fn DisciplinesPage() -> impl IntoView {
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {} ({})", prefix, d.name, d.code)
-            };
-            result.push((d.id.to_string(), label));
-            let next_prefix = if prefix.is_empty() {
-                d.name.clone()
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            flatten_depts(&d.children, result, &next_prefix);
-        }
-    }
-
     let auth = expect_context::<AuthContext>();
     let toast = expect_context::<ToastContext>();
     let page = RwSignal::new(1u32);
@@ -142,7 +125,7 @@ pub fn DisciplinesPage() -> impl IntoView {
             {move || if show_form.get() {
                 let dept_options = depts_resource.get().and_then(std::result::Result::ok).map(|depts| {
                     let mut opts = Vec::new();
-                    flatten_depts(&depts, &mut opts, "");
+                    flatten_dept_tree(&depts, &mut opts, "");
                     opts
                 }).unwrap_or_default();
 
