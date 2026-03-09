@@ -226,6 +226,105 @@ async fn get_employee_not_found_returns_404(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
+// ── POST /employees with email ────────────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn post_employee_with_email_returns_email_in_response(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/employees")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({
+                        "name": "鈴木 花子",
+                        "employee_code": "E001",
+                        "email": "suzuki@example.com",
+                        "role": "general",
+                        "department_id": dept,
+                        "effective_from": "2026-04-01"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["email"], "suzuki@example.com");
+}
+
+// ── GET /employees returns email ─────────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_employee_by_id_returns_email(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+
+    // email 付きで従業員を直接INSERT
+    let row = sqlx::query(
+        "INSERT INTO employees (name, employee_code, email, role, is_active)
+         VALUES ('テスト太郎', 'E001', 'test@example.com', 'general', true)
+         RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    use sqlx::Row;
+    let emp_id: uuid::Uuid = row.get("id");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/employees/{}", emp_id))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["email"], "test@example.com");
+}
+
+// ── PUT /employees/{id} with email ───────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn put_employee_updates_email(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let emp = helpers::insert_employee(&pool, "E001", "general").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/v1/employees/{}", emp.id))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({ "email": "updated@example.com" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["email"], "updated@example.com");
+}
+
 // ── PUT /employees/{id} ───────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
