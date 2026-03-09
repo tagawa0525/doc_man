@@ -64,29 +64,29 @@ db-seed:
 # DB をリセットしてシードデータを投入
 db-reset-seed: db-reset db-seed
 
-# --- Docker ---
+# --- Podman ---
 
-# Docker イメージをビルド
-docker-build:
-    docker compose build
+# コンテナイメージをビルド
+pod-build:
+    podman compose build
 
 # コンテナをバックグラウンドで起動
-docker-up:
-    docker compose up -d
+pod-up:
+    podman compose up -d
 
 # コンテナを起動してシードデータを投入
-docker-up-seed:
-    docker compose up -d
-    docker compose --profile seed run --rm seed
+pod-up-seed:
+    podman compose up -d
+    podman compose --profile seed run --rm seed
 
 # コンテナを停止
-docker-down:
-    docker compose down
+pod-down:
+    podman compose down
 
 # コンテナを停止してボリュームも削除
-docker-clean:
-    docker compose down -v
+pod-clean:
+    podman compose down -v
 
 # app のログを表示
-docker-logs:
-    docker compose logs -f app
+pod-logs:
+    podman compose logs -f app
