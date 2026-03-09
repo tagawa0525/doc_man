@@ -56,7 +56,7 @@ git mv scripts/seed.sql server/scripts/seed.sql
 
 ### Commit 2: Cargo workspace 構成
 
-**Root `Cargo.toml`** — 全面書き換え:
+**Root `Cargo.toml`** — 全依存バージョンを集約した workspace manifest:
 
 ```toml
 [workspace]
@@ -65,16 +65,40 @@ default-members = ["server"]
 resolver = "3"
 
 [workspace.dependencies]
+# === 共通 ===
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 uuid = { version = "1.22.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.44", features = ["serde"] }
+
+# === server ===
+axum = { version = "0.8.8", features = ["macros"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.6.8", features = ["trace", "cors", "fs"] }
+tokio = { version = "1.50.0", features = ["full"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
+thiserror = "2.0.18"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+
+# === frontend ===
+leptos = { version = "0.8.17", features = ["csr"] }
+leptos_router = "0.8.12"
+leptos_meta = "0.8.6"
+gloo-net = { version = "0.6.0", features = ["json"] }
+gloo-storage = "0.3.0"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
+wasm-bindgen = "0.2.114"
+wasm-bindgen-futures = "0.4.64"
+web-sys = { version = "0.3.91", features = ["Window", "Location", "Storage", "HtmlInputElement", "HtmlSelectElement", "console"] }
+console_error_panic_hook = "0.1.7"
 ```
 
 - `default-members = ["server"]` — `cargo build` / `cargo test` がサーバーのみ対象（frontend は WASM ターゲットなので native build 不可）
 - `resolver = "3"` — edition 2024 が要求
+- 全依存のバージョンを root に集約し、メンバーでは `.workspace = true` のみ
 
-**`server/Cargo.toml`** — 新規作成（旧 root から移行）:
+**`server/Cargo.toml`** — 新規作成（旧 root から移行、バージョンは workspace 参照）:
 
 ```toml
 [package]
@@ -87,29 +111,40 @@ name = "doc_man"
 path = "src/lib.rs"
 
 [dependencies]
-axum            = { version = "0.8.8", features = ["macros"] }
-tower           = { version = "0.5.3", features = ["util"] }
-tower-http      = { version = "0.6.8", features = ["trace", "cors", "fs"] }
-tokio           = { version = "1.50.0", features = ["full"] }
-sqlx            = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+sqlx.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 chrono.workspace = true
-thiserror       = "2.0.18"
-tracing         = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 ```
 
 - package name は `doc_man` のまま（テストの `use doc_man::` を壊さない）
 
-**`frontend/Cargo.toml`** — 共通依存を workspace 参照に変更:
+**`frontend/Cargo.toml`** — 全依存を workspace 参照に変更:
 
 ```toml
+[dependencies]
+leptos.workspace = true
+leptos_router.workspace = true
+leptos_meta.workspace = true
+gloo-net.workspace = true
+gloo-storage.workspace = true
+gloo-timers.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid = { workspace = true, features = ["js"] }
 chrono.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true
+console_error_panic_hook.workspace = true
 ```
 
 - `uuid` は workspace の `["v4", "serde"]` に frontend 固有の `["js"]` をマージ
@@ -154,7 +189,7 @@ workspace root から実行:
 | `scripts/seed.sql`    | `git mv` → `server/scripts/seed.sql` |
 | `Cargo.toml` (root)   | 全面書き換え（workspace manifest）   |
 | `server/Cargo.toml`   | 新規作成                             |
-| `frontend/Cargo.toml` | 4 依存を workspace 参照に変更        |
+| `frontend/Cargo.toml` | 全依存を workspace 参照に変更        |
 | `frontend/Cargo.lock` | 削除                                 |
 | `flake.nix`           | パス 3 箇所 + ヘルプテキスト更新     |
 | `.gitignore`          | `/frontend/target` 行削除            |

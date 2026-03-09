@@ -8,15 +8,15 @@ name = "doc_man"
 path = "src/lib.rs"
 
 [dependencies]
-axum               = { version = "0.8.8", features = ["macros"] }
-tower              = { version = "0.5.3", features = ["util"] }
-tower-http         = { version = "0.6.8", features = ["trace", "cors", "fs"] }
-tokio              = { version = "1.50.0", features = ["full"] }
-sqlx               = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
-serde.workspace    = true
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+sqlx.workspace = true
+serde.workspace = true
 serde_json.workspace = true
-uuid.workspace     = true
-chrono.workspace   = true
-thiserror          = "2.0.18"
-tracing            = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

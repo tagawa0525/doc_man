@@ -4,17 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-leptos = { version = "0.8.17", features = ["csr"] }
-leptos_router = "0.8.12"
-leptos_meta = "0.8.6"
-gloo-net = { version = "0.6.0", features = ["json"] }
-gloo-storage = "0.3.0"
-gloo-timers = { version = "0.3.0", features = ["futures"] }
+leptos.workspace = true
+leptos_router.workspace = true
+leptos_meta.workspace = true
+gloo-net.workspace = true
+gloo-storage.workspace = true
+gloo-timers.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid = { workspace = true, features = ["js"] }
 chrono.workspace = true
-wasm-bindgen = "0.2.114"
-wasm-bindgen-futures = "0.4.64"
-web-sys = { version = "0.3.91", features = ["Window", "Location", "Storage", "HtmlInputElement", "HtmlSelectElement", "console"] }
-console_error_panic_hook = "0.1.7"
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true
+console_error_panic_hook.workspace = true
