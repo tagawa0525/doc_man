@@ -2,7 +2,9 @@ use leptos::prelude::*;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{
+    CreateDocumentKindRequest, DocumentKindResponse, UpdateDocumentKindRequest,
+};
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
 use crate::components::loading::Loading;

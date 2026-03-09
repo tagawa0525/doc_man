@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -35,7 +36,6 @@ pub async fn list_disciplines(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     let data: Vec<DisciplineResponse> = rows
         .into_iter()
         .map(|r| {
@@ -93,7 +93,6 @@ pub async fn create_discipline(
         _ => AppError::Database(e),
     })?;
 
-    use sqlx::Row;
     let id: Uuid = row.get("id");
     let disc = fetch_discipline_by_id(&state, id)
         .await?
@@ -110,7 +109,7 @@ pub async fn get_discipline(
 ) -> Result<Json<DisciplineResponse>, AppError> {
     let disc = fetch_discipline_by_id(&state, id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("discipline {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("discipline {id} not found")))?;
 
     Ok(Json(disc))
 }
@@ -138,9 +137,8 @@ pub async fn update_discipline(
         .fetch_optional(&state.db)
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound(format!("discipline {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("discipline {id} not found")))?;
 
-    use sqlx::Row;
     let current_name: String = existing.get("name");
     let current_dept_id: Uuid = existing.get("department_id");
 
@@ -157,7 +155,7 @@ pub async fn update_discipline(
     .await
     .map_err(|e| match &e {
         sqlx::Error::Database(db_err) if db_err.code().as_deref() == Some("23503") => {
-            AppError::InvalidRequest(format!("department_id '{}' does not exist", new_dept_id))
+            AppError::InvalidRequest(format!("department_id '{new_dept_id}' does not exist"))
         }
         _ => AppError::Database(e),
     })?;
@@ -187,7 +185,6 @@ async fn fetch_discipline_by_id(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     Ok(row.map(|r| {
         DisciplineRow {
             id: r.get("id"),

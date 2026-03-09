@@ -68,6 +68,7 @@ impl AuthContext {
         self.user.get().map(|u| u.role)
     }
 
+    #[allow(clippy::unused_self)]
     pub fn login(&self, token: &str) {
         client::set_token(token);
     }

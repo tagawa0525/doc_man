@@ -71,7 +71,7 @@ async fn get_projects_with_discipline_filter(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/projects?discipline_id={}", disc_a))
+                .uri(format!("/api/v1/projects?discipline_id={disc_a}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -249,7 +249,7 @@ async fn get_project_by_id_returns_200(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -295,7 +295,7 @@ async fn put_project_admin_returns_200(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -324,7 +324,7 @@ async fn put_project_manager_own_project_returns_200(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -353,7 +353,7 @@ async fn put_project_manager_other_project_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -379,7 +379,7 @@ async fn put_project_general_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", general.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -407,7 +407,7 @@ async fn delete_project_admin_returns_204(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -430,7 +430,7 @@ async fn delete_project_non_admin_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", general.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -486,7 +486,7 @@ async fn delete_project_with_documents_returns_409(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(format!("/api/v1/projects/{}", proj_id))
+                .uri(format!("/api/v1/projects/{proj_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),

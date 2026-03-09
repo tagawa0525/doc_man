@@ -28,11 +28,11 @@ impl PaginationParams {
     }
 
     pub fn offset(&self) -> i64 {
-        ((self.page.saturating_sub(1)) * self.per_page) as i64
+        i64::from((self.page.saturating_sub(1)) * self.per_page)
     }
 
     pub fn limit(&self) -> i64 {
-        self.per_page as i64
+        i64::from(self.per_page)
     }
 }
 

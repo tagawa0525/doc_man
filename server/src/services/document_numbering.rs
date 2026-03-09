@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use crate::error::AppError;
 
 /// 文書番号を採番する。
@@ -16,8 +18,7 @@ pub async fn assign_doc_number(
 ) -> Result<String, AppError> {
     if !(2..=3).contains(&seq_digits) {
         return Err(AppError::InvalidRequest(format!(
-            "seq_digits must be 2 or 3, got {}",
-            seq_digits
+            "seq_digits must be 2 or 3, got {seq_digits}"
         )));
     }
 
@@ -26,10 +27,9 @@ pub async fn assign_doc_number(
         registered_at_jst.format("%y"),
         registered_at_jst.format("%m"),
     );
-    let prefix = format!("{}{}-{}", doc_kind_code, dept_code, yymm);
+    let prefix = format!("{doc_kind_code}{dept_code}-{yymm}");
 
     // prefix をハッシュ化してアドバイザリロックのキーとする
-    use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     prefix.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;
@@ -46,7 +46,7 @@ pub async fn assign_doc_number(
          ORDER BY doc_number DESC
          LIMIT 1",
     )
-    .bind(format!("{}%", prefix))
+    .bind(format!("{prefix}%"))
     .fetch_optional(&mut *tx)
     .await
     .map_err(AppError::Database)?;
@@ -76,6 +76,7 @@ pub async fn assign_doc_number(
 mod tests {
     use super::*;
     use sqlx::PgPool;
+    use sqlx::Row;
 
     async fn setup_test_data(pool: &PgPool) -> (String, String, i32) {
         // department
@@ -117,7 +118,6 @@ mod tests {
         let (kind_code, dept_code, seq_digits) = setup_test_data(&pool).await;
 
         // employee + project + doc_kind_id for document insertion
-        use sqlx::Row;
         let emp_id: uuid::Uuid = sqlx::query(
             "INSERT INTO employees (name, employee_code, role, is_active)
              VALUES ('Test', 'T001', 'admin', true) RETURNING id",
@@ -164,7 +164,7 @@ mod tests {
                 "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
                  VALUES ($1, 'test', '/path', $2, $3, '設計', $4)",
             )
-            .bind(format!("内設計-2603{:03}", i))
+            .bind(format!("内設計-2603{i:03}"))
             .bind(emp_id)
             .bind(dk_id)
             .bind(proj_id)
@@ -202,7 +202,6 @@ mod tests {
                 .await
                 .unwrap();
         // 文書テーブルに保存するため依存データを作成
-        use sqlx::Row;
         let emp_id: uuid::Uuid = sqlx::query(
             "INSERT INTO employees (name, employee_code, role, is_active)
              VALUES ('Test', 'T001', 'admin', true) RETURNING id",

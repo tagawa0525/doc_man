@@ -92,7 +92,7 @@ pub fn CirculationSection(
             } else { view! { <span></span> }.into_any() }}
 
             {move || if show_create.get() {
-                let emps = employees_resource.get().and_then(|r| r.ok()).map(|p| p.data).unwrap_or_default();
+                let emps = employees_resource.get().and_then(std::result::Result::ok).map(|p| p.data).unwrap_or_default();
                 view! {
                     <div class="notification is-light mb-3">
                         <label class="label is-small">"回覧先を選択（複数可）"</label>

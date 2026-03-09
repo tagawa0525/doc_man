@@ -203,7 +203,7 @@ async fn get_department_by_id_returns_200(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/departments/{}", dept_id))
+                .uri(format!("/api/v1/departments/{dept_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -247,7 +247,7 @@ async fn put_department_admin_returns_200(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/departments/{}", dept_id))
+                .uri(format!("/api/v1/departments/{dept_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -273,7 +273,7 @@ async fn put_department_non_admin_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/departments/{}", dept_id))
+                .uri(format!("/api/v1/departments/{dept_id}"))
                 .header("Authorization", format!("Bearer {}", general.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(

@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -38,7 +39,6 @@ pub async fn list_document_kinds(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     let data: Vec<DocumentKindResponse> = rows
         .into_iter()
         .map(|r| {
@@ -97,7 +97,6 @@ pub async fn create_document_kind(
         _ => AppError::Database(e),
     })?;
 
-    use sqlx::Row;
     let resp = DocumentKindResponse::from(DocumentKindRow {
         id: row.get("id"),
         code: row.get("code"),
@@ -123,9 +122,8 @@ pub async fn get_document_kind(
     .fetch_optional(&state.db)
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("document kind {} not found", id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("document kind {id} not found")))?;
 
-    use sqlx::Row;
     let resp = DocumentKindResponse::from(DocumentKindRow {
         id: row.get("id"),
         code: row.get("code"),
@@ -158,9 +156,8 @@ pub async fn update_document_kind(
         .fetch_optional(&state.db)
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound(format!("document kind {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("document kind {id} not found")))?;
 
-    use sqlx::Row;
     let current_name: String = existing.get("name");
     let current_seq_digits: i32 = existing.get("seq_digits");
 

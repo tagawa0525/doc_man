@@ -43,7 +43,7 @@ pub fn DocumentDetailPage() -> impl IntoView {
                     doc_resource.get().map(|doc| match doc {
                         Some(doc) => {
                             let id = doc.id;
-                            let edit_url = format!("/documents/{}/edit", id);
+                            let edit_url = format!("/documents/{id}/edit");
                             let status = doc.status.clone();
                             view! {
                                 <div class="level">
@@ -95,8 +95,8 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                         </div>
                                     </div>
                                     <div class="column is-4">
-                                        <ApprovalSection doc_id=id doc_status=status.clone() on_change=Callback::new(move |_| refresh.update(|v| *v += 1)) />
-                                        <CirculationSection doc_id=id doc_status=status on_change=Callback::new(move |_| refresh.update(|v| *v += 1)) />
+                                        <ApprovalSection doc_id=id doc_status=status.clone() on_change=Callback::new(move |()| refresh.update(|v| *v += 1)) />
+                                        <CirculationSection doc_id=id doc_status=status on_change=Callback::new(move |()| refresh.update(|v| *v += 1)) />
                                     </div>
                                 </div>
                             }.into_any()

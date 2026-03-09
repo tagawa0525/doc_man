@@ -1,5 +1,7 @@
 use super::client::{self, ApiError};
-use super::types::*;
+use super::types::{
+    CreateDepartmentRequest, DepartmentResponse, DepartmentTree, UpdateDepartmentRequest,
+};
 use uuid::Uuid;
 
 pub async fn list() -> Result<Vec<DepartmentTree>, ApiError> {

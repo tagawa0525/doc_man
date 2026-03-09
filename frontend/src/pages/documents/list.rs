@@ -29,7 +29,7 @@ pub fn DocumentListPage() -> impl IntoView {
     let do_delete = move |id: uuid::Uuid| {
         leptos::task::spawn_local(async move {
             match api::documents::delete(id).await {
-                Ok(_) => {
+                Ok(()) => {
                     toast.success("削除しました");
                     refresh.update(|v| *v += 1);
                 }
@@ -59,8 +59,8 @@ pub fn DocumentListPage() -> impl IntoView {
                 <ConfirmModal
                     title="文書削除"
                     message=format!("「{}」を削除しますか？", title)
-                    on_confirm=Callback::new(move |_| do_delete(id))
-                    on_cancel=Callback::new(move |_| delete_target.set(None))
+                    on_confirm=Callback::new(move |()| do_delete(id))
+                    on_cancel=Callback::new(move |()| delete_target.set(None))
                     danger=true
                 />
             })}

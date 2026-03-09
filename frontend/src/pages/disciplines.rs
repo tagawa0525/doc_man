@@ -2,7 +2,9 @@ use leptos::prelude::*;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{
+    CreateDisciplineRequest, DepartmentTree, DisciplineResponse, UpdateDisciplineRequest,
+};
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
 use crate::components::loading::Loading;
@@ -11,6 +13,23 @@ use crate::components::toast::ToastContext;
 
 #[component]
 pub fn DisciplinesPage() -> impl IntoView {
+    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
+        for d in depts {
+            let label = if prefix.is_empty() {
+                format!("{} ({})", d.name, d.code)
+            } else {
+                format!("{} > {} ({})", prefix, d.name, d.code)
+            };
+            result.push((d.id.to_string(), label));
+            let next_prefix = if prefix.is_empty() {
+                d.name.clone()
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
+            flatten_depts(&d.children, result, &next_prefix);
+        }
+    }
+
     let auth = expect_context::<AuthContext>();
     let toast = expect_context::<ToastContext>();
     let page = RwSignal::new(1u32);
@@ -52,12 +71,9 @@ pub fn DisciplinesPage() -> impl IntoView {
             return;
         }
 
-        let department_id = match uuid::Uuid::parse_str(&dept_id_str) {
-            Ok(id) => id,
-            Err(_) => {
-                toast.error("部署を選択してください");
-                return;
-            }
+        let Ok(department_id) = uuid::Uuid::parse_str(&dept_id_str) else {
+            toast.error("部署を選択してください");
+            return;
         };
 
         saving.set(true);
@@ -107,23 +123,6 @@ pub fn DisciplinesPage() -> impl IntoView {
         show_form.set(true);
     };
 
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {} ({})", prefix, d.name, d.code)
-            };
-            result.push((d.id.to_string(), label));
-            let next_prefix = if prefix.is_empty() {
-                d.name.clone()
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            flatten_depts(&d.children, result, &next_prefix);
-        }
-    }
-
     view! {
         <div>
             <div class="level">
@@ -141,7 +140,7 @@ pub fn DisciplinesPage() -> impl IntoView {
             </div>
 
             {move || if show_form.get() {
-                let dept_options = depts_resource.get().and_then(|r| r.ok()).map(|depts| {
+                let dept_options = depts_resource.get().and_then(std::result::Result::ok).map(|depts| {
                     let mut opts = Vec::new();
                     flatten_depts(&depts, &mut opts, "");
                     opts

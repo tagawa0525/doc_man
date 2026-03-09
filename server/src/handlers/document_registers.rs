@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -63,7 +64,6 @@ pub async fn list_document_registers(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     let data: Vec<DocumentRegisterResponse> = rows
         .into_iter()
         .map(|r| {
@@ -143,7 +143,6 @@ pub async fn create_document_register(
         _ => AppError::Database(e),
     })?;
 
-    use sqlx::Row;
     let id: Uuid = row.get("id");
     let reg = fetch_register_by_id(&state, id).await?.ok_or_else(|| {
         AppError::Internal("failed to fetch created document register".to_string())
@@ -160,7 +159,7 @@ pub async fn get_document_register(
 ) -> Result<Json<DocumentRegisterResponse>, AppError> {
     let reg = fetch_register_by_id(&state, id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("document register {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("document register {id} not found")))?;
 
     Ok(Json(reg))
 }
@@ -190,9 +189,8 @@ pub async fn update_document_register(
     .fetch_optional(&state.db)
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("document register {} not found", id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("document register {id} not found")))?;
 
-    use sqlx::Row;
     let current_root: String = existing.get("file_server_root");
     let current_sub: Option<String> = existing.get("new_doc_sub_path");
     let current_pattern: Option<String> = existing.get("doc_number_pattern");
@@ -242,7 +240,6 @@ async fn fetch_register_by_id(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     Ok(row.map(|r| {
         DocumentRegisterRow {
             id: r.get("id"),

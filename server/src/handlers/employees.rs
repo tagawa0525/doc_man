@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -96,7 +97,6 @@ pub async fn list_employees(
         (total, rows)
     };
 
-    use sqlx::Row;
     let data: Vec<EmployeeResponse> = rows
         .into_iter()
         .map(|r| {
@@ -169,7 +169,6 @@ pub async fn create_employee(
         _ => AppError::Database(e),
     })?;
 
-    use sqlx::Row;
     let employee_id: Uuid = row.get("id");
 
     sqlx::query(
@@ -208,7 +207,7 @@ pub async fn get_employee(
 ) -> Result<Json<EmployeeResponse>, AppError> {
     let emp = fetch_employee_by_id(&state, id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("employee {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("employee {id} not found")))?;
 
     Ok(Json(emp))
 }
@@ -230,9 +229,8 @@ pub async fn update_employee(
             .fetch_optional(&state.db)
             .await
             .map_err(AppError::Database)?
-            .ok_or_else(|| AppError::NotFound(format!("employee {} not found", id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("employee {id} not found")))?;
 
-    use sqlx::Row;
     let current_name: String = existing.get("name");
     let current_email: Option<String> = existing.get("email");
     let current_ad_account: Option<String> = existing.get("ad_account");
@@ -315,7 +313,6 @@ async fn fetch_employee_by_id(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     Ok(row.map(|r| {
         EmployeeRow {
             id: r.get("id"),

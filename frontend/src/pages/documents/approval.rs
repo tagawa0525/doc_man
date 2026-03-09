@@ -3,7 +3,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{ApprovalActionRequest, CreateApprovalRouteRequest, StepInput};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::toast::ToastContext;
@@ -145,7 +145,7 @@ pub fn ApprovalSection(
             } else { view! { <span></span> }.into_any() }}
 
             {move || if show_create.get() {
-                let emps = employees_resource.get().and_then(|r| r.ok()).map(|p| p.data).unwrap_or_default();
+                let emps = employees_resource.get().and_then(std::result::Result::ok).map(|p| p.data).unwrap_or_default();
                 let emps2 = emps.clone();
                 let emps3 = emps.clone();
                 view! {
@@ -217,7 +217,7 @@ pub fn ApprovalSection(
                                                         <span class="icon is-small"><i class=status_icon></i></span>
                                                     </span>
                                                 </div>
-                                                {step.comment.map(|c| view! { <p class="is-size-7 has-text-grey ml-3">{format!("\"{}\"", c)}</p> }.into_any()).unwrap_or_else(|| view! { <span></span> }.into_any())}
+                                                {step.comment.map_or_else(|| view! { <span></span> }.into_any(), |c| view! { <p class="is-size-7 has-text-grey ml-3">{format!("\"{c}\"")}</p> }.into_any())}
                                                 {if can_act {
                                                     view! {
                                                         <div class="mt-1 ml-3">

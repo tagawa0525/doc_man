@@ -45,7 +45,7 @@ async fn get_document_registers_with_doc_kind_filter(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/document-registers?doc_kind_id={}", kind_a))
+                .uri(format!("/api/v1/document-registers?doc_kind_id={kind_a}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -75,10 +75,7 @@ async fn get_document_registers_with_department_filter(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!(
-                    "/api/v1/document-registers?department_id={}",
-                    dept_a
-                ))
+                .uri(format!("/api/v1/document-registers?department_id={dept_a}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -207,7 +204,7 @@ async fn get_document_register_by_id_returns_200(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/document-registers/{}", reg_id))
+                .uri(format!("/api/v1/document-registers/{reg_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -253,7 +250,7 @@ async fn put_document_register_admin_returns_200(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/document-registers/{}", reg_id))
+                .uri(format!("/api/v1/document-registers/{reg_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -282,7 +279,7 @@ async fn put_document_register_register_code_change_returns_422(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/document-registers/{}", reg_id))
+                .uri(format!("/api/v1/document-registers/{reg_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -308,7 +305,7 @@ async fn put_document_register_non_admin_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/document-registers/{}", reg_id))
+                .uri(format!("/api/v1/document-registers/{reg_id}"))
                 .header("Authorization", format!("Bearer {}", general.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(

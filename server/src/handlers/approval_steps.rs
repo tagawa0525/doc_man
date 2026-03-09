@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -16,8 +17,6 @@ pub async fn list_approval_steps(
     Path(doc_id): Path<Uuid>,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ApprovalStepResponse>>, AppError> {
-    use sqlx::Row;
-
     let rows = sqlx::query(
         "SELECT a.id, a.route_revision, a.document_revision, a.step_order,
                 a.status, a.approved_at, a.comment, a.created_at,
@@ -72,8 +71,6 @@ pub async fn create_approval_route(
         ));
     }
 
-    use sqlx::Row;
-
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     // 文書のステータスと revision を取得
@@ -82,15 +79,14 @@ pub async fn create_approval_route(
         .fetch_optional(tx.as_mut())
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound(format!("document {} not found", doc_id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("document {doc_id} not found")))?;
 
     let doc_status: String = doc.get("status");
     let doc_revision: i32 = doc.get("revision");
 
     if doc_status != "draft" && doc_status != "rejected" {
         return Err(AppError::Unprocessable(format!(
-            "approval route can only be set on draft or rejected documents, current status: {}",
-            doc_status
+            "approval route can only be set on draft or rejected documents, current status: {doc_status}"
         )));
     }
 
@@ -184,8 +180,6 @@ pub async fn approve_step(
     State(state): State<AppState>,
     Json(req): Json<ApprovalActionRequest>,
 ) -> Result<Json<ApprovalStepResponse>, AppError> {
-    use sqlx::Row;
-
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     // 対象ステップを取得
@@ -201,7 +195,7 @@ pub async fn approve_step(
     .fetch_optional(tx.as_mut())
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("approval step {} not found", step_id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("approval step {step_id} not found")))?;
 
     let approver_id: Uuid = step.get("approver_id");
     let route_revision: i32 = step.get("route_revision");
@@ -305,8 +299,6 @@ pub async fn reject_step(
     State(state): State<AppState>,
     Json(req): Json<ApprovalActionRequest>,
 ) -> Result<Json<ApprovalStepResponse>, AppError> {
-    use sqlx::Row;
-
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     // 対象ステップを取得
@@ -322,7 +314,7 @@ pub async fn reject_step(
     .fetch_optional(tx.as_mut())
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("approval step {} not found", step_id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("approval step {step_id} not found")))?;
 
     let approver_id: Uuid = step.get("approver_id");
     let route_revision: i32 = step.get("route_revision");

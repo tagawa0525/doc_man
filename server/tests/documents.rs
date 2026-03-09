@@ -163,7 +163,7 @@ async fn get_documents_with_project_filter(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/documents?project_id={}", proj_a))
+                .uri(format!("/api/v1/documents?project_id={proj_a}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -193,7 +193,7 @@ async fn get_document_by_id_returns_200(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/documents/{}", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -242,7 +242,7 @@ async fn put_document_updates_title_and_increments_revision(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/documents/{}", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -275,7 +275,7 @@ async fn put_document_doc_number_change_returns_422(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/documents/{}", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -304,7 +304,7 @@ async fn put_document_status_change_returns_422(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(format!("/api/v1/documents/{}", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -335,7 +335,7 @@ async fn delete_document_admin_returns_204(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(format!("/api/v1/documents/{}", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -362,7 +362,7 @@ async fn delete_document_non_admin_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(format!("/api/v1/documents/{}", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}"))
                 .header("Authorization", format!("Bearer {}", general.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),

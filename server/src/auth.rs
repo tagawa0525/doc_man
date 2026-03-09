@@ -2,6 +2,7 @@ use axum::extract::FromRef;
 use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
 use serde::{Deserialize, Serialize};
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::error::AppError;
@@ -56,7 +57,7 @@ where
             .headers
             .get(AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_owned());
+            .map(std::borrow::ToOwned::to_owned);
 
         async move {
             let auth_header = auth_header.ok_or(AppError::Unauthorized)?;
@@ -73,7 +74,6 @@ where
                     .map_err(AppError::Database)?
                     .ok_or(AppError::Unauthorized)?;
 
-            use sqlx::Row;
             let is_active: bool = row.get("is_active");
             if !is_active {
                 return Err(AppError::Unauthorized);

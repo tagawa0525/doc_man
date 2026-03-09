@@ -4,7 +4,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{CreateProjectRequest, UpdateProjectRequest};
 use crate::components::form::FormField;
 use crate::components::toast::ToastContext;
 
@@ -128,7 +128,7 @@ pub fn ProjectFormPage() -> impl IntoView {
             };
 
             match result {
-                Ok(_) => {
+                Ok(()) => {
                     toast.success("保存しました");
                     if let Some(window) = web_sys::window() {
                         let _ = window.location().set_href("/projects");
@@ -192,7 +192,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                                     <select prop:value=move || form_discipline_id.get()
                                         on:change=move |ev| form_discipline_id.set(event_target_value(&ev))>
                                         <option value="">"-- 選択 --"</option>
-                                        {move || disciplines_resource.get().and_then(|r| r.ok()).map(|p| {
+                                        {move || disciplines_resource.get().and_then(std::result::Result::ok).map(|p| {
                                             p.data.into_iter().map(|d| {
                                                 view! { <option value=d.id.to_string()>{format!("{} ({})", d.name, d.code)}</option> }
                                             }).collect_view()
@@ -207,7 +207,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                                     <select prop:value=move || form_manager_id.get()
                                         on:change=move |ev| form_manager_id.set(event_target_value(&ev))>
                                         <option value="">"-- なし --"</option>
-                                        {move || employees_resource.get().and_then(|r| r.ok()).map(|p| {
+                                        {move || employees_resource.get().and_then(std::result::Result::ok).map(|p| {
                                             p.data.into_iter().map(|e| {
                                                 view! { <option value=e.id.to_string()>{e.name}</option> }
                                             }).collect_view()

@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -14,8 +15,6 @@ pub async fn list_circulations(
     Path(doc_id): Path<Uuid>,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<CirculationResponse>>, AppError> {
-    use sqlx::Row;
-
     let rows = sqlx::query(
         "SELECT c.id, c.confirmed_at,
                 e.id AS recipient_id, e.name AS recipient_name
@@ -63,8 +62,6 @@ pub async fn create_circulations(
         ));
     }
 
-    use sqlx::Row;
-
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     // 文書のステータスを確認
@@ -73,13 +70,12 @@ pub async fn create_circulations(
         .fetch_optional(tx.as_mut())
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound(format!("document {} not found", doc_id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("document {doc_id} not found")))?;
 
     let doc_status: String = doc.get("status");
     if doc_status != "approved" {
         return Err(AppError::Unprocessable(format!(
-            "circulation can only be started on approved documents, current status: {}",
-            doc_status
+            "circulation can only be started on approved documents, current status: {doc_status}"
         )));
     }
 
@@ -160,8 +156,6 @@ pub async fn confirm_circulation(
     Path(doc_id): Path<Uuid>,
     State(state): State<AppState>,
 ) -> Result<Json<CirculationResponse>, AppError> {
-    use sqlx::Row;
-
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     // 文書の存在とステータスを確認（行ロックで並行確認を直列化）
@@ -170,13 +164,12 @@ pub async fn confirm_circulation(
         .fetch_optional(tx.as_mut())
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound(format!("document {} not found", doc_id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("document {doc_id} not found")))?;
 
     let doc_status: String = doc.get("status");
     if doc_status != "circulating" {
         return Err(AppError::Unprocessable(format!(
-            "document is not in circulating status, current status: {}",
-            doc_status
+            "document is not in circulating status, current status: {doc_status}"
         )));
     }
 

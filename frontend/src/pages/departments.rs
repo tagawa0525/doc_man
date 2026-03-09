@@ -3,7 +3,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::CreateDepartmentRequest;
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
 use crate::components::loading::Loading;
@@ -60,12 +60,9 @@ pub fn DepartmentsPage() -> impl IntoView {
             return;
         }
 
-        let effective_from = match chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") {
-            Ok(d) => d,
-            Err(_) => {
-                toast.error("日付形式が不正です");
-                return;
-            }
+        let Ok(effective_from) = chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") else {
+            toast.error("日付形式が不正です");
+            return;
         };
 
         let parent_id = {
@@ -179,7 +176,7 @@ pub fn DepartmentsPage() -> impl IntoView {
                                                 <tr><th>"コード"</th><td>{d.code}</td></tr>
                                                 <tr><th>"名前"</th><td>{d.name}</td></tr>
                                                 <tr><th>"有効開始日"</th><td>{d.effective_from.to_string()}</td></tr>
-                                                <tr><th>"有効終了日"</th><td>{d.effective_to.map(|d| d.to_string()).unwrap_or_else(|| "-".to_string())}</td></tr>
+                                                <tr><th>"有効終了日"</th><td>{d.effective_to.map_or_else(|| "-".to_string(), |d| d.to_string())}</td></tr>
                                                 <tr><th>"ID"</th><td class="is-size-7 has-text-grey">{d.id.to_string()}</td></tr>
                                             </tbody>
                                         </table>

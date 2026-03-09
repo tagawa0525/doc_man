@@ -1,5 +1,7 @@
 use super::client::{self, ApiError};
-use super::types::*;
+use super::types::{
+    CreateEmployeeRequest, EmployeeResponse, PaginatedResponse, UpdateEmployeeRequest,
+};
 use uuid::Uuid;
 
 pub async fn list(

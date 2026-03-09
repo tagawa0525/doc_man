@@ -26,7 +26,7 @@ pub fn ProjectListPage() -> impl IntoView {
     let do_delete = move |id: uuid::Uuid| {
         leptos::task::spawn_local(async move {
             match api::projects::delete(id).await {
-                Ok(_) => {
+                Ok(()) => {
                     toast.success("削除しました");
                     refresh.update(|v| *v += 1);
                 }
@@ -57,8 +57,8 @@ pub fn ProjectListPage() -> impl IntoView {
                     <ConfirmModal
                         title="プロジェクト削除"
                         message=format!("「{}」を削除しますか？", name)
-                        on_confirm=Callback::new(move |_| do_delete(id))
-                        on_cancel=Callback::new(move |_| delete_target.set(None))
+                        on_confirm=Callback::new(move |()| do_delete(id))
+                        on_cancel=Callback::new(move |()| delete_target.set(None))
                         danger=true
                     />
                 }
@@ -91,7 +91,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                                         <td><span class="tag is-light">{p.status}</span></td>
                                                         <td>{p.discipline.name}</td>
                                                         <td>{p.discipline.department.name}</td>
-                                                        <td>{p.manager.map(|m| m.name).unwrap_or_else(|| "-".to_string())}</td>
+                                                        <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
                                                         <td>
                                                             <div class="buttons are-small">
                                                                 <a href=format!("/projects/{}", id) class="button is-info is-outlined">

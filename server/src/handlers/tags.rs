@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
+use sqlx::Row;
 
 use crate::auth::{AuthenticatedUser, Role};
 use crate::error::AppError;
@@ -30,7 +31,6 @@ pub async fn list_tags(
         .await
         .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     let data: Vec<TagResponse> = rows
         .into_iter()
         .map(|r| TagResponse {
@@ -73,7 +73,6 @@ pub async fn create_tag(
             _ => AppError::Database(e),
         })?;
 
-    use sqlx::Row;
     Ok((
         StatusCode::CREATED,
         Json(TagResponse {

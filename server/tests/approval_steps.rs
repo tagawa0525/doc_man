@@ -21,7 +21,7 @@ async fn get_approval_steps_returns_empty_array(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/documents/{}/approval-steps", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/approval-steps"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -53,7 +53,7 @@ async fn post_approval_steps_sets_route_and_changes_status(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/approval-steps", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/approval-steps"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -105,7 +105,7 @@ async fn post_approval_steps_viewer_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/approval-steps", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/approval-steps"))
                 .header("Authorization", format!("Bearer {}", viewer.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -147,7 +147,7 @@ async fn post_approval_steps_on_approved_doc_returns_422(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/approval-steps", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/approval-steps"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -193,8 +193,7 @@ async fn approve_step_returns_200(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri(format!(
-                    "/api/v1/documents/{}/approval-steps/{}/approve",
-                    doc_id, step_id
+                    "/api/v1/documents/{doc_id}/approval-steps/{step_id}/approve"
                 ))
                 .header(
                     "Authorization",
@@ -241,8 +240,7 @@ async fn approve_last_step_changes_doc_to_approved(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri(format!(
-                    "/api/v1/documents/{}/approval-steps/{}/approve",
-                    doc_id, step_id
+                    "/api/v1/documents/{doc_id}/approval-steps/{step_id}/approve"
                 ))
                 .header(
                     "Authorization",
@@ -293,8 +291,7 @@ async fn approve_by_non_approver_returns_403(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri(format!(
-                    "/api/v1/documents/{}/approval-steps/{}/approve",
-                    doc_id, step_id
+                    "/api/v1/documents/{doc_id}/approval-steps/{step_id}/approve"
                 ))
                 .header("Authorization", format!("Bearer {}", other.employee_code))
                 .header("Content-Type", "application/json")
@@ -338,8 +335,7 @@ async fn approve_non_active_step_returns_422(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri(format!(
-                    "/api/v1/documents/{}/approval-steps/{}/approve",
-                    doc_id, step2_id
+                    "/api/v1/documents/{doc_id}/approval-steps/{step2_id}/approve"
                 ))
                 .header(
                     "Authorization",
@@ -386,8 +382,7 @@ async fn reject_step_changes_doc_to_rejected(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri(format!(
-                    "/api/v1/documents/{}/approval-steps/{}/reject",
-                    doc_id, step1_id
+                    "/api/v1/documents/{doc_id}/approval-steps/{step1_id}/reject"
                 ))
                 .header(
                     "Authorization",
@@ -451,8 +446,7 @@ async fn reject_by_non_approver_returns_403(pool: PgPool) {
             Request::builder()
                 .method("POST")
                 .uri(format!(
-                    "/api/v1/documents/{}/approval-steps/{}/reject",
-                    doc_id, step_id
+                    "/api/v1/documents/{doc_id}/approval-steps/{step_id}/reject"
                 ))
                 .header("Authorization", format!("Bearer {}", other.employee_code))
                 .header("Content-Type", "application/json")

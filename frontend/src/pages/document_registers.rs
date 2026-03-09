@@ -2,7 +2,10 @@ use leptos::prelude::*;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{
+    CreateDocumentRegisterRequest, DepartmentTree, DocumentRegisterResponse,
+    UpdateDocumentRegisterRequest,
+};
 use crate::auth::AuthContext;
 use crate::components::form::FormField;
 use crate::components::loading::Loading;
@@ -11,6 +14,23 @@ use crate::components::toast::ToastContext;
 
 #[component]
 pub fn DocumentRegistersPage() -> impl IntoView {
+    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
+        for d in depts {
+            let label = if prefix.is_empty() {
+                format!("{} ({})", d.name, d.code)
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
+            result.push((d.id.to_string(), label.clone()));
+            let next = if prefix.is_empty() {
+                d.name.clone()
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
+            flatten_depts(&d.children, result, &next);
+        }
+    }
+
     let auth = expect_context::<AuthContext>();
     let toast = expect_context::<ToastContext>();
     let page = RwSignal::new(1u32);
@@ -47,23 +67,6 @@ pub fn DocumentRegistersPage() -> impl IntoView {
         edit_id.set(None);
         show_form.set(false);
     };
-
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            result.push((d.id.to_string(), label.clone()));
-            let next = if prefix.is_empty() {
-                d.name.clone()
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            flatten_depts(&d.children, result, &next);
-        }
-    }
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -146,8 +149,8 @@ pub fn DocumentRegistersPage() -> impl IntoView {
             </div>
 
             {move || if show_form.get() {
-                let dk_opts = doc_kinds_resource.get().and_then(|r| r.ok()).map(|p| p.data).unwrap_or_default();
-                let dept_opts = depts_resource.get().and_then(|r| r.ok()).map(|depts| { let mut o = Vec::new(); flatten_depts(&depts, &mut o, ""); o }).unwrap_or_default();
+                let dk_opts = doc_kinds_resource.get().and_then(std::result::Result::ok).map(|p| p.data).unwrap_or_default();
+                let dept_opts = depts_resource.get().and_then(std::result::Result::ok).map(|depts| { let mut o = Vec::new(); flatten_depts(&depts, &mut o, ""); o }).unwrap_or_default();
 
                 view! {
                     <div class="box mb-5">

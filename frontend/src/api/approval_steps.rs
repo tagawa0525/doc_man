@@ -1,5 +1,5 @@
 use super::client::{self, ApiError};
-use super::types::*;
+use super::types::{ApprovalActionRequest, ApprovalStepResponse, CreateApprovalRouteRequest};
 use uuid::Uuid;
 
 pub async fn list(doc_id: Uuid) -> Result<Vec<ApprovalStepResponse>, ApiError> {

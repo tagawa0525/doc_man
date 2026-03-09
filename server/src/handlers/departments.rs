@@ -3,6 +3,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use chrono::NaiveDate;
 use serde::Deserialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -61,7 +62,6 @@ pub async fn create_department(
         _ => AppError::Database(e),
     })?;
 
-    use sqlx::Row;
     let dept = DepartmentRow {
         id: row.get("id"),
         code: row.get("code"),
@@ -89,9 +89,8 @@ pub async fn get_department(
     .fetch_optional(&state.db)
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("department {} not found", id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("department {id} not found")))?;
 
-    use sqlx::Row;
     let dept = DepartmentRow {
         id: row.get("id"),
         code: row.get("code"),
@@ -125,9 +124,8 @@ pub async fn update_department(
     .fetch_optional(&state.db)
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("department {} not found", id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("department {id} not found")))?;
 
-    use sqlx::Row;
     let current_name: String = existing.get("name");
     let current_effective_to: Option<NaiveDate> = existing.get("effective_to");
     let current_merged_into_id: Option<Uuid> = existing.get("merged_into_id");
@@ -189,7 +187,6 @@ async fn fetch_department_rows(
         .await
         .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     Ok(rows
         .into_iter()
         .map(|r| DepartmentRow {
@@ -207,6 +204,22 @@ async fn fetch_department_rows(
 /// フラットなリストをツリーに組み立てる
 fn build_tree(rows: Vec<DepartmentRow>) -> Vec<DepartmentTree> {
     use std::collections::HashMap;
+
+    // 再帰的にサブツリーを構築する内部関数
+    fn build_subtree(
+        id: Uuid,
+        nodes: &mut HashMap<Uuid, DepartmentTree>,
+        children_map: &HashMap<Option<Uuid>, Vec<Uuid>>,
+    ) -> DepartmentTree {
+        let mut node = nodes.remove(&id).expect("node must exist");
+        if let Some(child_ids) = children_map.get(&Some(id)) {
+            node.children = child_ids
+                .iter()
+                .map(|&child_id| build_subtree(child_id, nodes, children_map))
+                .collect();
+        }
+        node
+    }
 
     let mut nodes: HashMap<Uuid, DepartmentTree> = rows
         .iter()
@@ -233,22 +246,6 @@ fn build_tree(rows: Vec<DepartmentRow>) -> Vec<DepartmentTree> {
     }
 
     let roots: Vec<Uuid> = children_map.get(&None).cloned().unwrap_or_default();
-
-    // 再帰的にサブツリーを構築する内部関数
-    fn build_subtree(
-        id: Uuid,
-        nodes: &mut HashMap<Uuid, DepartmentTree>,
-        children_map: &HashMap<Option<Uuid>, Vec<Uuid>>,
-    ) -> DepartmentTree {
-        let mut node = nodes.remove(&id).expect("node must exist");
-        if let Some(child_ids) = children_map.get(&Some(id)) {
-            node.children = child_ids
-                .iter()
-                .map(|&child_id| build_subtree(child_id, nodes, children_map))
-                .collect();
-        }
-        node
-    }
 
     roots
         .into_iter()

@@ -5,7 +5,7 @@ use axum::body::to_bytes;
 use axum::http::Response;
 use doc_man::{app_with_state, state::AppState};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 pub struct TestUser {
@@ -37,14 +37,13 @@ pub async fn insert_employee(pool: &PgPool, code: &str, role: &str) -> TestUser 
          VALUES ($1, $2, $3, true)
          RETURNING id",
     )
-    .bind(format!("Test {}", code))
+    .bind(format!("Test {code}"))
     .bind(code)
     .bind(role)
     .fetch_one(pool)
     .await
     .unwrap();
 
-    use sqlx::Row;
     TestUser {
         id: row.get("id"),
         employee_code: code.to_string(),
@@ -69,7 +68,6 @@ pub async fn insert_department(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -79,14 +77,13 @@ pub async fn insert_employee_inactive(pool: &PgPool, code: &str, role: &str) -> 
          VALUES ($1, $2, $3, false)
          RETURNING id",
     )
-    .bind(format!("Test {}", code))
+    .bind(format!("Test {code}"))
     .bind(code)
     .bind(role)
     .fetch_one(pool)
     .await
     .unwrap();
 
-    use sqlx::Row;
     TestUser {
         id: row.get("id"),
         employee_code: code.to_string(),
@@ -124,7 +121,6 @@ pub async fn insert_discipline(pool: &PgPool, code: &str, name: &str, department
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -141,7 +137,6 @@ pub async fn insert_document_kind(pool: &PgPool, code: &str, name: &str, seq_dig
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -163,7 +158,6 @@ pub async fn insert_document_register(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -185,7 +179,6 @@ pub async fn insert_project(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -209,7 +202,6 @@ pub async fn insert_project_with_status(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -233,7 +225,6 @@ pub async fn insert_project_with_wbs(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -259,7 +250,6 @@ pub async fn insert_document(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -270,7 +260,6 @@ pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
         .await
         .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -296,7 +285,6 @@ pub async fn insert_approval_step(
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -312,7 +300,6 @@ pub async fn insert_circulation(pool: &PgPool, document_id: Uuid, recipient_id: 
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }
 
@@ -328,6 +315,5 @@ pub async fn insert_department_inactive(pool: &PgPool, code: &str, name: &str) -
     .await
     .unwrap();
 
-    use sqlx::Row;
     row.get("id")
 }

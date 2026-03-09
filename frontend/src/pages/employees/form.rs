@@ -4,12 +4,29 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::*;
+use crate::api::types::{CreateEmployeeRequest, DepartmentTree, UpdateEmployeeRequest};
 use crate::components::form::FormField;
 use crate::components::toast::ToastContext;
 
 #[component]
 pub fn EmployeeFormPage() -> impl IntoView {
+    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
+        for d in depts {
+            let label = if prefix.is_empty() {
+                format!("{} ({})", d.name, d.code)
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
+            result.push((d.id.to_string(), label.clone()));
+            let next_prefix = if prefix.is_empty() {
+                d.name.clone()
+            } else {
+                format!("{} > {}", prefix, d.name)
+            };
+            flatten_depts(&d.children, result, &next_prefix);
+        }
+    }
+
     let toast = expect_context::<ToastContext>();
     let params = use_params_map();
 
@@ -55,23 +72,6 @@ pub fn EmployeeFormPage() -> impl IntoView {
         }
     });
 
-    fn flatten_depts(depts: &[DepartmentTree], result: &mut Vec<(String, String)>, prefix: &str) {
-        for d in depts {
-            let label = if prefix.is_empty() {
-                format!("{} ({})", d.name, d.code)
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            result.push((d.id.to_string(), label.clone()));
-            let next_prefix = if prefix.is_empty() {
-                d.name.clone()
-            } else {
-                format!("{} > {}", prefix, d.name)
-            };
-            flatten_depts(&d.children, result, &next_prefix);
-        }
-    }
-
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         let name = form_name.get_untracked();
@@ -112,21 +112,15 @@ pub fn EmployeeFormPage() -> impl IntoView {
                     return;
                 }
 
-                let department_id = match Uuid::parse_str(&dept_str) {
-                    Ok(id) => id,
-                    Err(_) => {
-                        toast.error("部署を選択してください");
-                        saving.set(false);
-                        return;
-                    }
+                let Ok(department_id) = Uuid::parse_str(&dept_str) else {
+                    toast.error("部署を選択してください");
+                    saving.set(false);
+                    return;
                 };
-                let effective_from = match chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") {
-                    Ok(d) => d,
-                    Err(_) => {
-                        toast.error("日付形式が不正です");
-                        saving.set(false);
-                        return;
-                    }
+                let Ok(effective_from) = chrono::NaiveDate::parse_from_str(&ef, "%Y-%m-%d") else {
+                    toast.error("日付形式が不正です");
+                    saving.set(false);
+                    return;
                 };
 
                 api::employees::create(&CreateEmployeeRequest {
@@ -142,7 +136,7 @@ pub fn EmployeeFormPage() -> impl IntoView {
             };
 
             match result {
-                Ok(_) => {
+                Ok(()) => {
                     toast.success(if eid.is_some() {
                         "更新しました"
                     } else {
@@ -201,8 +195,18 @@ pub fn EmployeeFormPage() -> impl IntoView {
                         </div>
                     </div>
 
-                    {move || if !is_edit() {
-                        let dept_options = depts_resource.get().and_then(|r| r.ok()).map(|depts| {
+                    {move || if is_edit() {
+                        view! {
+                            <FormField label="状態">
+                                <label class="checkbox">
+                                    <input type="checkbox" prop:checked=move || form_is_active.get()
+                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_is_active.set(t.checked()); } />
+                                    " 有効"
+                                </label>
+                            </FormField>
+                        }.into_any()
+                    } else {
+                        let dept_options = depts_resource.get().and_then(std::result::Result::ok).map(|depts| {
                             let mut opts = Vec::new();
                             flatten_depts(&depts, &mut opts, "");
                             opts
@@ -230,16 +234,6 @@ pub fn EmployeeFormPage() -> impl IntoView {
                                     </FormField>
                                 </div>
                             </div>
-                        }.into_any()
-                    } else {
-                        view! {
-                            <FormField label="状態">
-                                <label class="checkbox">
-                                    <input type="checkbox" prop:checked=move || form_is_active.get()
-                                        on:change=move |ev| { let t: HtmlInputElement = event_target(&ev); form_is_active.set(t.checked()); } />
-                                    " 有効"
-                                </label>
-                            </FormField>
                         }.into_any()
                     }}
 

@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -62,8 +63,6 @@ pub async fn list_documents(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
-
     // 全文書IDに対するタグを一括取得（N+1回避）
     let doc_ids: Vec<Uuid> = rows.iter().map(|r| r.get("id")).collect();
     let tags_map = fetch_tags_batch(&state.db, &doc_ids).await?;
@@ -121,8 +120,6 @@ pub async fn create_document(
             "viewer role cannot create documents".to_string(),
         ));
     }
-
-    use sqlx::Row;
 
     // doc_kind の code, seq_digits を取得
     let dk_row = sqlx::query("SELECT code, seq_digits FROM document_kinds WHERE id = $1")
@@ -240,7 +237,7 @@ pub async fn get_document(
 ) -> Result<Json<DocumentResponse>, AppError> {
     let doc = fetch_document_by_id(&state, id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("document {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
 
     Ok(Json(doc))
 }
@@ -275,8 +272,6 @@ pub async fn update_document(
         ));
     }
 
-    use sqlx::Row;
-
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     let existing = sqlx::query(
@@ -287,7 +282,7 @@ pub async fn update_document(
     .fetch_optional(tx.as_mut())
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("document {} not found", id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
 
     let current_title: String = existing.get("title");
     let current_file_path: String = existing.get("file_path");
@@ -304,11 +299,14 @@ pub async fn update_document(
     // タグの変更を実際に比較
     let tags_changed = if let Some(ref new_tags) = req.tags {
         let current_tags = fetch_tags(&state.db, id).await?;
-        let mut sorted_new: Vec<&str> = new_tags.iter().map(|s| s.as_str()).collect();
-        sorted_new.sort();
+        let mut sorted_new: Vec<&str> = new_tags.iter().map(std::string::String::as_str).collect();
+        sorted_new.sort_unstable();
         sorted_new.dedup();
-        let mut sorted_current: Vec<&str> = current_tags.iter().map(|s| s.as_str()).collect();
-        sorted_current.sort();
+        let mut sorted_current: Vec<&str> = current_tags
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
+        sorted_current.sort_unstable();
         sorted_new != sorted_current
     } else {
         false
@@ -446,7 +444,7 @@ pub async fn delete_document(
         .map_err(AppError::Database)?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("document {} not found", id)));
+        return Err(AppError::NotFound(format!("document {id} not found")));
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -477,7 +475,6 @@ async fn fetch_tags_batch(
         return Ok(std::collections::HashMap::new());
     }
 
-    use sqlx::Row;
     let rows = sqlx::query(
         "SELECT dt.document_id, t.name
          FROM document_tags dt
@@ -522,7 +519,6 @@ async fn fetch_document_by_id(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     match row {
         Some(r) => {
             let doc_id: Uuid = r.get("id");

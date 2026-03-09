@@ -65,7 +65,7 @@ pub fn EmployeeListPage() -> impl IntoView {
                                                         <td><a href=detail_url>{emp.name}</a></td>
                                                         <td>{emp.employee_code.unwrap_or_else(|| "-".to_string())}</td>
                                                         <td><span class="tag is-light">{emp.role}</span></td>
-                                                        <td>{emp.current_department.map(|d| d.name).unwrap_or_else(|| "-".to_string())}</td>
+                                                        <td>{emp.current_department.map_or_else(|| "-".to_string(), |d| d.name)}</td>
                                                         <td>
                                                             {if emp.is_active {
                                                                 view! { <span class="tag is-success is-light">"有効"</span> }.into_any()

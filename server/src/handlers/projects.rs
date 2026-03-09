@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -68,7 +69,6 @@ pub async fn list_projects(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     let data: Vec<ProjectResponse> = rows
         .into_iter()
         .map(|r| {
@@ -160,7 +160,6 @@ pub async fn create_project(
         _ => AppError::Database(e),
     })?;
 
-    use sqlx::Row;
     let id: Uuid = row.get("id");
     let proj = fetch_project_by_id(&state, id)
         .await?
@@ -177,7 +176,7 @@ pub async fn get_project(
 ) -> Result<Json<ProjectResponse>, AppError> {
     let proj = fetch_project_by_id(&state, id)
         .await?
-        .ok_or_else(|| AppError::NotFound(format!("project {} not found", id)))?;
+        .ok_or_else(|| AppError::NotFound(format!("project {id} not found")))?;
 
     Ok(Json(proj))
 }
@@ -197,9 +196,8 @@ pub async fn update_project(
     .fetch_optional(&state.db)
     .await
     .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("project {} not found", id)))?;
+    .ok_or_else(|| AppError::NotFound(format!("project {id} not found")))?;
 
-    use sqlx::Row;
     let current_manager_id: Option<Uuid> = existing.get("manager_id");
 
     // 権限チェック: adminは無条件、project_managerは担当プロジェクトのみ
@@ -315,7 +313,7 @@ pub async fn delete_project(
         })?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("project {} not found", id)));
+        return Err(AppError::NotFound(format!("project {id} not found")));
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -343,7 +341,6 @@ async fn fetch_project_by_id(
     .await
     .map_err(AppError::Database)?;
 
-    use sqlx::Row;
     Ok(row.map(|r| {
         ProjectRow {
             id: r.get("id"),

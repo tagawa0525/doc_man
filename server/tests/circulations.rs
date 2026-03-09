@@ -21,7 +21,7 @@ async fn get_circulations_returns_empty_array(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/documents/{}/circulations", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -60,7 +60,7 @@ async fn post_circulations_creates_and_changes_status(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/circulations", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -108,7 +108,7 @@ async fn post_circulations_on_draft_returns_422(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/circulations", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -148,7 +148,7 @@ async fn post_circulations_viewer_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/circulations", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations"))
                 .header("Authorization", format!("Bearer {}", viewer.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
@@ -190,7 +190,7 @@ async fn confirm_circulation_returns_200(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/circulations/confirm", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations/confirm"))
                 .header(
                     "Authorization",
                     format!("Bearer {}", recipient.employee_code),
@@ -230,7 +230,7 @@ async fn confirm_all_changes_doc_to_completed(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/circulations/confirm", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations/confirm"))
                 .header(
                     "Authorization",
                     format!("Bearer {}", recipient.employee_code),
@@ -276,7 +276,7 @@ async fn confirm_non_recipient_returns_403(pool: PgPool) {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/api/v1/documents/{}/circulations/confirm", doc_id))
+                .uri(format!("/api/v1/documents/{doc_id}/circulations/confirm"))
                 .header("Authorization", format!("Bearer {}", other.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),

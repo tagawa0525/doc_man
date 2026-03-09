@@ -1,5 +1,8 @@
 use super::client::{self, ApiError};
-use super::types::*;
+use super::types::{
+    CreateDocumentRegisterRequest, DocumentRegisterResponse, PaginatedResponse,
+    UpdateDocumentRegisterRequest,
+};
 use uuid::Uuid;
 
 pub async fn list(

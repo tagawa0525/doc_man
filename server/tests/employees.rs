@@ -1,6 +1,6 @@
 use axum::http::{Request, StatusCode};
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use tower::ServiceExt;
 
 mod helpers;
@@ -70,7 +70,7 @@ async fn get_employees_with_department_filter(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/employees?department_id={}", dept_a))
+                .uri(format!("/api/v1/employees?department_id={dept_a}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -278,13 +278,13 @@ async fn get_employee_by_id_returns_email(pool: PgPool) {
     .fetch_one(&pool)
     .await
     .unwrap();
-    use sqlx::Row;
+
     let emp_id: uuid::Uuid = row.get("id");
 
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!("/api/v1/employees/{}", emp_id))
+                .uri(format!("/api/v1/employees/{emp_id}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -382,7 +382,7 @@ async fn put_employee_retire_closes_department_assignment(pool: PgPool) {
     assert!(body["current_department"].is_null());
 
     // employee_departments.effective_to が設定されているか確認
-    use sqlx::Row;
+
     let row = sqlx::query("SELECT effective_to FROM employee_departments WHERE employee_id = $1")
         .bind(emp.id)
         .fetch_one(&pool)
