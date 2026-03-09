@@ -58,7 +58,7 @@ pub fn DocumentKindsPage() -> impl IntoView {
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
                 api::document_kinds::update(id, &UpdateDocumentKindRequest {
-                    code: Some(code), name: Some(name), seq_digits: Some(seq),
+                    code: None, name: Some(name), seq_digits: Some(seq),
                 }).await
             } else {
                 api::document_kinds::create(&CreateDocumentKindRequest {
@@ -119,6 +119,7 @@ pub fn DocumentKindsPage() -> impl IntoView {
                                     <FormField label="コード">
                                         <input class="input" type="text"
                                             prop:value=move || form_code.get()
+                                            prop:disabled=move || edit_id.get().is_some()
                                             on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_code.set(t.value()); }
                                         />
                                     </FormField>

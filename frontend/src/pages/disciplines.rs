@@ -67,7 +67,7 @@ pub fn DisciplinesPage() -> impl IntoView {
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
                 api::disciplines::update(id, &UpdateDisciplineRequest {
-                    code: Some(code), name: Some(name), department_id: Some(department_id),
+                    code: None, name: Some(name), department_id: Some(department_id),
                 }).await
             } else {
                 api::disciplines::create(&CreateDisciplineRequest {
@@ -143,6 +143,7 @@ pub fn DisciplinesPage() -> impl IntoView {
                                 <div class="column">
                                     <FormField label="コード">
                                         <input class="input" type="text" prop:value=move || form_code.get()
+                                            prop:disabled=move || edit_id.get().is_some()
                                             on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_code.set(t.value()); } />
                                     </FormField>
                                 </div>

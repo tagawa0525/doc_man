@@ -77,7 +77,7 @@ pub fn DocumentRegistersPage() -> impl IntoView {
         leptos::task::spawn_local(async move {
             let result = if let Some(id) = eid {
                 api::document_registers::update(id, &UpdateDocumentRegisterRequest {
-                    register_code: Some(rc),
+                    register_code: None,
                     file_server_root: Some(fsr),
                     new_doc_sub_path: if ndsp.is_empty() { None } else { Some(ndsp) },
                     doc_number_pattern: if dnp.is_empty() { None } else { Some(dnp) },
@@ -136,7 +136,7 @@ pub fn DocumentRegistersPage() -> impl IntoView {
                         <h2 class="subtitle">{move || if edit_id.get().is_some() { "文書台帳を編集" } else { "新規文書台帳" }}</h2>
                         <form on:submit=on_submit>
                             <div class="columns">
-                                <div class="column"><FormField label="登録コード *"><input class="input" type="text" prop:value=move || form_register_code.get() on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_register_code.set(t.value()); } /></FormField></div>
+                                <div class="column"><FormField label="登録コード *"><input class="input" type="text" prop:value=move || form_register_code.get() prop:disabled=move || edit_id.get().is_some() on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_register_code.set(t.value()); } /></FormField></div>
                                 <div class="column"><FormField label="ファイルサーバールート *"><input class="input" type="text" prop:value=move || form_file_server_root.get() on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_file_server_root.set(t.value()); } /></FormField></div>
                             </div>
                             {move || if edit_id.get().is_none() {
