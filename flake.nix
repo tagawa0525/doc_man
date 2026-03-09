@@ -23,6 +23,7 @@
           pkgs.lld
           pkgs.sqlx-cli
           pkgs.postgresql
+          pkgs.just
         ];
 
         RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
