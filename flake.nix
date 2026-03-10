@@ -23,6 +23,7 @@
           pkgs.lld
           pkgs.sqlx-cli
           pkgs.postgresql
+          pkgs.just
         ];
 
         RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
@@ -76,31 +77,8 @@
 
           _dm_setup_db
 
-          dm-db-stop() {
-            pg_ctl stop -m fast 2>/dev/null && echo "PostgreSQL を停止しました" || echo "PostgreSQL は起動していません"
-          }
-
-          dm-db-reset() {
-            echo "==> DB をリセット..."
-            dropdb -h localhost -U doc_man doc_man 2>/dev/null || true
-            createdb -h localhost -U doc_man doc_man
-            sqlx migrate run --source server/migrations
-            echo "==> リセット完了"
-          }
-
-          dm-db-seed() {
-            echo "==> シードデータを投入..."
-            psql -h localhost -U doc_man -d doc_man -f server/scripts/seed.sql
-            echo "==> シード完了"
-          }
-
           echo ""
-          echo "  利用可能なコマンド:"
-          echo "    cargo run -p doc_man   バックエンド起動 (localhost:3000)"
-          echo "    trunk serve        フロントエンド起動 (frontend/ で実行)"
-          echo "    dm-db-stop         PostgreSQL を停止"
-          echo "    dm-db-reset        DB を削除して再作成+マイグレーション"
-          echo "    dm-db-seed         シードデータを投入"
+          echo "  just --list でコマンド一覧を表示"
           echo ""
         '';
       };

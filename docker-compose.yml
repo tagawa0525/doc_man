@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: doc_man
+      POSTGRES_PASSWORD: doc_man
+      POSTGRES_DB: doc_man
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doc_man"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://doc_man:doc_man@db:5432/doc_man
+      BIND_ADDR: "0.0.0.0:3000"
+      FRONTEND_DIST_DIR: /app/frontend/dist
+      RUST_LOG: info
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  seed:
+    image: postgres:17
+    command: psql -h db -U doc_man -d doc_man -f /seed/seed.sql
+    environment:
+      PGPASSWORD: doc_man
+    volumes:
+      - ./server/scripts/seed.sql:/seed/seed.sql:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    profiles:
+      - seed
+
+volumes:
+  pgdata:

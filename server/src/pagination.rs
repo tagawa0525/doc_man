@@ -1,11 +1,38 @@
-use serde::{Deserialize, Serialize};
+use serde::de;
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct PaginationParams {
-    #[serde(default = "default_page")]
+    #[serde(default = "default_page", deserialize_with = "deserialize_u32")]
     pub page: u32,
-    #[serde(default = "default_per_page")]
+    #[serde(default = "default_per_page", deserialize_with = "deserialize_u32")]
     pub per_page: u32,
+}
+
+fn deserialize_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+    struct U32Visitor;
+
+    impl de::Visitor<'_> for U32Visitor {
+        type Value = u32;
+
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.write_str("a u32 or a string containing a u32")
+        }
+
+        fn visit_u32<E: de::Error>(self, v: u32) -> Result<u32, E> {
+            Ok(v)
+        }
+
+        fn visit_u64<E: de::Error>(self, v: u64) -> Result<u32, E> {
+            u32::try_from(v).map_err(|_| E::custom("value out of range for u32"))
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<u32, E> {
+            v.parse().map_err(de::Error::custom)
+        }
+    }
+
+    deserializer.deserialize_any(U32Visitor)
 }
 
 fn default_page() -> u32 {

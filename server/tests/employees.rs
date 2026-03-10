@@ -114,6 +114,28 @@ async fn get_employees_includes_current_department(pool: PgPool) {
     assert_eq!(emp_data["current_department"]["name"], "技術部");
 }
 
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_employees_with_pagination_params_returns_200(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/employees?page=1&per_page=10")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["page"], 1);
+    assert_eq!(body["meta"]["per_page"], 10);
+}
+
 // ── POST /employees ───────────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]

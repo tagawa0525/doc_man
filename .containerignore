@@ -1,0 +1,8 @@
+target/
+frontend/dist/
+.pgdata/
+.direnv/
+.git/
+.claude/
+docs/plans/
+*.md
