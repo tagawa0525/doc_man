@@ -10,28 +10,47 @@ use crate::error::AppError;
 use crate::models::discipline::{
     CreateDisciplineRequest, DisciplineResponse, DisciplineRow, UpdateDisciplineRequest,
 };
+use crate::pagination::{PaginatedResponse, PaginationParams};
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct DisciplineListQuery {
     pub department_id: Option<Uuid>,
+    #[serde(flatten)]
+    pub pagination: PaginationParams,
 }
 
-/// GET /api/v1/disciplines（ページネーション対象外、配列直接返却）
+/// GET /api/v1/disciplines
 pub async fn list_disciplines(
     _user: AuthenticatedUser,
     Query(params): Query<DisciplineListQuery>,
     State(state): State<AppState>,
-) -> Result<Json<Vec<DisciplineResponse>>, AppError> {
+) -> Result<Json<PaginatedResponse<DisciplineResponse>>, AppError> {
+    if let Err(e) = params.pagination.validate() {
+        return Err(AppError::InvalidRequest(e));
+    }
+
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM disciplines
+         WHERE ($1::uuid IS NULL OR department_id = $1)",
+    )
+    .bind(params.department_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(AppError::Database)?;
+
     let rows = sqlx::query(
         "SELECT di.id, di.code, di.name,
                 d.id as dept_id, d.code as dept_code, d.name as dept_name
          FROM disciplines di
          JOIN departments d ON d.id = di.department_id
          WHERE ($1::uuid IS NULL OR di.department_id = $1)
-         ORDER BY di.code",
+         ORDER BY di.code
+         LIMIT $2 OFFSET $3",
     )
     .bind(params.department_id)
+    .bind(params.pagination.limit())
+    .bind(params.pagination.offset())
     .fetch_all(&state.db)
     .await
     .map_err(AppError::Database)?;
@@ -51,7 +70,12 @@ pub async fn list_disciplines(
         })
         .collect();
 
-    Ok(Json(data))
+    Ok(Json(PaginatedResponse::new(
+        data,
+        total,
+        params.pagination.page,
+        params.pagination.per_page,
+    )))
 }
 
 /// POST /api/v1/disciplines

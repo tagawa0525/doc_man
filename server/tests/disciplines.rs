@@ -28,8 +28,11 @@ async fn get_disciplines_returns_list(pool: PgPool) {
 
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = helpers::parse_body(response).await;
-    assert!(body.is_array());
-    assert_eq!(body.as_array().unwrap().len(), 2);
+    assert!(body["data"].is_array());
+    assert_eq!(body["data"].as_array().unwrap().len(), 2);
+    assert_eq!(body["meta"]["total"], 2);
+    assert_eq!(body["meta"]["page"], 1);
+    assert_eq!(body["meta"]["per_page"], 20);
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
@@ -54,9 +57,10 @@ async fn get_disciplines_with_department_filter(pool: PgPool) {
 
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = helpers::parse_body(response).await;
-    let items = body.as_array().unwrap();
+    let items = body["data"].as_array().unwrap();
     assert_eq!(items.len(), 1);
     assert_eq!(items[0]["code"], "MECH");
+    assert_eq!(body["meta"]["total"], 1);
 }
 
 // ── POST /disciplines ─────────────────────────────────────────────
