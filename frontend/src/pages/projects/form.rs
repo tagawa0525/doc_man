@@ -5,13 +5,17 @@ use web_sys::HtmlInputElement;
 
 use crate::api;
 use crate::api::types::{CreateProjectRequest, UpdateProjectRequest};
+use crate::auth::AuthContext;
 use crate::components::form::FormField;
+use crate::components::modal::ConfirmModal;
 use crate::components::toast::ToastContext;
 
 #[component]
 pub fn ProjectFormPage() -> impl IntoView {
+    let auth = expect_context::<AuthContext>();
     let toast = expect_context::<ToastContext>();
     let params = use_params_map();
+    let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
     let project_id = move || {
         params
@@ -30,6 +34,22 @@ pub fn ProjectFormPage() -> impl IntoView {
     let form_manager_id = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
     let loaded = RwSignal::new(false);
+    let delete_target = RwSignal::new(Option::<(Uuid, String)>::None);
+
+    let do_delete = move |id: Uuid| {
+        leptos::task::spawn_local(async move {
+            match api::projects::delete(id).await {
+                Ok(()) => {
+                    toast.success("削除しました");
+                    if let Some(window) = web_sys::window() {
+                        let _ = window.location().set_href("/projects");
+                    }
+                }
+                Err(e) => toast.error(format!("削除失敗: {}", e.message)),
+            }
+            delete_target.set(None);
+        });
+    };
 
     let disciplines_resource = LocalResource::new(|| async { api::disciplines::list_all().await });
     let employees_resource = LocalResource::new(|| async { api::employees::list_active().await });
@@ -143,6 +163,17 @@ pub fn ProjectFormPage() -> impl IntoView {
     view! {
         <div>
             <h1 class="title">{move || if is_edit() { "プロジェクト編集" } else { "プロジェクト作成" }}</h1>
+
+            {move || delete_target.get().map(|(id, name)| view! {
+                <ConfirmModal
+                    title="プロジェクト削除"
+                    message=format!("「{}」を削除しますか？この操作は取り消せません。", name)
+                    on_confirm=Callback::new(move |()| do_delete(id))
+                    on_cancel=Callback::new(move |()| delete_target.set(None))
+                    danger=true
+                />
+            })}
+
             <div class="box">
                 <form on:submit=on_submit>
                     <div class="columns">
@@ -222,6 +253,28 @@ pub fn ProjectFormPage() -> impl IntoView {
                         <div class="control"><a href="/projects" class="button">"戻る"</a></div>
                     </div>
                 </form>
+
+                {move || {
+                    if is_edit() && is_admin {
+                        let name = form_name.get();
+                        let id = project_id();
+                        view! {
+                            <div class="mt-5 pt-4" style="border-top: 1px solid #dbdbdb">
+                                <button class="button is-danger is-outlined"
+                                    on:click=move |_| {
+                                        if let Some(id) = id {
+                                            delete_target.set(Some((id, name.clone())));
+                                        }
+                                    }>
+                                    <span class="icon"><i class="fas fa-trash"></i></span>
+                                    <span>"このプロジェクトを削除"</span>
+                                </button>
+                            </div>
+                        }.into_any()
+                    } else {
+                        view! { <span></span> }.into_any()
+                    }
+                }}
             </div>
         </div>
     }
