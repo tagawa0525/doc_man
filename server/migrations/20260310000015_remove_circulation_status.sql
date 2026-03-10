@@ -1,4 +1,3 @@
-DELETE FROM circulations;
 DROP TABLE IF EXISTS circulations;
 
 UPDATE documents SET status = 'approved', updated_at = now()
