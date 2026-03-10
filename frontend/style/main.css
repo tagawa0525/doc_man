@@ -152,6 +152,16 @@ html, body {
         background-color: #3a3a3a;
         color: #b5b5b5;
     }
+    .main-area {
+        background-color: #14161a;
+    }
+    .login-container {
+        background-color: #14161a;
+    }
+    .login-box {
+        background: #1e2028;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
 }
 
 /* Loading spinner */
