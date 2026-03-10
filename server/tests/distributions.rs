@@ -211,7 +211,6 @@ async fn post_distributions_empty_recipients_returns_400(pool: PgPool) {
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn post_distributions_allows_redistribution(pool: PgPool) {
-    let app = build_test_app(pool.clone());
     let admin = insert_admin(&pool).await;
     let recipient = insert_employee(&pool, "GEN001", "general").await;
     let data = setup_master(&pool, &admin).await;
