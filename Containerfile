@@ -8,12 +8,6 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY server/Cargo.toml server/Cargo.toml
 COPY frontend/Cargo.toml frontend/Cargo.toml
-
-# 依存関係キャッシュレイヤー: 空のソースでビルドしてキャッシュ活用
-RUN mkdir -p server/src && echo "fn main() {}" > server/src/main.rs && \
-    mkdir -p server/src && echo "pub fn lib() {}" > server/src/lib.rs && \
-    mkdir -p frontend/src && echo "fn main() {}" > frontend/src/main.rs
-
 COPY frontend/ frontend/
 RUN cd frontend && trunk build --release
 
