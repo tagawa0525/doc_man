@@ -187,34 +187,31 @@ INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, fro
      '機設', 'rejected', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発'));
 
--- circulating × 2
+-- approved × 4 (元circulating/completed)
 INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2601002', '安全対策マニュアル',
      '設計/内設計/26/内設計-2601002/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '内'),
-     '設計', 'circulating', 'internal',
+     '設計', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発')),
     ('議品管-260101', '定例会議議事録 1月',
      '品管/議品管/26/議品管-260101/',
      (SELECT id FROM employees WHERE employee_code = 'GEN003'),
      (SELECT id FROM document_kinds WHERE code = '議'),
-     '品管', 'circulating', 'internal',
-     (SELECT id FROM projects WHERE name = '品質改善活動'));
-
--- completed × 2
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+     '品管', 'approved', 'internal',
+     (SELECT id FROM projects WHERE name = '品質改善活動')),
     ('外機設-2512001', '定期点検報告書',
      '機設/外機設/25/外機設-2512001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN002'),
      (SELECT id FROM document_kinds WHERE code = '外'),
-     '機設', 'completed', 'internal',
+     '機設', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '定期点検2025')),
     ('議品管-251201', '点検結果レビュー議事録',
      '品管/議品管/25/議品管-251201/',
      (SELECT id FROM employees WHERE employee_code = 'GEN003'),
      (SELECT id FROM document_kinds WHERE code = '議'),
-     '品管', 'completed', 'internal',
+     '品管', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '定期点検2025'));
 
 -- restricted 機密文書 × 1 (draft)
@@ -339,42 +336,5 @@ INSERT INTO approval_steps (document_id, route_revision, document_revision, step
      1, 1, 2,
      (SELECT id FROM employees WHERE employee_code = 'ADM001'),
      'rejected', '2026-02-26 14:00:00+09', '材料規格の記載が不足しています。JIS規格番号を追記してください。');
-
--- circulations (~8件)
--- circulating: 内設計-2601002 (3名: 1確認済み, 2未確認)
-INSERT INTO circulations (document_id, recipient_id, confirmed_at) VALUES
-    ((SELECT id FROM documents WHERE doc_number = '内設計-2601002'),
-     (SELECT id FROM employees WHERE employee_code = 'GEN002'),
-     '2026-01-25 10:00:00+09'),
-    ((SELECT id FROM documents WHERE doc_number = '内設計-2601002'),
-     (SELECT id FROM employees WHERE employee_code = 'GEN003'),
-     NULL),
-    ((SELECT id FROM documents WHERE doc_number = '内設計-2601002'),
-     (SELECT id FROM employees WHERE employee_code = 'VW001'),
-     NULL);
-
--- circulating: 議品管-260101 (2名: 1確認済み, 1未確認)
-INSERT INTO circulations (document_id, recipient_id, confirmed_at) VALUES
-    ((SELECT id FROM documents WHERE doc_number = '議品管-260101'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002'),
-     '2026-01-15 11:00:00+09'),
-    ((SELECT id FROM documents WHERE doc_number = '議品管-260101'),
-     (SELECT id FROM employees WHERE employee_code = 'GEN001'),
-     NULL);
-
--- completed: 外機設-2512001 (2名: 全確認済み)
-INSERT INTO circulations (document_id, recipient_id, confirmed_at) VALUES
-    ((SELECT id FROM documents WHERE doc_number = '外機設-2512001'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002'),
-     '2025-12-15 09:00:00+09'),
-    ((SELECT id FROM documents WHERE doc_number = '外機設-2512001'),
-     (SELECT id FROM employees WHERE employee_code = 'GEN003'),
-     '2025-12-16 14:00:00+09');
-
--- completed: 議品管-251201 (1名: 確認済み)
-INSERT INTO circulations (document_id, recipient_id, confirmed_at) VALUES
-    ((SELECT id FROM documents WHERE doc_number = '議品管-251201'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002'),
-     '2025-12-18 10:00:00+09');
 
 COMMIT;
