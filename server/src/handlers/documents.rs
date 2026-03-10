@@ -416,20 +416,6 @@ pub async fn delete_document(
         ));
     }
 
-    // circulations の存在チェック
-    let circ_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM circulations WHERE document_id = $1")
-            .bind(id)
-            .fetch_one(&state.db)
-            .await
-            .map_err(AppError::Database)?;
-
-    if circ_count > 0 {
-        return Err(AppError::Conflict(
-            "cannot delete document with circulations".to_string(),
-        ));
-    }
-
     // document_tags を先に削除（FK制約のため）
     sqlx::query("DELETE FROM document_tags WHERE document_id = $1")
         .bind(id)
