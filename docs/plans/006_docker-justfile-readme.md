@@ -22,13 +22,13 @@ doc_man には開発環境として Nix flake が整備されているが、Dock
 
 ### 新規作成
 
-| ファイル             | 内容                                                |
-| -------------------- | --------------------------------------------------- |
-| `Dockerfile`         | マルチステージビルド（frontend + server + runtime） |
-| `docker-compose.yml` | PostgreSQL + app サービス                           |
-| `.dockerignore`      | ビルドコンテキストの除外設定                        |
-| `Justfile`           | 開発・Docker・DB 操作コマンド                       |
-| `README.md`          | プロジェクト概要と運用方法                          |
+| ファイル             | 内容                                                          |
+| -------------------- | ------------------------------------------------------------- |
+| `Containerfile`      | マルチステージビルド（frontend + server + runtime）           |
+| `docker-compose.yml` | PostgreSQL + app サービス（Podman Compose で使用）            |
+| `.containerignore`   | ビルドコンテキストの除外設定                                  |
+| `Justfile`           | 開発・Podman・DB 操作コマンド（`pod-*` プレフィックス）       |
+| `README.md`          | プロジェクト概要と運用方法                                    |
 
 ## 実装詳細
 
@@ -72,11 +72,11 @@ async fn main() {
 
 変更点:
 
-- `BIND_ADDR` 環境変数（デフォルト: `127.0.0.1:3000`、Docker では `0.0.0.0:3000`）
+- `BIND_ADDR` 環境変数（デフォルト: `127.0.0.1:3000`、コンテナ環境では `0.0.0.0:3000`）
 - `MIGRATOR.run()` で起動時にマイグレーション自動実行（冪等）
 - `tracing_subscriber` 初期化（`RUST_LOG` で制御可能に）
 
-### 2. `Dockerfile`（マルチステージビルド）
+### 2. `Containerfile`（マルチステージビルド）
 
 ```rust
 Stage 1: frontend-builder
@@ -148,7 +148,7 @@ volumes:
 
 - `seed` サービスは `--profile seed` 指定時のみ実行
 
-### 4. `.dockerignore`
+### 4. `.containerignore`
 
 ```text
 target/
@@ -184,13 +184,13 @@ db-reset:              (drop + create + migrate)
 db-seed:               psql でシードデータ投入
 db-reset-seed:         db-reset + db-seed
 
-# --- Docker ---
-docker-build:          docker compose build
-docker-up:             docker compose up -d
-docker-up-seed:        docker compose up -d && docker compose --profile seed run seed
-docker-down:           docker compose down
-docker-clean:          docker compose down -v
-docker-logs:           docker compose logs -f app
+# --- Podman ---
+pod-build:             podman compose build
+pod-up:                podman compose up -d
+pod-up-seed:           podman compose up -d && podman compose --profile seed run --rm seed
+pod-down:              podman compose down
+pod-clean:             podman compose down -v
+pod-logs:              podman compose logs -f app
 ```
 
 ### 6. `flake.nix` の修正
@@ -206,7 +206,7 @@ docker-logs:           docker compose logs -f app
 3. プロジェクト構成（ディレクトリツリー）
 4. セットアップ方法
    - Nix 開発環境（推奨）
-   - Docker によるデプロイ
+   - Podman Compose によるデプロイ
 5. 開発ワークフロー（サーバー起動、フロントエンド開発、DB 操作、テスト、リント）
 6. API 概要（エンドポイント一覧、認証方式）
 7. Just コマンド一覧
@@ -214,8 +214,8 @@ docker-logs:           docker compose logs -f app
 ## コミット順序
 
 1. `feat: make server bind address configurable and add auto-migration` — main.rs 修正
-2. `feat: add Dockerfile and .dockerignore` — Docker ビルド設定
-3. `feat: add docker-compose.yml` — コンテナオーケストレーション
+2. `feat: add Containerfile and .containerignore` — コンテナビルド設定
+3. `feat: add docker-compose.yml` — コンテナオーケストレーション（Podman Compose）
 4. `feat: add Justfile and just to flake.nix` — タスクランナー
 5. `docs: add README.md` — プロジェクト説明と運用方法
 6. `chore: update .gitignore` — Docker 関連除外
@@ -224,6 +224,6 @@ docker-logs:           docker compose logs -f app
 
 1. `just build` / `just lint` / `just fmt-check` — ビルド・品質チェック
 2. `just test` — 既存テストが通ること（main.rs の変更が破壊的でないこと）
-3. `docker compose build` — Docker イメージがビルドできること
-4. `docker compose up -d` → `curl http://localhost:3000/health` — コンテナ起動確認
-5. `docker compose --profile seed run seed` → API でデータ取得確認
+3. `just pod-build` — コンテナイメージがビルドできること
+4. `just pod-up` → `curl http://localhost:3000/health` — コンテナ起動確認
+5. `just pod-up-seed` → API でデータ取得確認
