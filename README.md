@@ -26,9 +26,9 @@ doc_man/
 │   │   ├── handlers/     # HTTPハンドラ
 │   │   ├── services/     # ビジネスロジック
 │   │   ├── models/       # リクエスト/レスポンス DTO
-│   │   ├── routes/       # ルーティング定義
-│   │   ├── migrations/   # SQLマイグレーション
-│   │   └── scripts/      # seed.sql
+│   │   └── routes/       # ルーティング定義
+│   ├── migrations/       # SQLマイグレーション
+│   ├── scripts/          # seed.sql
 │   └── tests/            # 統合テスト
 ├── frontend/             # Leptos CSR SPA
 │   └── src/
@@ -143,30 +143,30 @@ curl -H "Authorization: Bearer EMP001" http://localhost:3000/api/v1/me
 
 ### エンドポイント一覧
 
-| メソッド       | パス                                                   | 説明                   |
-| -------------- | ------------------------------------------------------ | ---------------------- |
-| GET            | `/health`                                              | ヘルスチェック         |
-| GET            | `/api/v1/me`                                           | 認証ユーザー情報       |
-| GET/POST       | `/api/v1/departments`                                  | 部門一覧・作成         |
-| GET/PUT        | `/api/v1/departments/{id}`                             | 部門取得・更新         |
-| GET/POST       | `/api/v1/employees`                                    | 社員一覧・作成         |
-| GET/PUT        | `/api/v1/employees/{id}`                               | 社員取得・更新         |
-| GET/POST       | `/api/v1/disciplines`                                  | 分野一覧・作成         |
-| GET/PUT        | `/api/v1/disciplines/{id}`                             | 分野取得・更新         |
-| GET/POST       | `/api/v1/document-kinds`                               | 文書種別一覧・作成     |
-| GET/PUT        | `/api/v1/document-kinds/{id}`                          | 文書種別取得・更新     |
-| GET/POST       | `/api/v1/document-registers`                           | 文書台帳一覧・作成     |
-| GET/PUT        | `/api/v1/document-registers/{id}`                      | 文書台帳取得・更新     |
-| GET/POST       | `/api/v1/projects`                                     | プロジェクト一覧・作成 |
-| GET/PUT/DELETE | `/api/v1/projects/{id}`                                | プロジェクト操作       |
-| GET/POST       | `/api/v1/documents`                                    | 文書一覧・作成         |
-| GET/PUT/DELETE | `/api/v1/documents/{id}`                               | 文書操作               |
-| GET/POST       | `/api/v1/documents/{id}/approval-steps`                | 承認ルート取得・設定   |
-| POST           | `/api/v1/documents/{id}/approval-steps/{step}/approve` | 承認                   |
-| POST           | `/api/v1/documents/{id}/approval-steps/{step}/reject`  | 差し戻し               |
-| GET/POST       | `/api/v1/documents/{id}/circulations`                  | 回覧一覧・作成         |
-| POST           | `/api/v1/documents/{id}/circulations/confirm`          | 回覧確認               |
-| GET/POST       | `/api/v1/tags`                                         | タグ一覧・作成         |
+| メソッド       | パス                                                          | 説明                   |
+| -------------- | ------------------------------------------------------------- | ---------------------- |
+| GET            | `/health`                                                     | ヘルスチェック         |
+| GET            | `/api/v1/me`                                                  | 認証ユーザー情報       |
+| GET/POST       | `/api/v1/departments`                                         | 部門一覧・作成         |
+| GET/PUT        | `/api/v1/departments/{id}`                                    | 部門取得・更新         |
+| GET/POST       | `/api/v1/employees`                                           | 社員一覧・作成         |
+| GET/PUT        | `/api/v1/employees/{id}`                                      | 社員取得・更新         |
+| GET/POST       | `/api/v1/disciplines`                                         | 分野一覧・作成         |
+| GET/PUT        | `/api/v1/disciplines/{id}`                                    | 分野取得・更新         |
+| GET/POST       | `/api/v1/document-kinds`                                      | 文書種別一覧・作成     |
+| GET/PUT        | `/api/v1/document-kinds/{id}`                                 | 文書種別取得・更新     |
+| GET/POST       | `/api/v1/document-registers`                                  | 文書台帳一覧・作成     |
+| GET/PUT        | `/api/v1/document-registers/{id}`                             | 文書台帳取得・更新     |
+| GET/POST       | `/api/v1/projects`                                            | プロジェクト一覧・作成 |
+| GET/PUT/DELETE | `/api/v1/projects/{id}`                                       | プロジェクト操作       |
+| GET/POST       | `/api/v1/documents`                                           | 文書一覧・作成         |
+| GET/PUT/DELETE | `/api/v1/documents/{id}`                                      | 文書操作               |
+| GET/POST       | `/api/v1/documents/{doc_id}/approval-steps`                   | 承認ルート取得・設定   |
+| POST           | `/api/v1/documents/{doc_id}/approval-steps/{step_id}/approve` | 承認                   |
+| POST           | `/api/v1/documents/{doc_id}/approval-steps/{step_id}/reject`  | 差し戻し               |
+| GET/POST       | `/api/v1/documents/{doc_id}/circulations`                     | 回覧一覧・作成         |
+| POST           | `/api/v1/documents/{doc_id}/circulations/confirm`             | 回覧確認               |
+| GET/POST       | `/api/v1/tags`                                                | タグ一覧・作成         |
 
 エラーレスポンス形式:
 
