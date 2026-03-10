@@ -2,7 +2,6 @@ use serde::Serialize;
 use uuid::Uuid;
 
 pub mod approval_step;
-pub mod circulation;
 pub mod department;
 pub mod discipline;
 pub mod document;
