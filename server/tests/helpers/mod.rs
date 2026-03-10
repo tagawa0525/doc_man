@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 
+use std::sync::Arc;
+
 use axum::Router;
 use axum::body::to_bytes;
 use axum::http::Response;
+use doc_man::services::mail::StubMailSender;
 use doc_man::{app_with_state, state::AppState};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
@@ -14,7 +17,10 @@ pub struct TestUser {
 }
 
 pub fn build_test_app(pool: PgPool) -> Router {
-    let state = AppState { db: pool };
+    let state = AppState {
+        db: pool,
+        mail_sender: Arc::new(StubMailSender),
+    };
     app_with_state(state)
 }
 

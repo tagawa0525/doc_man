@@ -9,6 +9,7 @@ use crate::error::AppError;
 use crate::models::distribution::{
     CreateDistributionRequest, DistributedByBrief, DistributionResponse, RecipientBrief,
 };
+use crate::services::mail::{DistributionMailContext, MailRecipient};
 use crate::state::AppState;
 
 /// GET /api/v1/documents/{doc_id}/distributions
@@ -111,6 +112,54 @@ pub async fn create_distributions(
         .map_err(AppError::Database)?;
 
         inserted_ids.push(row.get("id"));
+    }
+
+    // メール送信（stub ではログ出力のみ）
+    let doc_info = sqlx::query(
+        "SELECT d.doc_number, d.title, d.file_path, e.name AS author_name
+         FROM documents d
+         JOIN employees e ON e.id = $2
+         WHERE d.id = $1",
+    )
+    .bind(doc_id)
+    .bind(user.id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(AppError::Database)?;
+
+    let recipients_for_mail: Vec<MailRecipient> =
+        sqlx::query("SELECT name, email FROM employees WHERE id = ANY($1) AND email IS NOT NULL")
+            .bind(&unique_ids)
+            .fetch_all(&state.db)
+            .await
+            .map_err(AppError::Database)?
+            .into_iter()
+            .map(|r| MailRecipient {
+                name: r.get("name"),
+                email: r.get("email"),
+            })
+            .collect();
+
+    if !recipients_for_mail.is_empty() {
+        let file_path: String = doc_info.get("file_path");
+        let directory_path = std::path::Path::new(&file_path)
+            .parent()
+            .map_or_else(|| file_path.clone(), |p| p.to_string_lossy().to_string());
+
+        let context = DistributionMailContext {
+            doc_number: doc_info.get("doc_number"),
+            title: doc_info.get("title"),
+            directory_path,
+            distributed_by_name: doc_info.get("author_name"),
+        };
+
+        if let Err(e) = state
+            .mail_sender
+            .send_distribution(&recipients_for_mail, &context)
+            .await
+        {
+            tracing::warn!("failed to send distribution mail: {e}");
+        }
     }
 
     // 挿入したレコードを取得して返す
