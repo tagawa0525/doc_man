@@ -646,57 +646,6 @@
 
 ---
 
-## 回覧 /documents/:id/circulations
-
-### GET /documents/:id/circulations
-
-回覧宛先と確認状況の一覧を返す。
-
-**レスポンス 200**:
-
-```json
-[
-  {
-    "id": "uuid",
-    "recipient": { "id": "uuid", "name": "高橋 次郎" },
-    "confirmed_at": "2026-02-17T14:00:00Z"
-  },
-  {
-    "id": "uuid",
-    "recipient": { "id": "uuid", "name": "渡辺 三郎" },
-    "confirmed_at": null
-  }
-]
-```
-
-### POST /documents/:id/circulations
-
-回覧を開始する。文書が `approved` 状態のみ可能。
-
-**必要ロール**: `admin`, `project_manager`
-
-**リクエスト**:
-
-```json
-{
-  "recipient_ids": ["uuid", "uuid"]
-}
-```
-
-文書ステータスを `circulating` に変更する。
-
-### POST /documents/:id/circulations/confirm
-
-呼び出した本人（認証済みユーザー）が確認済みにする。
-
-**リクエスト**: なし
-
-**レスポンス 200**: 更新後の回覧オブジェクト
-
-全宛先が確認済みになった場合、文書ステータスを `completed` に変更する。
-
----
-
 ## タグ /tags
 
 ### GET /tags
