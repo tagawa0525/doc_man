@@ -17,8 +17,8 @@ use pages::departments::DepartmentsPage;
 use pages::disciplines::DisciplinesPage;
 use pages::document_kinds::DocumentKindsPage;
 use pages::document_registers::DocumentRegistersPage;
+use pages::documents::create::DocumentCreatePage;
 use pages::documents::detail::DocumentDetailPage;
-use pages::documents::form::DocumentFormPage;
 use pages::documents::list::DocumentListPage;
 use pages::employees::form::EmployeeFormPage;
 use pages::employees::list::EmployeeListPage;
@@ -69,9 +69,8 @@ fn App() -> impl IntoView {
                 <Route path=path!("/projects/new") view=|| view! { <AuthGuard><AppLayout><ProjectFormPage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/projects/:id") view=|| view! { <AuthGuard><AppLayout><ProjectFormPage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/documents") view=|| view! { <AuthGuard><AppLayout><DocumentListPage /></AppLayout></AuthGuard> } />
-                <Route path=path!("/documents/new") view=|| view! { <AuthGuard><AppLayout><DocumentFormPage /></AppLayout></AuthGuard> } />
+                <Route path=path!("/documents/new") view=|| view! { <AuthGuard><AppLayout><DocumentCreatePage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/documents/:id") view=|| view! { <AuthGuard><AppLayout><DocumentDetailPage /></AppLayout></AuthGuard> } />
-                <Route path=path!("/documents/:id/edit") view=|| view! { <AuthGuard><AppLayout><DocumentFormPage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/tags") view=|| view! { <AuthGuard><AppLayout><TagsPage /></AppLayout></AuthGuard> } />
             </Routes>
         </Router>
