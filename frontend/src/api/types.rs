@@ -327,6 +327,34 @@ pub struct ApprovalActionRequest {
     pub comment: Option<String>,
 }
 
+// --- Distributions ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecipientBrief {
+    pub id: Uuid,
+    pub name: String,
+    pub email: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DistributedByBrief {
+    pub id: Uuid,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DistributionResponse {
+    pub id: Uuid,
+    pub recipient: RecipientBrief,
+    pub distributed_by: DistributedByBrief,
+    pub distributed_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateDistributionRequest {
+    pub recipient_ids: Vec<Uuid>,
+}
+
 /// `DepartmentTree` をフラットな `(id, label)` リストに変換する。
 /// ラベルは階層を ` > ` で連結し、ルートにはコードを付与する。
 pub fn flatten_dept_tree(
