@@ -327,20 +327,6 @@ pub struct ApprovalActionRequest {
     pub comment: Option<String>,
 }
 
-// --- Circulations ---
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CirculationResponse {
-    pub id: Uuid,
-    pub recipient: NameBrief,
-    pub confirmed_at: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct CreateCirculationRequest {
-    pub recipient_ids: Vec<Uuid>,
-}
-
 /// `DepartmentTree` をフラットな `(id, label)` リストに変換する。
 /// ラベルは階層を ` > ` で連結し、ルートにはコードを付与する。
 pub fn flatten_dept_tree(
