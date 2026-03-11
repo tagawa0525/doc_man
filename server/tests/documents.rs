@@ -372,3 +372,42 @@ async fn delete_document_non_admin_returns_403(pool: PgPool) {
 
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn delete_document_with_distributions_returns_409(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let recipient = helpers::insert_employee(&pool, "GEN001", "general").await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    let doc_id =
+        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+
+    // 配布レコードを直接挿入
+    sqlx::query(
+        "INSERT INTO distributions (document_id, recipient_id, distributed_by)
+         VALUES ($1, $2, $3)",
+    )
+    .bind(doc_id)
+    .bind(recipient.id)
+    .bind(admin.id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/documents/{doc_id}"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+}

@@ -337,4 +337,31 @@ INSERT INTO approval_steps (document_id, route_revision, document_revision, step
      (SELECT id FROM employees WHERE employee_code = 'ADM001'),
      'rejected', '2026-02-26 14:00:00+09', '材料規格の記載が不足しています。JIS規格番号を追記してください。');
 
+-- distributions (approved文書2件に配布: バッチ2回)
+-- バッチ1: ポンプ基本設計書を3名に配布 (PM001が実行)
+INSERT INTO distributions (document_id, recipient_id, distributed_at, distributed_by) VALUES
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2601001'),
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'),
+     '2026-01-25 10:00:00+09',
+     (SELECT id FROM employees WHERE employee_code = 'PM001')),
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2601001'),
+     (SELECT id FROM employees WHERE employee_code = 'GEN002'),
+     '2026-01-25 10:00:00+09',
+     (SELECT id FROM employees WHERE employee_code = 'PM001')),
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2601001'),
+     (SELECT id FROM employees WHERE employee_code = 'GEN003'),
+     '2026-01-25 10:00:00+09',
+     (SELECT id FROM employees WHERE employee_code = 'PM001'));
+
+-- バッチ2: 外部調達仕様書を2名に配布 (PM002が実行)
+INSERT INTO distributions (document_id, recipient_id, distributed_at, distributed_by) VALUES
+    ((SELECT id FROM documents WHERE doc_number = '外機設-2601001'),
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'),
+     '2026-01-28 14:30:00+09',
+     (SELECT id FROM employees WHERE employee_code = 'PM002')),
+    ((SELECT id FROM documents WHERE doc_number = '外機設-2601001'),
+     (SELECT id FROM employees WHERE employee_code = 'PM001'),
+     '2026-01-28 14:30:00+09',
+     (SELECT id FROM employees WHERE employee_code = 'PM002'));
+
 COMMIT;

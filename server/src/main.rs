@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use doc_man::services::mail::StubMailSender;
 use doc_man::state::AppState;
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
@@ -22,7 +25,10 @@ async fn main() {
         .await
         .expect("failed to run migrations");
 
-    let state = AppState { db: pool };
+    let state = AppState {
+        db: pool,
+        mail_sender: Arc::new(StubMailSender),
+    };
     let app = doc_man::app_with_state(state);
 
     let listener = TcpListener::bind(&bind_addr).await.expect("failed to bind");

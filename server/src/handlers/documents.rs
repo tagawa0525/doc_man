@@ -416,6 +416,20 @@ pub async fn delete_document(
         ));
     }
 
+    // distributions の存在チェック
+    let dist_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM distributions WHERE document_id = $1")
+            .bind(id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(AppError::Database)?;
+
+    if dist_count > 0 {
+        return Err(AppError::Conflict(
+            "cannot delete document with distributions".to_string(),
+        ));
+    }
+
     // document_tags を先に削除（FK制約のため）
     sqlx::query("DELETE FROM document_tags WHERE document_id = $1")
         .bind(id)
