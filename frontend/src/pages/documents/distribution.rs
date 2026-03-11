@@ -23,8 +23,8 @@ pub fn DistributionSection(doc_id: Uuid) -> impl IntoView {
 
     let employees_resource = LocalResource::new(|| async { api::employees::list_active().await });
 
-    // チェックボックスの状態: (employee_id, checked)
-    let selected = RwSignal::new(Vec::<(Uuid, bool)>::new());
+    // チェックボックスの状態: employee_id → checked (id keyed で index 非依存)
+    let selected = RwSignal::new(std::collections::HashMap::<Uuid, bool>::new());
 
     // 前回の配布先で初期化するためのヘルパー
     let init_selected = move |distributions: &[DistributionResponse],
@@ -43,7 +43,7 @@ pub fn DistributionSection(doc_id: Uuid) -> impl IntoView {
         employees
             .iter()
             .map(|(id, _)| (*id, has_history && latest_recipients.contains(id)))
-            .collect::<Vec<_>>()
+            .collect::<std::collections::HashMap<_, _>>()
     };
 
     let do_distribute = move |_: leptos::ev::MouseEvent| {
@@ -116,9 +116,9 @@ pub fn DistributionSection(doc_id: Uuid) -> impl IntoView {
                     <div class="notification is-light mb-3">
                         <div class="field">
                             <label class="label is-small">"配布先を選択"</label>
-                            {emps.into_iter().enumerate().map(|(idx, e)| {
+                            {emps.into_iter().map(|e| {
                                 let emp_id = e.id;
-                                let checked = move || selected.get().get(idx).is_some_and(|(_, c)| *c);
+                                let checked = move || selected.get().get(&emp_id).copied().unwrap_or(false);
                                 view! {
                                     <label class="checkbox is-block mb-1">
                                         <input
@@ -126,9 +126,8 @@ pub fn DistributionSection(doc_id: Uuid) -> impl IntoView {
                                             prop:checked=checked
                                             on:change=move |_| {
                                                 selected.update(|sel| {
-                                                    if let Some(entry) = sel.iter_mut().find(|(id, _)| *id == emp_id) {
-                                                        entry.1 = !entry.1;
-                                                    }
+                                                    let entry = sel.entry(emp_id).or_insert(false);
+                                                    *entry = !*entry;
                                                 });
                                             }
                                         />
