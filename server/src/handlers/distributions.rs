@@ -93,10 +93,11 @@ pub async fn create_distributions(
         return Err(AppError::NotFound(format!("document {doc_id} not found")));
     }
 
-    // 同一タイムスタンプでバッチ挿入
+    // 同一タイムスタンプでバッチ挿入（全成功 or 全ロールバック）
     let now = chrono::Utc::now();
     let mut inserted_ids: Vec<Uuid> = Vec::with_capacity(unique_ids.len());
 
+    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
     for recipient_id in &unique_ids {
         let row = sqlx::query(
             "INSERT INTO distributions (document_id, recipient_id, distributed_at, distributed_by)
@@ -107,12 +108,22 @@ pub async fn create_distributions(
         .bind(recipient_id)
         .bind(now)
         .bind(user.id)
-        .fetch_one(&state.db)
+        .fetch_one(&mut *tx)
         .await
-        .map_err(AppError::Database)?;
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref db_err) = e {
+                if db_err.code().as_deref() == Some("23503") {
+                    return AppError::InvalidRequest(format!(
+                        "invalid recipient_id: {recipient_id}"
+                    ));
+                }
+            }
+            AppError::Database(e)
+        })?;
 
         inserted_ids.push(row.get("id"));
     }
+    tx.commit().await.map_err(AppError::Database)?;
 
     // メール送信（stub ではログ出力のみ）
     let doc_info = sqlx::query(
