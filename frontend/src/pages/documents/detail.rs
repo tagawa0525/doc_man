@@ -7,6 +7,7 @@ use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::status_badge::StatusBadge;
 use crate::pages::documents::approval::ApprovalSection;
+use crate::pages::documents::distribution::DistributionSection;
 
 #[component]
 pub fn DocumentDetailPage() -> impl IntoView {
@@ -95,6 +96,7 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                     </div>
                                     <div class="column is-4">
                                         <ApprovalSection doc_id=id doc_status=status on_change=Callback::new(move |()| refresh.update(|v| *v += 1)) />
+                                        <DistributionSection doc_id=id />
                                     </div>
                                 </div>
                             }.into_any()
