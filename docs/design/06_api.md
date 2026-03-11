@@ -49,11 +49,12 @@
 
 **ページネーション対象外エンドポイント**（配列を直接返す）:
 
-| エンドポイント                      | 理由                                 |
-| ----------------------------------- | ------------------------------------ |
-| `GET /departments`                  | ツリー構造で返す。全件一括取得が前提 |
-| `GET /disciplines`                  | マスタデータ。件数少数固定           |
-| `GET /documents/:id/approval-steps` | 1 文書あたりのステップ数は少数固定   |
+| エンドポイント                       | 理由                                 |
+| ------------------------------------ | ------------------------------------ |
+| `GET /departments`                   | ツリー構造で返す。全件一括取得が前提 |
+| `GET /disciplines`                   | マスタデータ。件数少数固定           |
+| `GET /documents/:id/approval-steps`  | 1 文書あたりのステップ数は少数固定   |
+| `GET /documents/:id/distributions`   | 1 文書あたりの配布数は少数           |
 
 ### エラーレスポンス
 
@@ -670,3 +671,45 @@
 ```
 
 **レスポンス 201**: タグオブジェクト
+
+---
+
+## 配布 /documents/:id/distributions
+
+### GET /documents/:id/distributions
+
+文書の配布履歴を返す（`distributed_at DESC` 順）。ページネーション対象外（配列直接返却）。
+
+**レスポンス 200**:
+
+```json
+[
+  {
+    "id": "uuid",
+    "recipient": { "id": "uuid", "name": "山田 太郎", "email": "yamada@example.com" },
+    "distributed_by": { "id": "uuid", "name": "田中 一郎" },
+    "distributed_at": "2026-03-10T14:00:00Z"
+  }
+]
+```
+
+### POST /documents/:id/distributions
+
+指定した社員に文書を配布する。同一リクエスト内の配布先は同一タイムスタンプでバッチ化される。配布時にメール通知を送信する。
+
+**必要ロール**: `admin`, `project_manager`
+
+**リクエスト**:
+
+```json
+{
+  "recipient_ids": ["uuid", "uuid"]
+}
+```
+
+**レスポンス 201**: 作成された配布レコードの配列
+
+**エラー**:
+
+- `recipient_ids` が空の場合: `400 INVALID_REQUEST`
+- 文書が存在しない場合: `404 NOT_FOUND`
