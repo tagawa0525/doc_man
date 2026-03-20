@@ -11,6 +11,9 @@ CREATE TABLE document_revisions (
 );
 
 CREATE INDEX idx_document_revisions_document_id ON document_revisions(document_id);
+CREATE UNIQUE INDEX idx_document_revisions_current_effective
+    ON document_revisions(document_id)
+    WHERE effective_to IS NULL;
 
 ALTER TABLE documents DROP COLUMN file_path;
 ALTER TABLE documents ALTER COLUMN revision SET DEFAULT 0;
