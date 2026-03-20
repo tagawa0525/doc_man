@@ -8,6 +8,7 @@ pub mod distribution;
 pub mod document;
 pub mod document_kind;
 pub mod document_register;
+pub mod document_revision;
 pub mod employee;
 pub mod project;
 pub mod tag;

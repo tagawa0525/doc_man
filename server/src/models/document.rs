@@ -39,7 +39,6 @@ pub struct ProjectBrief {
 #[derive(Debug, Deserialize)]
 pub struct CreateDocumentRequest {
     pub title: String,
-    pub file_path: String,
     pub confidentiality: Option<String>,
     pub doc_kind_id: Uuid,
     pub project_id: Uuid,
@@ -53,7 +52,6 @@ pub struct UpdateDocumentRequest {
     pub frozen_dept_code: Option<String>,
     pub status: Option<String>,
     pub title: Option<String>,
-    pub file_path: Option<String>,
     pub confidentiality: Option<String>,
     pub tags: Option<Vec<String>>,
 }
