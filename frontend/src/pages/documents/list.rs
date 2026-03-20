@@ -169,77 +169,74 @@ pub fn DocumentListPage() -> impl IntoView {
                 </div>
             </div>
 
-            // 部署チェックボックス
-            <div class="field mb-3">
-                <label class="label is-small">"部署"</label>
-                <div class="is-flex is-flex-wrap-wrap" style="gap: 0.25rem 0.75rem;">
-                    <Suspense fallback=|| ()>
-                        {move || all_depts.get().map(|result| match result {
-                            Ok(tree) => {
-                                let mut flat: Vec<FlatDepartment> = Vec::new();
-                                flatten_dept_tree_full(&tree, &mut flat, "");
-                                let detail = show_detail.get();
-                                let udc = user_dept_codes.get();
-                                flat.into_iter().filter_map(move |d| {
-                                    if !detail && !udc.contains(&d.code) {
-                                        return None;
-                                    }
-                                    let code = d.code.clone();
-                                    let code2 = code.clone();
-                                    Some(view! {
-                                        <label class="checkbox is-size-7">
-                                            <input
-                                                type="checkbox"
-                                                prop:checked=move || csv_contains(&dept_codes.get(), &code)
-                                                on:change=move |_| {
-                                                    page.set(1);
-                                                    dept_codes.set(csv_toggle(&dept_codes.get_untracked(), &code2));
-                                                }
-                                            />
-                                            " " {d.label}
-                                        </label>
-                                    })
-                                }).collect_view().into_any()
-                            }
-                            Err(_) => view! { <span class="tag is-warning">"部署読込失敗"</span> }.into_any(),
-                        })}
-                    </Suspense>
-                </div>
-            </div>
-
-            // 年度チェックボックス + 文書種別 + テキスト検索
-            <div class="columns is-multiline mb-2">
-                <div class="column is-narrow">
-                    <label class="label is-small">"年度"</label>
-                    <div class="is-flex is-flex-wrap-wrap" style="gap: 0.25rem 0.5rem;">
-                        {move || {
+            // 部署
+            <div class="is-flex is-align-items-center is-flex-wrap-wrap mb-2" style="gap: 0.25rem 0.75rem;">
+                <span class="has-text-weight-semibold is-size-7">"部署："</span>
+                <Suspense fallback=|| ()>
+                    {move || all_depts.get().map(|result| match result {
+                        Ok(tree) => {
+                            let mut flat: Vec<FlatDepartment> = Vec::new();
+                            flatten_dept_tree_full(&tree, &mut flat, "");
                             let detail = show_detail.get();
-                            let dys = default_year_strings.clone();
-                            all_years.iter().filter_map(move |&y| {
-                                let ys = y.to_string();
-                                if !detail && !dys.contains(&ys) {
+                            let udc = user_dept_codes.get();
+                            flat.into_iter().filter_map(move |d| {
+                                if !detail && !udc.contains(&d.code) {
                                     return None;
                                 }
-                                let ys2 = ys.clone();
-                                let label = format!("{y}");
+                                let code = d.code.clone();
+                                let code2 = code.clone();
                                 Some(view! {
                                     <label class="checkbox is-size-7">
                                         <input
                                             type="checkbox"
-                                            prop:checked=move || csv_contains(&fiscal_years.get(), &ys)
+                                            prop:checked=move || csv_contains(&dept_codes.get(), &code)
                                             on:change=move |_| {
                                                 page.set(1);
-                                                fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
+                                                dept_codes.set(csv_toggle(&dept_codes.get_untracked(), &code2));
                                             }
                                         />
-                                        " " {label}
+                                        " " {d.label}
                                     </label>
                                 })
-                            }).collect_view()
-                        }}
-                    </div>
-                </div>
+                            }).collect_view().into_any()
+                        }
+                        Err(_) => view! { <span class="tag is-warning">"部署読込失敗"</span> }.into_any(),
+                    })}
+                </Suspense>
+            </div>
 
+            // 年度
+            <div class="is-flex is-align-items-center is-flex-wrap-wrap mb-3" style="gap: 0.25rem 0.5rem;">
+                <span class="has-text-weight-semibold is-size-7">"年度："</span>
+                {move || {
+                    let detail = show_detail.get();
+                    let dys = default_year_strings.clone();
+                    all_years.iter().filter_map(move |&y| {
+                        let ys = y.to_string();
+                        if !detail && !dys.contains(&ys) {
+                            return None;
+                        }
+                        let ys2 = ys.clone();
+                        let label = format!("{y}");
+                        Some(view! {
+                            <label class="checkbox is-size-7">
+                                <input
+                                    type="checkbox"
+                                    prop:checked=move || csv_contains(&fiscal_years.get(), &ys)
+                                    on:change=move |_| {
+                                        page.set(1);
+                                        fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
+                                    }
+                                />
+                                " " {label}
+                            </label>
+                        })
+                    }).collect_view()
+                }}
+            </div>
+
+            // 絞り込み検索
+            <div class="columns is-multiline mb-2">
                 <div class="column is-narrow">
                     <label class="label is-small">"文書種別"</label>
                     <div class="select is-small">
@@ -263,7 +260,6 @@ pub fn DocumentListPage() -> impl IntoView {
                         </select>
                     </div>
                 </div>
-
                 <div class="column">
                     <label class="label is-small">"タイトル・文書番号"</label>
                     <div class="control has-icons-left">
@@ -271,10 +267,6 @@ pub fn DocumentListPage() -> impl IntoView {
                         <span class="icon is-left"><i class="fas fa-search"></i></span>
                     </div>
                 </div>
-            </div>
-
-            // フィルタバー 2行目
-            <div class="columns mb-4">
                 <div class="column">
                     <label class="label is-small">"プロジェクト名"</label>
                     <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_project_name />
