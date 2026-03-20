@@ -381,6 +381,27 @@ pub async fn insert_document_with_created_at(
     doc_id
 }
 
+pub async fn insert_position(
+    pool: &PgPool,
+    name: &str,
+    default_role: &str,
+    sort_order: i32,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO positions (name, default_role, sort_order)
+         VALUES ($1, $2, $3)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(default_role)
+    .bind(sort_order)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    row.get("id")
+}
+
 pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
     let row = sqlx::query("INSERT INTO tags (name) VALUES ($1) RETURNING id")
         .bind(name)

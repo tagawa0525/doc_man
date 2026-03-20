@@ -37,6 +37,74 @@ struct MasterData {
     proj: uuid::Uuid,
 }
 
+// ── positions: admin-only write ──────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn post_position_pm_returns_403(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/positions")
+                .header("Authorization", format!("Bearer {}", pm.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({"name": "テスト", "default_role": "viewer", "sort_order": 99}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn put_position_pm_returns_403(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
+    let pos_id = helpers::insert_position(&pool, "テストPM職", "general", 50).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/v1/positions/{pos_id}"))
+                .header("Authorization", format!("Bearer {}", pm.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({"name": "変更"}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_positions_viewer_returns_200_perms(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let viewer = helpers::insert_employee(&pool, "VIEW001", "viewer").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/positions")
+                .header("Authorization", format!("Bearer {}", viewer.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
 // ── admin-only endpoints: project_manager → 403 ─────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
