@@ -176,6 +176,121 @@ async fn get_documents_with_project_filter(pool: PgPool) {
     assert_eq!(body["data"][0]["title"], "文書A");
 }
 
+// ── GET /documents?q= ───────────────────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_with_q_filters_by_title(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    helpers::insert_document(&pool, "内設計-2603001", "配管設計書", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, "内設計-2603002", "電気回路図", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, "内設計-2603003", "配管施工要領", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents?q=%E9%85%8D%E7%AE%A1") // q=配管
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 2);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_with_q_filters_by_doc_number(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    helpers::insert_document(&pool, "内設計-2603001", "文書A", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, "内設計-2603002", "文書B", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents?q=2603001")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["doc_number"], "内設計-2603001");
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_with_q_is_case_insensitive(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    helpers::insert_document(&pool, "ABC-001", "Design Report", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, "DEF-002", "Test Plan", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents?q=design")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["doc_number"], "ABC-001");
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_with_q_escapes_like_wildcards(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    helpers::insert_document(&pool, "内設計-2603001", "100%完了報告", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, "内設計-2603002", "通常文書", admin.id, kind, proj).await;
+
+    // q=100% — % はリテラルとして扱われるべき
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents?q=100%25") // %25 = URL-encoded %
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["title"], "100%完了報告");
+}
+
 // ── GET /documents/{id} ─────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
