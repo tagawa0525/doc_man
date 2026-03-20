@@ -130,7 +130,10 @@ struct MeResponse {
     departments: Vec<MeDepartment>,
 }
 
-async fn me(user: AuthenticatedUser, State(state): State<AppState>) -> Json<MeResponse> {
+async fn me(
+    user: AuthenticatedUser,
+    State(state): State<AppState>,
+) -> Result<Json<MeResponse>, crate::error::AppError> {
     let rows = sqlx::query(
         "SELECT d.id, d.code, d.name
          FROM employee_departments ed
@@ -141,7 +144,7 @@ async fn me(user: AuthenticatedUser, State(state): State<AppState>) -> Json<MeRe
     .bind(user.id)
     .fetch_all(&state.db)
     .await
-    .unwrap_or_default();
+    .map_err(crate::error::AppError::Database)?;
 
     let departments = rows
         .into_iter()
@@ -152,9 +155,9 @@ async fn me(user: AuthenticatedUser, State(state): State<AppState>) -> Json<MeRe
         })
         .collect();
 
-    Json(MeResponse {
+    Ok(Json(MeResponse {
         id: user.id,
         role: json!(user.role),
         departments,
-    })
+    }))
 }
