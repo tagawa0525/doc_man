@@ -11,6 +11,9 @@ use crate::models::DocKindBrief;
 use crate::models::document::{
     AuthorBrief, CreateDocumentRequest, DocumentResponse, ProjectBrief, UpdateDocumentRequest,
 };
+use crate::models::document_revision::{
+    CreatedByBrief, DocumentRevisionResponse, ReviseDocumentRequest,
+};
 use crate::pagination::{PaginatedResponse, PaginationParams};
 use crate::services::document_numbering::assign_doc_number;
 use crate::state::AppState;
@@ -434,6 +437,141 @@ pub async fn delete_document(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/documents/{id}/revise
+pub async fn revise_document(
+    user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+    Json(req): Json<ReviseDocumentRequest>,
+) -> Result<Json<DocumentResponse>, AppError> {
+    if user.role == Role::Viewer {
+        return Err(AppError::Forbidden(
+            "viewer role cannot revise documents".to_string(),
+        ));
+    }
+
+    if req.reason.trim().is_empty() {
+        return Err(AppError::InvalidRequest(
+            "reason is required".to_string(),
+        ));
+    }
+
+    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
+
+    let doc = sqlx::query(
+        "SELECT status, revision, doc_number FROM documents WHERE id = $1 FOR UPDATE",
+    )
+    .bind(id)
+    .fetch_optional(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?
+    .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
+
+    let status: String = doc.get("status");
+    if status != "approved" {
+        return Err(AppError::Unprocessable(
+            "only approved documents can be revised".to_string(),
+        ));
+    }
+
+    let current_revision: i32 = doc.get("revision");
+    let doc_number: String = doc.get("doc_number");
+    let new_revision = current_revision + 1;
+
+    // 旧改訂の effective_to を閉じる
+    sqlx::query(
+        "UPDATE document_revisions SET effective_to = now()
+         WHERE document_id = $1 AND effective_to IS NULL",
+    )
+    .bind(id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
+
+    // 新改訂レコードを作成
+    let file_path = format!("{doc_number}/{new_revision}");
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, reason, created_by)
+         VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(id)
+    .bind(new_revision)
+    .bind(&file_path)
+    .bind(&req.reason)
+    .bind(user.id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
+
+    // documents の revision と status を更新
+    sqlx::query(
+        "UPDATE documents SET revision = $1, status = 'draft', updated_at = now() WHERE id = $2",
+    )
+    .bind(new_revision)
+    .bind(id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
+
+    tx.commit().await.map_err(AppError::Database)?;
+
+    let doc = fetch_document_by_id(&state, id)
+        .await?
+        .ok_or_else(|| AppError::Internal("failed to fetch revised document".to_string()))?;
+
+    Ok(Json(doc))
+}
+
+/// GET /api/v1/documents/{id}/revisions
+pub async fn list_document_revisions(
+    _user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DocumentRevisionResponse>>, AppError> {
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM documents WHERE id = $1)")
+        .bind(id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    if !exists {
+        return Err(AppError::NotFound(format!("document {id} not found")));
+    }
+
+    let rows = sqlx::query(
+        "SELECT dr.id, dr.document_id, dr.revision, dr.file_path, dr.reason,
+                dr.effective_from, dr.effective_to,
+                e.id AS created_by_id, e.name AS created_by_name
+         FROM document_revisions dr
+         JOIN employees e ON e.id = dr.created_by
+         WHERE dr.document_id = $1
+         ORDER BY dr.revision DESC",
+    )
+    .bind(id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(AppError::Database)?;
+
+    let data: Vec<DocumentRevisionResponse> = rows
+        .into_iter()
+        .map(|r| DocumentRevisionResponse {
+            id: r.get("id"),
+            document_id: r.get("document_id"),
+            revision: r.get("revision"),
+            file_path: r.get("file_path"),
+            reason: r.get("reason"),
+            created_by: CreatedByBrief {
+                id: r.get("created_by_id"),
+                name: r.get("created_by_name"),
+            },
+            effective_from: r.get("effective_from"),
+            effective_to: r.get("effective_to"),
+        })
+        .collect();
+
+    Ok(Json(data))
 }
 
 // ──────────────── 内部ヘルパー ────────────────
