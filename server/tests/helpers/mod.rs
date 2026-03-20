@@ -273,6 +273,62 @@ pub async fn insert_document(
     doc_id
 }
 
+pub async fn insert_document_with_dept(
+    pool: &PgPool,
+    doc_number: &str,
+    title: &str,
+    author_id: Uuid,
+    doc_kind_id: Uuid,
+    project_id: Uuid,
+    frozen_dept_code: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
+         VALUES ($1, $2, '/default/path', $3, $4, $5, $6)
+         RETURNING id",
+    )
+    .bind(doc_number)
+    .bind(title)
+    .bind(author_id)
+    .bind(doc_kind_id)
+    .bind(frozen_dept_code)
+    .bind(project_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    row.get("id")
+}
+
+pub async fn insert_document_with_created_at(
+    pool: &PgPool,
+    doc_number: &str,
+    title: &str,
+    author_id: Uuid,
+    doc_kind_id: Uuid,
+    project_id: Uuid,
+    frozen_dept_code: &str,
+    created_at: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id, created_at)
+         VALUES ($1, $2, '/default/path', $3, $4, $5, $6, $7::timestamptz)
+         RETURNING id",
+    )
+    .bind(doc_number)
+    .bind(title)
+    .bind(author_id)
+    .bind(doc_kind_id)
+    .bind(frozen_dept_code)
+    .bind(project_id)
+    .bind(created_at)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    row.get("id")
+}
+
 pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
     let row = sqlx::query("INSERT INTO tags (name) VALUES ($1) RETURNING id")
         .bind(name)
