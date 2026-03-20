@@ -106,7 +106,7 @@ UPDATE documents SET revision = 0 WHERE revision = 1;
 **変更: `server/src/handlers/documents.rs`**
 
 1. **`create_document`**: INSERT から `file_path` を除外。トランザクション内で `document_revisions` に Rev.0 を INSERT（`file_path = {doc_number}/0`）
-2. **`update_document`**: revision 自動インクリメント（315-326行目）を削除。`file_path` 変更を 422 で拒否。UPDATE SQL から `file_path` と `revision` を除外
+2. **`update_document`**: revision 自動インクリメント（315-326行目）を削除。`UpdateDocumentRequest` から `file_path` を除外し、UPDATE SQL からも `file_path` と `revision` を除外
 3. **`delete_document`**: `document_revisions` を先に削除（FK 制約）
 4. **`fetch_document_by_id`** / **`list_documents`**: `document_revisions`（`effective_to IS NULL`）を JOIN して `file_path` を取得
 
