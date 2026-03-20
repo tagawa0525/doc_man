@@ -73,17 +73,26 @@ ALTER TABLE documents ADD CONSTRAINT documents_revision_check CHECK (revision >=
 ### Migration 18: 既存データのバックフィル
 
 ```sql
--- 既存文書を document_revisions に Rev.0 として記録
--- （revision が 1 の既存データは 0 にリセット）
+-- 既存文書の revision (1始まり) を document_revisions に展開
+-- revision=N の文書に対し Rev.0〜Rev.N-1 を作成
+-- Rev.N-1 が現行改訂 (effective_to = NULL)、それ以前は閉じる
 INSERT INTO document_revisions (document_id, revision, file_path, reason, created_by, effective_from, effective_to)
-SELECT id, 0, doc_number || '/0', NULL, author_id, created_at, NULL
-FROM documents
+SELECT
+    d.id,
+    gs.rev,
+    d.doc_number || '/' || gs.rev,
+    NULL,
+    d.author_id,
+    d.created_at,
+    CASE WHEN gs.rev < d.revision - 1 THEN d.created_at ELSE NULL END
+FROM documents d
+CROSS JOIN LATERAL generate_series(0, d.revision - 1) AS gs(rev)
 WHERE NOT EXISTS (
-    SELECT 1 FROM document_revisions dr WHERE dr.document_id = documents.id AND dr.revision = 0
+    SELECT 1 FROM document_revisions dr WHERE dr.document_id = d.id AND dr.revision = gs.rev
 );
 
--- 既存文書の revision を 0 にリセット
-UPDATE documents SET revision = 0 WHERE revision = 1;
+-- 1始まり → 0始まりに変換 (revision N → N-1)
+UPDATE documents SET revision = revision - 1 WHERE revision >= 1;
 ```
 
 ## サーバー変更
@@ -194,9 +203,10 @@ UPDATE documents SET revision = 0 WHERE revision = 1;
 
 ### Phase 3: 文書更新 — revision 自動インクリメント廃止
 
-- RED: `put_document_does_not_increment_revision`, `put_document_file_path_change_returns_422`
+- RED: `put_document_does_not_increment_revision`
 - GREEN: `update_document` ハンドラ改修
 - 既存テスト更新: `put_document_updates_title_and_increments_revision` → `revision == 0` に変更
+- 備考: `UpdateDocumentRequest` から `file_path` を削除。未知フィールドは serde が無視するため 422 テストは不要
 
 ### Phase 4: 改訂エンドポイント
 
