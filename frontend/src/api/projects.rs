@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use super::client::{self, ApiError};
 use super::types::{
     CreateProjectRequest, PaginatedResponse, ProjectResponse, UpdateProjectRequest,
@@ -7,8 +9,13 @@ use uuid::Uuid;
 pub async fn list(
     page: u32,
     per_page: u32,
+    q: &str,
 ) -> Result<PaginatedResponse<ProjectResponse>, ApiError> {
-    client::get(&format!("/api/v1/projects?page={page}&per_page={per_page}")).await
+    let mut url = format!("/api/v1/projects?page={page}&per_page={per_page}");
+    if !q.is_empty() {
+        let _ = write!(url, "&q={}", super::encode_query(q));
+    }
+    client::get(&url).await
 }
 
 pub async fn get(id: Uuid) -> Result<ProjectResponse, ApiError> {

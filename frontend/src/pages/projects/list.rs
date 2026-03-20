@@ -1,4 +1,6 @@
 use leptos::prelude::*;
+use wasm_bindgen::prelude::*;
+use web_sys::HtmlInputElement;
 
 use crate::api;
 use crate::auth::AuthContext;
@@ -9,13 +11,34 @@ use crate::components::pagination::Pagination;
 pub fn ProjectListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
     let page = RwSignal::new(1u32);
+    let search_query = RwSignal::new(String::new());
+    let timer_id = RwSignal::new(0i32);
 
     let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
     let resource = LocalResource::new(move || {
         let p = page.get();
-        async move { api::projects::list(p, 20).await }
+        let q = search_query.get();
+        async move { api::projects::list(p, 20, &q).await }
     });
+
+    let on_input = move |ev: leptos::ev::Event| {
+        let value = event_target::<HtmlInputElement>(&ev).value();
+        let window = web_sys::window().unwrap();
+        let prev = timer_id.get_untracked();
+        if prev != 0 {
+            window.clear_timeout_with_handle(prev);
+        }
+        let cb = Closure::once(move || {
+            page.set(1);
+            search_query.set(value);
+        });
+        let id = window
+            .set_timeout_with_callback_and_timeout_and_arguments_0(cb.as_ref().unchecked_ref(), 300)
+            .unwrap();
+        cb.forget();
+        timer_id.set(id);
+    };
 
     view! {
         <div>
@@ -31,6 +54,18 @@ pub fn ProjectListPage() -> impl IntoView {
                         </div>
                     }.into_any()
                 } else { view! { <div></div> }.into_any() }}
+            </div>
+
+            <div class="field mb-4">
+                <div class="control has-icons-left">
+                    <input
+                        class="input"
+                        type="text"
+                        placeholder="プロジェクト名で検索..."
+                        on:input=on_input
+                    />
+                    <span class="icon is-left"><i class="fas fa-search"></i></span>
+                </div>
             </div>
 
             <Suspense fallback=move || view! { <Loading /> }>

@@ -188,7 +188,15 @@ async fn get_documents_with_q_filters_by_title(pool: PgPool) {
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     helpers::insert_document(&pool, "内設計-2603001", "配管設計書", admin.id, kind, proj).await;
     helpers::insert_document(&pool, "内設計-2603002", "電気回路図", admin.id, kind, proj).await;
-    helpers::insert_document(&pool, "内設計-2603003", "配管施工要領", admin.id, kind, proj).await;
+    helpers::insert_document(
+        &pool,
+        "内設計-2603003",
+        "配管施工要領",
+        admin.id,
+        kind,
+        proj,
+    )
+    .await;
 
     let response = app
         .oneshot(
@@ -270,7 +278,15 @@ async fn get_documents_with_q_escapes_like_wildcards(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
-    helpers::insert_document(&pool, "内設計-2603001", "100%完了報告", admin.id, kind, proj).await;
+    helpers::insert_document(
+        &pool,
+        "内設計-2603001",
+        "100%完了報告",
+        admin.id,
+        kind,
+        proj,
+    )
+    .await;
     helpers::insert_document(&pool, "内設計-2603002", "通常文書", admin.id, kind, proj).await;
 
     // q=100% — % はリテラルとして扱われるべき
