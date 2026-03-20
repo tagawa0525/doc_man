@@ -4,7 +4,7 @@ use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::UpdateDocumentRequest;
+use crate::api::types::{ReviseDocumentRequest, UpdateDocumentRequest};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::modal::ConfirmModal;
@@ -33,11 +33,15 @@ pub fn DocumentDetailPage() -> impl IntoView {
 
     let editing = RwSignal::new(false);
     let form_title = RwSignal::new(String::new());
-    let form_file_path = RwSignal::new(String::new());
     let form_confidentiality = RwSignal::new(String::new());
     let form_tags = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
     let delete_target = RwSignal::new(Option::<(Uuid, String)>::None);
+
+    // 改訂関連
+    let revise_open = RwSignal::new(false);
+    let revise_reason = RwSignal::new(String::new());
+    let revising = RwSignal::new(false);
 
     let doc_resource = LocalResource::new(move || {
         let id = doc_id();
@@ -50,14 +54,23 @@ pub fn DocumentDetailPage() -> impl IntoView {
         }
     });
 
-    let start_editing =
-        move |title: String, file_path: String, confidentiality: String, tags: Vec<String>| {
-            form_title.set(title);
-            form_file_path.set(file_path);
-            form_confidentiality.set(confidentiality);
-            form_tags.set(tags.join(", "));
-            editing.set(true);
-        };
+    let revisions_resource = LocalResource::new(move || {
+        let id = doc_id();
+        let _ = refresh.get();
+        async move {
+            match id {
+                Some(id) => api::documents::list_revisions(id).await.ok(),
+                None => None,
+            }
+        }
+    });
+
+    let start_editing = move |title: String, confidentiality: String, tags: Vec<String>| {
+        form_title.set(title);
+        form_confidentiality.set(confidentiality);
+        form_tags.set(tags.join(", "));
+        editing.set(true);
+    };
 
     let cancel_editing = move || {
         editing.set(false);
@@ -66,10 +79,9 @@ pub fn DocumentDetailPage() -> impl IntoView {
     let do_save = move || {
         let Some(id) = doc_id() else { return };
         let title = form_title.get_untracked();
-        let file_path = form_file_path.get_untracked();
 
-        if title.is_empty() || file_path.is_empty() {
-            toast.error("タイトルとファイルパスは必須です");
+        if title.is_empty() {
+            toast.error("タイトルは必須です");
             return;
         }
 
@@ -87,7 +99,6 @@ pub fn DocumentDetailPage() -> impl IntoView {
                 id,
                 &UpdateDocumentRequest {
                     title: Some(title),
-                    file_path: Some(file_path),
                     confidentiality: Some(confidentiality),
                     tags: Some(tags),
                     doc_number: None,
@@ -105,6 +116,30 @@ pub fn DocumentDetailPage() -> impl IntoView {
                 Err(e) => toast.error(format!("保存失敗: {}", e.message)),
             }
             saving.set(false);
+        });
+    };
+
+    let do_revise = move || {
+        let Some(id) = doc_id() else { return };
+        let reason = revise_reason.get_untracked();
+
+        if reason.trim().is_empty() {
+            toast.error("改訂理由は必須です");
+            return;
+        }
+
+        revising.set(true);
+        leptos::task::spawn_local(async move {
+            match api::documents::revise(id, &ReviseDocumentRequest { reason }).await {
+                Ok(_) => {
+                    toast.success("改訂しました");
+                    revise_open.set(false);
+                    revise_reason.set(String::new());
+                    refresh.update(|v| *v += 1);
+                }
+                Err(e) => toast.error(format!("改訂失敗: {}", e.message)),
+            }
+            revising.set(false);
         });
     };
 
@@ -143,9 +178,9 @@ pub fn DocumentDetailPage() -> impl IntoView {
                             let status = doc.status.clone();
                             let doc_title = doc.title.clone();
                             let doc_number_display = doc.doc_number.clone();
+                            let is_approved = status == "approved";
                             // Clone fields for edit button closure
                             let edit_title = doc.title.clone();
-                            let edit_fp = doc.file_path.clone();
                             let edit_conf = doc.confidentiality.clone();
                             let edit_tags = doc.tags.clone();
                             // Clone for delete
@@ -174,15 +209,25 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                                     }.into_any()
                                                 } else if can_edit {
                                                     let et = edit_title.clone();
-                                                    let efp = edit_fp.clone();
                                                     let ec = edit_conf.clone();
                                                     let etags = edit_tags.clone();
                                                     view! {
                                                         <button class="button is-info"
-                                                            on:click=move |_| start_editing(et.clone(), efp.clone(), ec.clone(), etags.clone())>
+                                                            on:click=move |_| start_editing(et.clone(), ec.clone(), etags.clone())>
                                                             <span class="icon"><i class="fas fa-edit"></i></span>
                                                             <span>"編集"</span>
                                                         </button>
+                                                        {if is_approved && can_edit {
+                                                            view! {
+                                                                <button class="button is-warning"
+                                                                    on:click=move |_| revise_open.set(true)>
+                                                                    <span class="icon"><i class="fas fa-code-branch"></i></span>
+                                                                    <span>"改訂"</span>
+                                                                </button>
+                                                            }.into_any()
+                                                        } else {
+                                                            view! { <span></span> }.into_any()
+                                                        }}
                                                         <a href="/documents" class="button">"一覧に戻る"</a>
                                                     }.into_any()
                                                 } else {
@@ -194,6 +239,33 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                         </div>
                                     </div>
                                 </div>
+
+                                // 改訂理由入力フォーム
+                                {move || if revise_open.get() {
+                                    view! {
+                                        <div class="notification is-warning is-light">
+                                            <p class="mb-2"><strong>"改訂理由を入力してください"</strong></p>
+                                            <div class="field">
+                                                <textarea class="textarea" rows=2
+                                                    prop:value=move || revise_reason.get()
+                                                    on:input=move |ev| { let t: web_sys::HtmlTextAreaElement = event_target(&ev); revise_reason.set(t.value()); }
+                                                    placeholder="改訂理由（必須）">
+                                                </textarea>
+                                            </div>
+                                            <div class="buttons">
+                                                <button class="button is-warning" prop:disabled=move || revising.get()
+                                                    on:click=move |_| do_revise()>
+                                                    "改訂実行"
+                                                </button>
+                                                <button class="button" on:click=move |_| { revise_open.set(false); revise_reason.set(String::new()); }>
+                                                    "キャンセル"
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! { <span></span> }.into_any()
+                                }}
 
                                 <div class="columns">
                                     <div class="column is-8">
@@ -212,7 +284,7 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                                             view! { <span>{doc.title.clone()}</span> }.into_any()
                                                         }}
                                                     </td></tr>
-                                                    <tr><th>"リビジョン"</th><td>{doc.revision.to_string()}</td></tr>
+                                                    <tr><th>"リビジョン"</th><td>{"Rev."}{doc.revision.to_string()}</td></tr>
                                                     <tr><th>"ステータス"</th><td><StatusBadge status=doc.status /></td></tr>
                                                     <tr><th>"機密区分"</th><td>
                                                         {move || if editing.get() {
@@ -232,14 +304,7 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                                         }}
                                                     </td></tr>
                                                     <tr><th>"ファイルパス"</th><td>
-                                                        {move || if editing.get() {
-                                                            view! {
-                                                                <input class="input" type="text" prop:value=move || form_file_path.get()
-                                                                    on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_file_path.set(t.value()); } />
-                                                            }.into_any()
-                                                        } else {
-                                                            view! { <span class="is-size-7">{doc.file_path.clone()}</span> }.into_any()
-                                                        }}
+                                                        <span class="is-size-7">{doc.file_path.clone()}</span>
                                                     </td></tr>
                                                     <tr><th>"部署コード"</th><td>{doc.frozen_dept_code}</td></tr>
                                                     <tr><th>"文書種別"</th><td>{format!("{} ({})", doc.doc_kind.name, doc.doc_kind.code)}</td></tr>
@@ -278,6 +343,48 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                             } else {
                                                 view! { <span></span> }.into_any()
                                             }}
+                                        </div>
+
+                                        // 改訂履歴セクション
+                                        <div class="box">
+                                            <h2 class="subtitle">"改訂履歴"</h2>
+                                            <Suspense fallback=move || view! { <Loading /> }>
+                                                {move || {
+                                                    revisions_resource.get().map(|revs| match revs {
+                                                        Some(revisions) if !revisions.is_empty() => {
+                                                            view! {
+                                                                <table class="table is-fullwidth is-hoverable is-narrow">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>"Rev."</th>
+                                                                            <th>"ファイルパス"</th>
+                                                                            <th>"理由"</th>
+                                                                            <th>"作成者"</th>
+                                                                            <th>"有効開始"</th>
+                                                                            <th>"有効終了"</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {revisions.into_iter().map(|rev| {
+                                                                            view! {
+                                                                                <tr>
+                                                                                    <td>{rev.revision.to_string()}</td>
+                                                                                    <td class="is-size-7">{rev.file_path}</td>
+                                                                                    <td>{rev.reason.unwrap_or_default()}</td>
+                                                                                    <td>{rev.created_by.name}</td>
+                                                                                    <td>{rev.effective_from.format("%Y-%m-%d %H:%M").to_string()}</td>
+                                                                                    <td>{rev.effective_to.map(|d| d.format("%Y-%m-%d %H:%M").to_string()).unwrap_or_default()}</td>
+                                                                                </tr>
+                                                                            }
+                                                                        }).collect_view()}
+                                                                    </tbody>
+                                                                </table>
+                                                            }.into_any()
+                                                        }
+                                                        _ => view! { <p class="has-text-grey">"改訂履歴はありません"</p> }.into_any(),
+                                                    })
+                                                }}
+                                            </Suspense>
                                         </div>
                                     </div>
                                     <div class="column is-4">

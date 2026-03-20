@@ -48,7 +48,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                     <table class="table is-fullwidth is-hoverable">
                                         <thead>
                                             <tr>
-                                                <th>"文書番号"</th><th>"タイトル"</th><th>"ステータス"</th>
+                                                <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th><th>"ステータス"</th>
                                                 <th>"種別"</th><th>"プロジェクト"</th><th>"作成者"</th>
                                                 <th>"タグ"</th>
                                             </tr>
@@ -59,6 +59,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                                 view! {
                                                     <tr>
                                                         <td><span class="has-text-weight-semibold">{doc.doc_number}</span></td>
+                                                        <td>{doc.revision.to_string()}</td>
                                                         <td><a href=detail_url>{doc.title}</a></td>
                                                         <td><StatusBadge status=doc.status /></td>
                                                         <td>{doc.doc_kind.name}</td>
