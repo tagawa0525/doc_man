@@ -46,6 +46,7 @@ fn App() -> impl IntoView {
         if let Some(me) = auth::verify_token().await {
             auth.user.set(Some(UserInfo {
                 id: me.id,
+                name: me.name,
                 role: Role::from_str(&me.role),
                 departments: me.departments,
             }));

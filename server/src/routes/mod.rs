@@ -126,6 +126,7 @@ struct MeDepartment {
 #[derive(serde::Serialize)]
 struct MeResponse {
     id: Uuid,
+    name: String,
     role: serde_json::Value,
     departments: Vec<MeDepartment>,
 }
@@ -157,6 +158,7 @@ async fn me(
 
     Ok(Json(MeResponse {
         id: user.id,
+        name: user.name,
         role: json!(user.role),
         departments,
     }))

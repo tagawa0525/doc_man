@@ -43,6 +43,7 @@ impl Role {
 #[derive(Debug, Clone)]
 pub struct UserInfo {
     pub id: Uuid,
+    pub name: String,
     pub role: Role,
     pub departments: Vec<MeDepartment>,
 }

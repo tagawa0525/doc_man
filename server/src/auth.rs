@@ -37,6 +37,7 @@ impl std::str::FromStr for Role {
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
     pub id: Uuid,
+    pub name: String,
     pub role: Role,
     pub is_active: bool,
 }
@@ -66,13 +67,14 @@ where
             }
             let token = &auth_header[7..];
 
-            let row =
-                sqlx::query("SELECT id, role, is_active FROM employees WHERE employee_code = $1")
-                    .bind(token)
-                    .fetch_optional(&app_state.db)
-                    .await
-                    .map_err(AppError::Database)?
-                    .ok_or(AppError::Unauthorized)?;
+            let row = sqlx::query(
+                "SELECT id, name, role, is_active FROM employees WHERE employee_code = $1",
+            )
+            .bind(token)
+            .fetch_optional(&app_state.db)
+            .await
+            .map_err(AppError::Database)?
+            .ok_or(AppError::Unauthorized)?;
 
             let is_active: bool = row.get("is_active");
             if !is_active {
@@ -83,6 +85,7 @@ where
 
             Ok(AuthenticatedUser {
                 id: row.get("id"),
+                name: row.get("name"),
                 role,
                 is_active,
             })

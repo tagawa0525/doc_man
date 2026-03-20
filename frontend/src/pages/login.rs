@@ -31,6 +31,7 @@ pub fn LoginPage() -> impl IntoView {
                 Ok(me) => {
                     auth.user.set(Some(UserInfo {
                         id: me.id,
+                        name: me.name,
                         role: Role::from_str(&me.role),
                         departments: me.departments,
                     }));
