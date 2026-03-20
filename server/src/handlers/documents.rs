@@ -73,9 +73,9 @@ pub async fn list_documents(
                 continue;
             }
             let id: Uuid = trimmed.parse().map_err(|_| {
-                AppError::InvalidRequest(
-                    "invalid doc_kind_ids parameter: must be comma-separated UUIDs".to_string(),
-                )
+                AppError::InvalidRequest(format!(
+                    "invalid doc_kind_ids parameter: '{trimmed}' is not a valid UUID"
+                ))
             })?;
             doc_kind_ids.push(id);
         }
