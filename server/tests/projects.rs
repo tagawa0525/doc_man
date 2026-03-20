@@ -286,6 +286,33 @@ async fn get_projects_filters_by_fiscal_year(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_filters_by_multiple_fiscal_years(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+
+    helpers::insert_project_with_created_at(&pool, "2025年度PJ", disc, None, "2025-06-15T00:00:00Z").await;
+    helpers::insert_project_with_created_at(&pool, "2024年度PJ", disc, None, "2024-06-15T00:00:00Z").await;
+    helpers::insert_project_with_created_at(&pool, "2023年度PJ", disc, None, "2023-06-15T00:00:00Z").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?fiscal_years=2024,2025")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 2);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn get_projects_filters_by_manager_name(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;

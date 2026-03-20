@@ -107,6 +107,45 @@ async fn get_documents_filters_by_fiscal_year(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_filters_by_multiple_fiscal_years(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+
+    helpers::insert_document_with_created_at(
+        &pool, "DOC-001", "2025年度文書", admin.id, kind, proj, "設計", "2025-06-15T00:00:00Z",
+    )
+    .await;
+    helpers::insert_document_with_created_at(
+        &pool, "DOC-002", "2024年度文書", admin.id, kind, proj, "設計", "2024-06-15T00:00:00Z",
+    )
+    .await;
+    helpers::insert_document_with_created_at(
+        &pool, "DOC-003", "2023年度文書", admin.id, kind, proj, "設計", "2023-06-15T00:00:00Z",
+    )
+    .await;
+
+    // fiscal_years=2024,2025 → 2件
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents?fiscal_years=2024,2025")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 2);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn get_documents_filters_by_project_name(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
