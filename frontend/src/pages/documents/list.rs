@@ -327,7 +327,7 @@ pub fn DocumentListPage() -> impl IntoView {
                             let ai = all_ids.clone();
                             let ai2 = all_ids.clone();
                             let toggle_all = view! {
-                                <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                                <button type="button" class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap; background:none; border:none; padding:0; text-decoration:underline;"
                                     on:click=move |_| {
                                         let current = selected_doc_kinds.get_untracked();
                                         let all_checked = ai.iter().all(|id| csv_contains(&current, id));
@@ -343,7 +343,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                         let current = selected_doc_kinds.get();
                                         if !current.is_empty() && ai2.iter().all(|id| csv_contains(&current, id)) { "全解除" } else { "全選択" }
                                     }}
-                                </a>
+                                </button>
                             };
                             let checkboxes = paginated.data.into_iter().map(|dk| {
                                 let id = dk.id.to_string();
