@@ -306,8 +306,8 @@ pub async fn insert_document_with_dept(
     frozen_dept_code: &str,
 ) -> Uuid {
     let row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
-         VALUES ($1, $2, '/default/path', $3, $4, $5, $6)
+        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id",
     )
     .bind(doc_number)
@@ -320,7 +320,21 @@ pub async fn insert_document_with_dept(
     .await
     .unwrap();
 
-    row.get("id")
+    let doc_id: Uuid = row.get("id");
+    let file_path = format!("{doc_number}/0");
+
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, created_by)
+         VALUES ($1, 0, $2, $3)",
+    )
+    .bind(doc_id)
+    .bind(&file_path)
+    .bind(author_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    doc_id
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -335,8 +349,8 @@ pub async fn insert_document_with_created_at(
     created_at: &str,
 ) -> Uuid {
     let row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id, created_at)
-         VALUES ($1, $2, '/default/path', $3, $4, $5, $6, $7::timestamptz)
+        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)
          RETURNING id",
     )
     .bind(doc_number)
@@ -350,7 +364,21 @@ pub async fn insert_document_with_created_at(
     .await
     .unwrap();
 
-    row.get("id")
+    let doc_id: Uuid = row.get("id");
+    let file_path = format!("{doc_number}/0");
+
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, created_by)
+         VALUES ($1, 0, $2, $3)",
+    )
+    .bind(doc_id)
+    .bind(&file_path)
+    .bind(author_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    doc_id
 }
 
 pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {
