@@ -76,13 +76,13 @@ pub async fn list_projects(
     );
     push_project_filters(
         &mut count_qb,
-        &params.status,
+        params.status.as_deref(),
         params.discipline_id,
-        &params.wbs_code,
-        &search,
+        params.wbs_code.as_deref(),
+        search.as_deref(),
         &dept_ids,
         fiscal_dates,
-        &manager_name,
+        manager_name.as_deref(),
     );
     let total: i64 = count_qb
         .build_query_scalar()
@@ -104,13 +104,13 @@ pub async fn list_projects(
     );
     push_project_filters(
         &mut data_qb,
-        &params.status,
+        params.status.as_deref(),
         params.discipline_id,
-        &params.wbs_code,
-        &search,
+        params.wbs_code.as_deref(),
+        search.as_deref(),
         &dept_ids,
         fiscal_dates,
-        &manager_name,
+        manager_name.as_deref(),
     );
     data_qb.push(" ORDER BY p.name, p.id LIMIT ");
     data_qb.push_bind(params.pagination.limit());
@@ -157,29 +157,29 @@ pub async fn list_projects(
 #[allow(clippy::too_many_arguments)]
 fn push_project_filters(
     qb: &mut QueryBuilder<sqlx::Postgres>,
-    status: &Option<String>,
+    status: Option<&str>,
     discipline_id: Option<Uuid>,
-    wbs_code: &Option<String>,
-    search: &Option<String>,
+    wbs_code: Option<&str>,
+    search: Option<&str>,
     dept_ids: &[Uuid],
     fiscal_dates: Option<(NaiveDate, NaiveDate)>,
-    manager_name: &Option<String>,
+    manager_name: Option<&str>,
 ) {
-    if let Some(ref s) = *status {
+    if let Some(s) = status {
         qb.push(" AND p.status = ");
-        qb.push_bind(s.clone());
+        qb.push_bind(s.to_string());
     }
     if let Some(did) = discipline_id {
         qb.push(" AND p.discipline_id = ");
         qb.push_bind(did);
     }
-    if let Some(ref w) = *wbs_code {
+    if let Some(w) = wbs_code {
         qb.push(" AND p.wbs_code = ");
-        qb.push_bind(w.clone());
+        qb.push_bind(w.to_string());
     }
-    if let Some(ref q) = *search {
+    if let Some(q) = search {
         qb.push(" AND LOWER(p.name) LIKE '%' || ");
-        qb.push_bind(q.clone());
+        qb.push_bind(q.to_string());
         qb.push(" || '%' ESCAPE '\\'");
     }
     if !dept_ids.is_empty() {
@@ -196,9 +196,9 @@ fn push_project_filters(
         qb.push(" AND p.created_at < ");
         qb.push_bind(end);
     }
-    if let Some(ref mn) = *manager_name {
+    if let Some(mn) = manager_name {
         qb.push(" AND LOWER(e.name) LIKE '%' || ");
-        qb.push_bind(mn.clone());
+        qb.push_bind(mn.to_string());
         qb.push(" || '%' ESCAPE '\\'");
     }
 }

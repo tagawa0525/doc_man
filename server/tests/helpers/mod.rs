@@ -323,6 +323,7 @@ pub async fn insert_document_with_dept(
     row.get("id")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_document_with_created_at(
     pool: &PgPool,
     doc_number: &str,

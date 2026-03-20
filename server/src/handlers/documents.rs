@@ -93,13 +93,13 @@ pub async fn list_documents(
     push_document_filters(
         &mut count_qb,
         params.project_id,
-        &search,
+        search.as_deref(),
         &dept_codes,
         params.doc_kind_id,
         fiscal_dates,
-        &project_name,
-        &author_name,
-        &wbs_code,
+        project_name.as_deref(),
+        author_name.as_deref(),
+        wbs_code.as_deref(),
     );
     let total: i64 = count_qb
         .build_query_scalar()
@@ -126,13 +126,13 @@ pub async fn list_documents(
     push_document_filters(
         &mut data_qb,
         params.project_id,
-        &search,
+        search.as_deref(),
         &dept_codes,
         params.doc_kind_id,
         fiscal_dates,
-        &project_name,
-        &author_name,
-        &wbs_code,
+        project_name.as_deref(),
+        author_name.as_deref(),
+        wbs_code.as_deref(),
     );
     data_qb.push(" ORDER BY d.created_at DESC LIMIT ");
     data_qb.push_bind(params.pagination.limit());
@@ -195,23 +195,23 @@ pub async fn list_documents(
 fn push_document_filters(
     qb: &mut QueryBuilder<sqlx::Postgres>,
     project_id: Option<Uuid>,
-    search: &Option<String>,
+    search: Option<&str>,
     dept_codes: &[String],
     doc_kind_id: Option<Uuid>,
     fiscal_dates: Option<(NaiveDate, NaiveDate)>,
-    project_name: &Option<String>,
-    author_name: &Option<String>,
-    wbs_code: &Option<String>,
+    project_name: Option<&str>,
+    author_name: Option<&str>,
+    wbs_code: Option<&str>,
 ) {
     if let Some(pid) = project_id {
         qb.push(" AND d.project_id = ");
         qb.push_bind(pid);
     }
-    if let Some(ref q) = *search {
+    if let Some(q) = search {
         qb.push(" AND (LOWER(d.title) LIKE '%' || ");
-        qb.push_bind(q.clone());
+        qb.push_bind(q.to_string());
         qb.push(" || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || ");
-        qb.push_bind(q.clone());
+        qb.push_bind(q.to_string());
         qb.push(" || '%' ESCAPE '\\')");
     }
     if !dept_codes.is_empty() {
@@ -232,19 +232,19 @@ fn push_document_filters(
         qb.push(" AND d.created_at < ");
         qb.push_bind(end);
     }
-    if let Some(ref pn) = *project_name {
+    if let Some(pn) = project_name {
         qb.push(" AND LOWER(p.name) LIKE '%' || ");
-        qb.push_bind(pn.clone());
+        qb.push_bind(pn.to_string());
         qb.push(" || '%' ESCAPE '\\'");
     }
-    if let Some(ref an) = *author_name {
+    if let Some(an) = author_name {
         qb.push(" AND LOWER(e.name) LIKE '%' || ");
-        qb.push_bind(an.clone());
+        qb.push_bind(an.to_string());
         qb.push(" || '%' ESCAPE '\\'");
     }
-    if let Some(ref wc) = *wbs_code {
+    if let Some(wc) = wbs_code {
         qb.push(" AND LOWER(p.wbs_code) LIKE '%' || ");
-        qb.push_bind(wc.clone());
+        qb.push_bind(wc.to_string());
         qb.push(" || '%' ESCAPE '\\'");
     }
 }
