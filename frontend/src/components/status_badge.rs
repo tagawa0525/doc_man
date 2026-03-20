@@ -7,8 +7,6 @@ pub fn StatusBadge(#[prop(into)] status: String) -> impl IntoView {
         "under_review" => ("tag status-under-review", "レビュー中"),
         "approved" => ("tag status-approved", "承認済"),
         "rejected" => ("tag status-rejected", "却下"),
-        "circulating" => ("tag status-circulating", "回覧中"),
-        "completed" => ("tag status-completed", "完了"),
         _ => ("tag", status.as_str()),
     };
 

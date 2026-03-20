@@ -1,4 +1,4 @@
-# 承認・回覧フロー仕様
+# 承認フロー仕様
 
 ## 文書ステータス遷移
 
@@ -9,8 +9,6 @@ stateDiagram-v2
     under_review --> approved : 全ステップ承認完了
     under_review --> rejected : いずれかのステップで差し戻し
     rejected --> under_review : 修正後に再提出
-    approved --> circulating : 回覧開始
-    circulating --> completed : 全宛先が確認済み
 ```
 
 | ステータス     | 説明                                       |
@@ -19,8 +17,6 @@ stateDiagram-v2
 | `under_review` | 承認処理中。いずれかのステップが `pending` |
 | `approved`     | 全承認ステップ完了                         |
 | `rejected`     | いずれかのステップで差し戻し               |
-| `circulating`  | 回覧中。未確認の宛先が残っている           |
-| `completed`    | 全宛先が確認済み                           |
 
 上記ステータスは `documents.status` に保存する。
 
@@ -106,50 +102,9 @@ stateDiagram-v2
 
 ---
 
-## 回覧
-
-### 回覧の開始
-
-文書ステータスが `approved` になった後、`circulations` テーブルに宛先を登録して回覧を開始する。
-`circulating` への遷移は明示的な操作（回覧開始 API の呼び出し）によって行う。
-
-### 既読管理
-
-`circulations.confirmed_at` が `NULL` の場合は未確認、`NOT NULL` の場合は確認済みを示す。
-
-未確認者の取得:
-
-```sql
-SELECT r.name
-FROM circulations c
-JOIN employees r ON c.recipient_id = r.id
-WHERE c.document_id = :document_id
-  AND c.confirmed_at IS NULL
-```
-
-### 確認操作
-
-宛先として登録された社員が確認 API を呼び出すと、`confirmed_at` に現在時刻をセットする。
-全宛先が確認済みになった場合、文書ステータスを `completed` に変更する。
-
-### 回覧の完了条件
-
-```sql
-SELECT COUNT(*)
-FROM circulations
-WHERE document_id = :document_id
-  AND confirmed_at IS NULL
-```
-
-上記が 0 件になった時点で `completed` に遷移する。
-
----
-
 ## 権限マトリクス
 
-| 操作           | admin |      project_manager      |         general         |        viewer         |
-| -------------- | :---: | :-----------------------: | :---------------------: | :-------------------: |
-| 承認ルート設定 |   ○   | ○（担当プロジェクトのみ） |            -            |           -           |
-| 承認・差し戻し |   ○   |  ○（自分が承認者の場合）  | ○（自分が承認者の場合） |           -           |
-| 回覧宛先設定   |   ○   | ○（担当プロジェクトのみ） |            -            |           -           |
-| 回覧確認       |   ○   |   ○（自分が宛先の場合）   |  ○（自分が宛先の場合）  | ○（自分が宛先の場合） |
+| 操作           | admin |      project_manager      |         general         | viewer |
+| -------------- | :---: | :-----------------------: | :---------------------: | :----: |
+| 承認ルート設定 |   ○   | ○（担当プロジェクトのみ） |            -            |   -    |
+| 承認・差し戻し |   ○   |  ○（自分が承認者の場合）  | ○（自分が承認者の場合） |   -    |

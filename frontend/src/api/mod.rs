@@ -1,5 +1,4 @@
 pub mod approval_steps;
-pub mod circulations;
 pub mod client;
 pub mod departments;
 pub mod disciplines;

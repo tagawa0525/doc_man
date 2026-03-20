@@ -54,7 +54,6 @@
 | `GET /departments`                  | ツリー構造で返す。全件一括取得が前提 |
 | `GET /disciplines`                  | マスタデータ。件数少数固定           |
 | `GET /documents/:id/approval-steps` | 1 文書あたりのステップ数は少数固定   |
-| `GET /documents/:id/circulations`   | 1 文書あたりの宛先数は少数固定       |
 
 ### エラーレスポンス
 
@@ -518,13 +517,13 @@
 `doc_kind_id` は原則不変だが、`admin` のみ以下条件を満たす場合に更新可能:
 
 - 文書ステータスが `draft` または `rejected`
-- 既存の `approval_steps` または `circulations` レコードが存在しない
+- 既存の `approval_steps` レコードが存在しない
 
 `revision` はクライアントから更新しない（読み取り専用）。
 
 `draft` または `rejected` 状態で文書内容（`title`, `file_path`, `confidentiality`, `tags`）が変更された場合、サーバー側で `revision` を 1 だけ自動インクリメントする。
 
-`status` は承認・回覧 API からのみ更新可能とし、`PUT /documents/:id` では変更不可。
+`status` は承認 API からのみ更新可能とし、`PUT /documents/:id` では変更不可。
 
 **リクエスト**（変更したいフィールドのみ）:
 
@@ -543,7 +542,7 @@
 
 **必要ロール**: `admin`
 
-承認ステップまたは回覧レコードが存在する場合は `409 CONFLICT`。
+承認ステップが存在する場合は `409 CONFLICT`。
 
 ---
 
@@ -643,57 +642,6 @@
 
 - 参照は運用者向けレポート（DBビューまたは管理画面）で実施
 - 解決は運用バッチまたは管理画面の内部機能で実施
-
----
-
-## 回覧 /documents/:id/circulations
-
-### GET /documents/:id/circulations
-
-回覧宛先と確認状況の一覧を返す。
-
-**レスポンス 200**:
-
-```json
-[
-  {
-    "id": "uuid",
-    "recipient": { "id": "uuid", "name": "高橋 次郎" },
-    "confirmed_at": "2026-02-17T14:00:00Z"
-  },
-  {
-    "id": "uuid",
-    "recipient": { "id": "uuid", "name": "渡辺 三郎" },
-    "confirmed_at": null
-  }
-]
-```
-
-### POST /documents/:id/circulations
-
-回覧を開始する。文書が `approved` 状態のみ可能。
-
-**必要ロール**: `admin`, `project_manager`
-
-**リクエスト**:
-
-```json
-{
-  "recipient_ids": ["uuid", "uuid"]
-}
-```
-
-文書ステータスを `circulating` に変更する。
-
-### POST /documents/:id/circulations/confirm
-
-呼び出した本人（認証済みユーザー）が確認済みにする。
-
-**リクエスト**: なし
-
-**レスポンス 200**: 更新後の回覧オブジェクト
-
-全宛先が確認済みになった場合、文書ステータスを `completed` に変更する。
 
 ---
 
