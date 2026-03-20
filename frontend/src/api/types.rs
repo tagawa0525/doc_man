@@ -44,9 +44,17 @@ pub struct ErrorDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MeDepartment {
+    pub id: Uuid,
+    pub code: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MeResponse {
     pub id: Uuid,
     pub role: String,
+    pub departments: Vec<MeDepartment>,
 }
 
 // --- Tags ---
