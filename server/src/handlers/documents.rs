@@ -410,29 +410,33 @@ pub async fn delete_document(
         ));
     }
 
+    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
+
     // document_revisions を先に削除（FK制約のため）
     sqlx::query("DELETE FROM document_revisions WHERE document_id = $1")
         .bind(id)
-        .execute(&state.db)
+        .execute(tx.as_mut())
         .await
         .map_err(AppError::Database)?;
 
     // document_tags を先に削除（FK制約のため）
     sqlx::query("DELETE FROM document_tags WHERE document_id = $1")
         .bind(id)
-        .execute(&state.db)
+        .execute(tx.as_mut())
         .await
         .map_err(AppError::Database)?;
 
     let result = sqlx::query("DELETE FROM documents WHERE id = $1")
         .bind(id)
-        .execute(&state.db)
+        .execute(tx.as_mut())
         .await
         .map_err(AppError::Database)?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(format!("document {id} not found")));
     }
+
+    tx.commit().await.map_err(AppError::Database)?;
 
     Ok(StatusCode::NO_CONTENT)
 }
