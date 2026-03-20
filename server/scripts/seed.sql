@@ -7,6 +7,17 @@ BEGIN;
 -- Tier 1: 独立テーブル
 --------------------------------------------------------------------------------
 
+-- positions（マイグレーションで初期データ投入済み、冪等に追加）
+INSERT INTO positions (name, default_role, sort_order) VALUES
+    ('社長',   'admin',           1),
+    ('部長',   'admin',           2),
+    ('課長',   'admin',           3),
+    ('総合職', 'project_manager', 4),
+    ('一般職', 'general',         5),
+    ('嘱託',   'viewer',          6),
+    ('派遣',   'viewer',          7)
+ON CONFLICT (name) DO NOTHING;
+
 -- departments (7件、3階層)
 INSERT INTO departments (code, name, effective_from) VALUES
     ('HQ',   '本社',       '2020-01-01');

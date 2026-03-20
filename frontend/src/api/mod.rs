@@ -25,6 +25,7 @@ pub mod document_kinds;
 pub mod document_registers;
 pub mod documents;
 pub mod employees;
+pub mod positions;
 pub mod projects;
 pub mod tags;
 pub mod types;

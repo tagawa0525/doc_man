@@ -6,5 +6,6 @@ pub mod document_registers;
 pub mod documents;
 pub mod employees;
 pub mod login;
+pub mod positions;
 pub mod projects;
 pub mod tags;

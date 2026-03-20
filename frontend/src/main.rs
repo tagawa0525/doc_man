@@ -23,6 +23,7 @@ use pages::documents::list::DocumentListPage;
 use pages::employees::form::EmployeeFormPage;
 use pages::employees::list::EmployeeListPage;
 use pages::login::LoginPage;
+use pages::positions::PositionsPage;
 use pages::projects::form::ProjectFormPage;
 use pages::projects::list::ProjectListPage;
 use pages::tags::TagsPage;
@@ -73,6 +74,7 @@ fn App() -> impl IntoView {
                 <Route path=path!("/documents") view=|| view! { <AuthGuard><AppLayout><DocumentListPage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/documents/new") view=|| view! { <AuthGuard><AppLayout><DocumentCreatePage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/documents/:id") view=|| view! { <AuthGuard><AppLayout><DocumentDetailPage /></AppLayout></AuthGuard> } />
+                <Route path=path!("/positions") view=|| view! { <AuthGuard><AppLayout><PositionsPage /></AppLayout></AuthGuard> } />
                 <Route path=path!("/tags") view=|| view! { <AuthGuard><AppLayout><TagsPage /></AppLayout></AuthGuard> } />
             </Routes>
         </Router>
