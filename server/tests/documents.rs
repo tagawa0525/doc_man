@@ -507,9 +507,7 @@ async fn revise_requires_reason(pool: PgPool) {
                 .uri(format!("/api/v1/documents/{doc_id}/revise"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
-                .body(axum::body::Body::from(
-                    json!({ "reason": "" }).to_string(),
-                ))
+                .body(axum::body::Body::from(json!({ "reason": "" }).to_string()))
                 .unwrap(),
         )
         .await

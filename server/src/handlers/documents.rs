@@ -305,9 +305,7 @@ pub async fn update_document(
     let current_confidentiality: String = existing.get("confidentiality");
 
     let new_title = req.title.unwrap_or(current_title);
-    let new_confidentiality = req
-        .confidentiality
-        .unwrap_or(current_confidentiality);
+    let new_confidentiality = req.confidentiality.unwrap_or(current_confidentiality);
 
     sqlx::query(
         "UPDATE documents
@@ -453,21 +451,18 @@ pub async fn revise_document(
     }
 
     if req.reason.trim().is_empty() {
-        return Err(AppError::InvalidRequest(
-            "reason is required".to_string(),
-        ));
+        return Err(AppError::InvalidRequest("reason is required".to_string()));
     }
 
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
-    let doc = sqlx::query(
-        "SELECT status, revision, doc_number FROM documents WHERE id = $1 FOR UPDATE",
-    )
-    .bind(id)
-    .fetch_optional(tx.as_mut())
-    .await
-    .map_err(AppError::Database)?
-    .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
+    let doc =
+        sqlx::query("SELECT status, revision, doc_number FROM documents WHERE id = $1 FOR UPDATE")
+            .bind(id)
+            .fetch_optional(tx.as_mut())
+            .await
+            .map_err(AppError::Database)?
+            .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
 
     let status: String = doc.get("status");
     if status != "approved" {
