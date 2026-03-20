@@ -227,7 +227,7 @@ async fn get_document_not_found_returns_404(pool: PgPool) {
 // ── PUT /documents/{id} ─────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
-async fn put_document_updates_title_and_increments_revision(pool: PgPool) {
+async fn put_document_updates_title_without_incrementing_revision(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
     let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
