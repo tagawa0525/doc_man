@@ -80,12 +80,26 @@ async fn get_documents_filters_by_fiscal_year(pool: PgPool) {
 
     // 2025年度 (2025-04-01 〜 2026-03-31)
     helpers::insert_document_with_created_at(
-        &pool, "DOC-001", "2025年度文書", admin.id, kind, proj, "設計", "2025-06-15T00:00:00Z",
+        &pool,
+        "DOC-001",
+        "2025年度文書",
+        admin.id,
+        kind,
+        proj,
+        "設計",
+        "2025-06-15T00:00:00Z",
     )
     .await;
     // 2024年度
     helpers::insert_document_with_created_at(
-        &pool, "DOC-002", "2024年度文書", admin.id, kind, proj, "設計", "2024-06-15T00:00:00Z",
+        &pool,
+        "DOC-002",
+        "2024年度文書",
+        admin.id,
+        kind,
+        proj,
+        "設計",
+        "2024-06-15T00:00:00Z",
     )
     .await;
 
@@ -116,15 +130,36 @@ async fn get_documents_filters_by_multiple_fiscal_years(pool: PgPool) {
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
 
     helpers::insert_document_with_created_at(
-        &pool, "DOC-001", "2025年度文書", admin.id, kind, proj, "設計", "2025-06-15T00:00:00Z",
+        &pool,
+        "DOC-001",
+        "2025年度文書",
+        admin.id,
+        kind,
+        proj,
+        "設計",
+        "2025-06-15T00:00:00Z",
     )
     .await;
     helpers::insert_document_with_created_at(
-        &pool, "DOC-002", "2024年度文書", admin.id, kind, proj, "設計", "2024-06-15T00:00:00Z",
+        &pool,
+        "DOC-002",
+        "2024年度文書",
+        admin.id,
+        kind,
+        proj,
+        "設計",
+        "2024-06-15T00:00:00Z",
     )
     .await;
     helpers::insert_document_with_created_at(
-        &pool, "DOC-003", "2023年度文書", admin.id, kind, proj, "設計", "2023-06-15T00:00:00Z",
+        &pool,
+        "DOC-003",
+        "2023年度文書",
+        admin.id,
+        kind,
+        proj,
+        "設計",
+        "2023-06-15T00:00:00Z",
     )
     .await;
 
@@ -213,10 +248,8 @@ async fn get_documents_filters_by_wbs_code(pool: PgPool) {
     let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
-    let proj_a =
-        helpers::insert_project_with_wbs(&pool, "PJ-A", disc, None, "WBS-001-A").await;
-    let proj_b =
-        helpers::insert_project_with_wbs(&pool, "PJ-B", disc, None, "WBS-002-B").await;
+    let proj_a = helpers::insert_project_with_wbs(&pool, "PJ-A", disc, None, "WBS-001-A").await;
+    let proj_b = helpers::insert_project_with_wbs(&pool, "PJ-B", disc, None, "WBS-002-B").await;
 
     helpers::insert_document(&pool, "DOC-001", "文書A", admin.id, kind, proj_a).await;
     helpers::insert_document(&pool, "DOC-002", "文書B", admin.id, kind, proj_b).await;
@@ -248,12 +281,36 @@ async fn get_documents_combines_multiple_filters(pool: PgPool) {
     let kind_b = helpers::insert_document_kind(&pool, "外", "社外", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
 
-    helpers::insert_document_with_dept(&pool, "DOC-001", "設計社内", admin.id, kind_a, proj, "設計")
-        .await;
-    helpers::insert_document_with_dept(&pool, "DOC-002", "設計社外", admin.id, kind_b, proj, "設計")
-        .await;
-    helpers::insert_document_with_dept(&pool, "DOC-003", "製造社内", admin.id, kind_a, proj, "製造")
-        .await;
+    helpers::insert_document_with_dept(
+        &pool,
+        "DOC-001",
+        "設計社内",
+        admin.id,
+        kind_a,
+        proj,
+        "設計",
+    )
+    .await;
+    helpers::insert_document_with_dept(
+        &pool,
+        "DOC-002",
+        "設計社外",
+        admin.id,
+        kind_b,
+        proj,
+        "設計",
+    )
+    .await;
+    helpers::insert_document_with_dept(
+        &pool,
+        "DOC-003",
+        "製造社内",
+        admin.id,
+        kind_a,
+        proj,
+        "製造",
+    )
+    .await;
 
     // dept_codes=設計 AND doc_kind_id=kind_a → DOC-001のみ
     let response = app
@@ -577,7 +634,63 @@ async fn get_documents_with_q_escapes_like_wildcards(pool: PgPool) {
     assert_eq!(body["data"][0]["title"], "100%完了報告");
 }
 
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_list_includes_project_wbs_code(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj =
+        helpers::insert_project_with_wbs(&pool, "WBS付きPJ", disc, None, "WBS-TEST-001").await;
+
+    helpers::insert_document(&pool, "DOC-001", "テスト文書", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["data"][0]["project"]["wbs_code"], "WBS-TEST-001");
+}
+
 // ── GET /documents/{id} ─────────────────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_document_by_id_includes_project_wbs_code(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj =
+        helpers::insert_project_with_wbs(&pool, "WBS付きPJ", disc, None, "WBS-DETAIL-001").await;
+    let doc_id =
+        helpers::insert_document(&pool, "DOC-001", "テスト文書", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{doc_id}"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["project"]["wbs_code"], "WBS-DETAIL-001");
+}
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn get_document_by_id_returns_200(pool: PgPool) {
