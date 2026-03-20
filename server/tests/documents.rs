@@ -70,6 +70,57 @@ async fn get_documents_filters_by_doc_kind_id(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_filters_by_multiple_doc_kind_ids(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind_a = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let kind_b = helpers::insert_document_kind(&pool, "外", "社外", 3).await;
+    let kind_c = helpers::insert_document_kind(&pool, "議", "議事録", 2).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+
+    helpers::insert_document(&pool, "DOC-001", "社内文書", admin.id, kind_a, proj).await;
+    helpers::insert_document(&pool, "DOC-002", "社外文書", admin.id, kind_b, proj).await;
+    helpers::insert_document(&pool, "DOC-003", "議事録", admin.id, kind_c, proj).await;
+
+    // doc_kind_ids=kind_a,kind_b → 2件
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents?doc_kind_ids={kind_a},{kind_b}"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 2);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_documents_invalid_doc_kind_ids_returns_400(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents?doc_kind_ids=not-a-uuid")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn get_documents_filters_by_fiscal_year(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;

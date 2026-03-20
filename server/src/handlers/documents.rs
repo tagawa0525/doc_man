@@ -25,6 +25,7 @@ pub struct DocumentListQuery {
     pub q: Option<String>,
     pub dept_codes: Option<String>,
     pub doc_kind_id: Option<Uuid>,
+    pub doc_kind_ids: Option<String>,
     pub fiscal_year: Option<i32>,
     pub fiscal_years: Option<String>,
     pub project_name: Option<String>,
@@ -62,6 +63,28 @@ pub async fn list_documents(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
+
+    // doc_kind_ids (カンマ区切り) と doc_kind_id (単一) の両方をサポート
+    let mut doc_kind_ids: Vec<Uuid> = Vec::new();
+    if let Some(ref raw) = params.doc_kind_ids {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let id: Uuid = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(format!(
+                    "invalid doc_kind_ids parameter: '{trimmed}' is not a valid UUID"
+                ))
+            })?;
+            doc_kind_ids.push(id);
+        }
+    }
+    if let Some(id) = params.doc_kind_id
+        && !doc_kind_ids.contains(&id)
+    {
+        doc_kind_ids.push(id);
+    }
 
     let project_name = params
         .project_name
@@ -117,7 +140,7 @@ pub async fn list_documents(
         params.project_id,
         search.as_deref(),
         &dept_codes,
-        params.doc_kind_id,
+        &doc_kind_ids,
         &fiscal_date_ranges,
         project_name.as_deref(),
         author_name.as_deref(),
@@ -150,7 +173,7 @@ pub async fn list_documents(
         params.project_id,
         search.as_deref(),
         &dept_codes,
-        params.doc_kind_id,
+        &doc_kind_ids,
         &fiscal_date_ranges,
         project_name.as_deref(),
         author_name.as_deref(),
@@ -220,7 +243,7 @@ fn push_document_filters(
     project_id: Option<Uuid>,
     search: Option<&str>,
     dept_codes: &[String],
-    doc_kind_id: Option<Uuid>,
+    doc_kind_ids: &[Uuid],
     fiscal_date_ranges: &[(NaiveDate, NaiveDate)],
     project_name: Option<&str>,
     author_name: Option<&str>,
@@ -245,9 +268,13 @@ fn push_document_filters(
         }
         separated.push_unseparated(")");
     }
-    if let Some(kind_id) = doc_kind_id {
-        qb.push(" AND d.doc_kind_id = ");
-        qb.push_bind(kind_id);
+    if !doc_kind_ids.is_empty() {
+        qb.push(" AND d.doc_kind_id IN (");
+        let mut separated = qb.separated(", ");
+        for id in doc_kind_ids {
+            separated.push_bind(*id);
+        }
+        separated.push_unseparated(")");
     }
     if !fiscal_date_ranges.is_empty() {
         qb.push(" AND (");

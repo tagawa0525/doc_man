@@ -13,7 +13,7 @@ pub struct DocumentListParams {
     pub per_page: u32,
     pub q: String,
     pub dept_codes: String,
-    pub doc_kind_id: String,
+    pub doc_kind_ids: String,
     pub fiscal_years: String,
     pub project_name: String,
     pub author_name: String,
@@ -37,8 +37,8 @@ pub async fn list_filtered(
             super::encode_query(&params.dept_codes)
         );
     }
-    if !params.doc_kind_id.is_empty() {
-        let _ = write!(url, "&doc_kind_id={}", params.doc_kind_id);
+    if !params.doc_kind_ids.is_empty() {
+        let _ = write!(url, "&doc_kind_ids={}", params.doc_kind_ids);
     }
     if !params.fiscal_years.is_empty() {
         let _ = write!(url, "&fiscal_years={}", params.fiscal_years);
