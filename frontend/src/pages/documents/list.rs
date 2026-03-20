@@ -4,6 +4,7 @@ use web_sys::HtmlInputElement;
 
 use crate::api;
 use crate::api::documents::DocumentListParams;
+use crate::api::types::{FlatDepartment, flatten_dept_tree_full};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::pagination::Pagination;
@@ -13,7 +14,25 @@ fn current_fiscal_year() -> i32 {
     let now = chrono::Utc::now();
     let year = now.format("%Y").to_string().parse::<i32>().unwrap_or(2025);
     let month = now.format("%m").to_string().parse::<u32>().unwrap_or(4);
-    if month < 4 { year - 1 } else { year }
+    if month < 4 {
+        year - 1
+    } else {
+        year
+    }
+}
+
+fn csv_contains(csv: &str, key: &str) -> bool {
+    csv.split(',').any(|c| c == key)
+}
+
+fn csv_toggle(csv: &str, key: &str) -> String {
+    let mut items: Vec<&str> = csv.split(',').filter(|c| !c.is_empty()).collect();
+    if items.contains(&key) {
+        items.retain(|c| *c != key);
+    } else {
+        items.push(key);
+    }
+    items.join(",")
 }
 
 #[component]
@@ -25,16 +44,24 @@ pub fn DocumentListPage() -> impl IntoView {
     let author_name = RwSignal::new(String::new());
     let wbs_code = RwSignal::new(String::new());
     let timer_id = RwSignal::new(0i32);
-
-    let fiscal_year = current_fiscal_year();
-    let selected_fiscal_year = RwSignal::new(fiscal_year.to_string());
     let selected_doc_kind = RwSignal::new(String::new());
+    let show_detail = RwSignal::new(false);
 
-    // dept_codes は初期値空（auth ロード後に Effect で設定）
+    let fy = current_fiscal_year();
+    let default_years: Vec<i32> = ((fy - 2)..=(fy + 1)).collect();
+    let all_years: Vec<i32> = ((fy - 5)..=(fy + 1)).rev().collect();
+
+    let fiscal_years = RwSignal::new(
+        default_years
+            .iter()
+            .map(i32::to_string)
+            .collect::<Vec<_>>()
+            .join(","),
+    );
+
     let dept_codes = RwSignal::new(String::new());
     let dept_codes_initialized = RwSignal::new(false);
 
-    // auth ロード完了時にデフォルト部署コードを設定
     Effect::new(move || {
         if let Some(ref u) = auth.user.get() {
             if !dept_codes_initialized.get_untracked() {
@@ -54,15 +81,15 @@ pub fn DocumentListPage() -> impl IntoView {
         .role()
         .is_some_and(|r| !matches!(r, crate::auth::Role::Viewer));
 
-    // 文書種別リスト
     let doc_kinds = LocalResource::new(|| async { api::document_kinds::list_all().await });
+    let all_depts = LocalResource::new(|| async { api::departments::list().await });
 
     let resource = LocalResource::new(move || {
         let p = page.get();
         let q = search_query.get();
         let dc = dept_codes.get();
         let dk = selected_doc_kind.get();
-        let fy = selected_fiscal_year.get();
+        let fy = fiscal_years.get();
         let pn = project_name.get();
         let an = author_name.get();
         let wc = wbs_code.get();
@@ -73,7 +100,7 @@ pub fn DocumentListPage() -> impl IntoView {
                 q,
                 dept_codes: dc,
                 doc_kind_id: dk,
-                fiscal_year: fy,
+                fiscal_years: fy,
                 project_name: pn,
                 author_name: an,
                 wbs_code: wc,
@@ -110,67 +137,109 @@ pub fn DocumentListPage() -> impl IntoView {
     let on_author_name = make_debounced_handler(author_name);
     let on_wbs_code = make_debounced_handler(wbs_code);
 
-    // 年度リスト
-    let years: Vec<i32> = ((fiscal_year - 3)..=(fiscal_year + 1)).rev().collect();
+    let user_dept_codes = Memo::new(move |_| {
+        auth.user
+            .get()
+            .map(|u| u.departments.iter().map(|d| d.code.clone()).collect::<Vec<_>>())
+            .unwrap_or_default()
+    });
+
+    let default_year_strings: Vec<String> = default_years.iter().map(i32::to_string).collect();
 
     view! {
         <div>
             <div class="level">
                 <div class="level-left"><h1 class="title">"文書一覧"</h1></div>
-                {if can_create {
-                    view! {
-                        <div class="level-right">
-                            <a href="/documents/new" class="button is-primary">
+                <div class="level-right">
+                    {if can_create {
+                        view! {
+                            <a href="/documents/new" class="button is-primary mr-2">
                                 <span class="icon"><i class="fas fa-plus"></i></span>
                                 <span>"新規作成"</span>
                             </a>
-                        </div>
-                    }.into_any()
-                } else { view! { <div></div> }.into_any() }}
+                        }.into_any()
+                    } else { view! { <span></span> }.into_any() }}
+                    <button
+                        class="button is-small is-outlined"
+                        on:click=move |_| show_detail.update(|v| *v = !*v)
+                    >
+                        <span class="icon"><i class=move || if show_detail.get() { "fas fa-chevron-up" } else { "fas fa-chevron-down" }></i></span>
+                        <span>{move || if show_detail.get() { "簡易表示" } else { "詳細フィルタ" }}</span>
+                    </button>
+                </div>
             </div>
 
-            // フィルタバー 1行目
+            // 部署チェックボックス
+            <div class="field mb-3">
+                <label class="label is-small">"部署"</label>
+                <div class="is-flex is-flex-wrap-wrap" style="gap: 0.25rem 0.75rem;">
+                    <Suspense fallback=|| ()>
+                        {move || all_depts.get().map(|result| match result {
+                            Ok(tree) => {
+                                let mut flat: Vec<FlatDepartment> = Vec::new();
+                                flatten_dept_tree_full(&tree, &mut flat, "");
+                                let detail = show_detail.get();
+                                let udc = user_dept_codes.get();
+                                flat.into_iter().filter_map(move |d| {
+                                    if !detail && !udc.contains(&d.code) {
+                                        return None;
+                                    }
+                                    let code = d.code.clone();
+                                    let code2 = code.clone();
+                                    Some(view! {
+                                        <label class="checkbox is-size-7">
+                                            <input
+                                                type="checkbox"
+                                                prop:checked=move || csv_contains(&dept_codes.get(), &code)
+                                                on:change=move |_| {
+                                                    page.set(1);
+                                                    dept_codes.set(csv_toggle(&dept_codes.get_untracked(), &code2));
+                                                }
+                                            />
+                                            " " {d.label}
+                                        </label>
+                                    })
+                                }).collect_view().into_any()
+                            }
+                            Err(_) => view! { <span class="tag is-warning">"部署読込失敗"</span> }.into_any(),
+                        })}
+                    </Suspense>
+                </div>
+            </div>
+
+            // 年度チェックボックス + 文書種別 + テキスト検索
             <div class="columns is-multiline mb-2">
-                // 部署チェックボックス
                 <div class="column is-narrow">
-                    <label class="label is-small">"部署"</label>
-                    <div class="field is-grouped">
+                    <label class="label is-small">"年度"</label>
+                    <div class="is-flex is-flex-wrap-wrap" style="gap: 0.25rem 0.5rem;">
                         {move || {
-                            let depts = auth.user.get().map(|u| u.departments).unwrap_or_default();
-                            depts.into_iter().map(|d| {
-                                let code = d.code.clone();
-                                let name = d.name.clone();
-                                let code_for_check = code.clone();
-                                let code_for_handler = code.clone();
-                                view! {
-                                    <label class="checkbox mr-3">
+                            let detail = show_detail.get();
+                            let dys = default_year_strings.clone();
+                            all_years.iter().filter_map(move |&y| {
+                                let ys = y.to_string();
+                                if !detail && !dys.contains(&ys) {
+                                    return None;
+                                }
+                                let ys2 = ys.clone();
+                                let label = format!("{y}");
+                                Some(view! {
+                                    <label class="checkbox is-size-7">
                                         <input
                                             type="checkbox"
-                                            prop:checked=move || {
-                                                let codes = dept_codes.get();
-                                                codes.split(',').any(|c| c == code_for_check)
-                                            }
+                                            prop:checked=move || csv_contains(&fiscal_years.get(), &ys)
                                             on:change=move |_| {
-                                                let current = dept_codes.get_untracked();
-                                                let mut codes: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
-                                                if codes.contains(&code_for_handler.as_str()) {
-                                                    codes.retain(|c| *c != code_for_handler.as_str());
-                                                } else {
-                                                    codes.push(&code_for_handler);
-                                                }
                                                 page.set(1);
-                                                dept_codes.set(codes.join(","));
+                                                fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
                                             }
                                         />
-                                        " " {name}
+                                        " " {label}
                                     </label>
-                                }
+                                })
                             }).collect_view()
                         }}
                     </div>
                 </div>
 
-                // 文書種別
                 <div class="column is-narrow">
                     <label class="label is-small">"文書種別"</label>
                     <div class="select is-small">
@@ -195,39 +264,10 @@ pub fn DocumentListPage() -> impl IntoView {
                     </div>
                 </div>
 
-                // 年度
-                <div class="column is-narrow">
-                    <label class="label is-small">"年度"</label>
-                    <div class="select is-small">
-                        <select
-                            prop:value=move || selected_fiscal_year.get()
-                            on:change=move |ev| {
-                                let val = event_target::<web_sys::HtmlSelectElement>(&ev).value();
-                                page.set(1);
-                                selected_fiscal_year.set(val);
-                            }
-                        >
-                            <option value="">"全て"</option>
-                            {years.into_iter().map(|y| {
-                                let label = format!("{y}年度");
-                                let val = y.to_string();
-                                let selected = y == fiscal_year;
-                                view! { <option value=val selected=selected>{label}</option> }
-                            }).collect_view()}
-                        </select>
-                    </div>
-                </div>
-
-                // タイトル・文書番号
                 <div class="column">
                     <label class="label is-small">"タイトル・文書番号"</label>
                     <div class="control has-icons-left">
-                        <input
-                            class="input is-small"
-                            type="text"
-                            placeholder="検索..."
-                            on:input=on_search
-                        />
+                        <input class="input is-small" type="text" placeholder="検索..." on:input=on_search />
                         <span class="icon is-left"><i class="fas fa-search"></i></span>
                     </div>
                 </div>

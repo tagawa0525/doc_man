@@ -14,7 +14,7 @@ pub struct DocumentListParams {
     pub q: String,
     pub dept_codes: String,
     pub doc_kind_id: String,
-    pub fiscal_year: String,
+    pub fiscal_years: String,
     pub project_name: String,
     pub author_name: String,
     pub wbs_code: String,
@@ -40,8 +40,8 @@ pub async fn list_filtered(
     if !params.doc_kind_id.is_empty() {
         let _ = write!(url, "&doc_kind_id={}", params.doc_kind_id);
     }
-    if !params.fiscal_year.is_empty() {
-        let _ = write!(url, "&fiscal_year={}", params.fiscal_year);
+    if !params.fiscal_years.is_empty() {
+        let _ = write!(url, "&fiscal_years={}", params.fiscal_years);
     }
     if !params.project_name.is_empty() {
         let _ = write!(

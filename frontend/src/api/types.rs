@@ -378,6 +378,39 @@ pub struct CreateDistributionRequest {
     pub recipient_ids: Vec<Uuid>,
 }
 
+/// フラットな部署エントリ (id, code, label)
+pub struct FlatDepartment {
+    pub id: String,
+    pub code: String,
+    pub label: String,
+}
+
+/// `DepartmentTree` をフラットな `FlatDepartment` リストに変換する。
+pub fn flatten_dept_tree_full(
+    depts: &[DepartmentTree],
+    result: &mut Vec<FlatDepartment>,
+    prefix: &str,
+) {
+    for d in depts {
+        let label = if prefix.is_empty() {
+            d.name.clone()
+        } else {
+            format!("{prefix} > {}", d.name)
+        };
+        result.push(FlatDepartment {
+            id: d.id.to_string(),
+            code: d.code.clone(),
+            label,
+        });
+        let next_prefix = if prefix.is_empty() {
+            d.name.clone()
+        } else {
+            format!("{prefix} > {}", d.name)
+        };
+        flatten_dept_tree_full(&d.children, result, &next_prefix);
+    }
+}
+
 /// `DepartmentTree` をフラットな `(id, label)` リストに変換する。
 /// ラベルは階層を ` > ` で連結し、ルートにはコードを付与する。
 pub fn flatten_dept_tree(
