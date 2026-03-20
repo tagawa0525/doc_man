@@ -4,7 +4,7 @@ use web_sys::HtmlInputElement;
 
 use crate::api;
 use crate::api::projects::ProjectListParams;
-use crate::api::types::{FlatDepartment, flatten_dept_tree_full};
+use crate::api::types::{flatten_dept_tree_full, FlatDepartment};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::pagination::Pagination;
@@ -73,7 +73,7 @@ pub fn ProjectListPage() -> impl IntoView {
         }
     });
 
-    let can_create = auth.role().is_some_and(|r| r.can_manage());
+    let can_create = Memo::new(move |_| auth.role().is_some_and(|r| r.can_manage()));
 
     let all_depts = LocalResource::new(|| async { api::departments::list().await });
 
@@ -127,7 +127,12 @@ pub fn ProjectListPage() -> impl IntoView {
     let user_dept_ids = Memo::new(move |_| {
         auth.user
             .get()
-            .map(|u| u.departments.iter().map(|d| d.id.to_string()).collect::<Vec<_>>())
+            .map(|u| {
+                u.departments
+                    .iter()
+                    .map(|d| d.id.to_string())
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default()
     });
 
@@ -137,7 +142,7 @@ pub fn ProjectListPage() -> impl IntoView {
         <div>
             <div class="level">
                 <div class="level-left"><h1 class="title">"プロジェクト管理"</h1></div>
-                {if can_create {
+                {move || if can_create.get() {
                     view! {
                         <div class="level-right">
                             <a href="/projects/new" class="button is-primary">
