@@ -137,7 +137,7 @@ pub async fn list_documents(
                 d.created_at, d.updated_at,
                 e.id AS author_id, e.name AS author_name,
                 dk.id AS doc_kind_id, dk.code AS doc_kind_code, dk.name AS doc_kind_name,
-                p.id AS project_id, p.name AS project_name
+                p.id AS project_id, p.name AS project_name, p.wbs_code
          FROM documents d
          JOIN employees e ON e.id = d.author_id
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
@@ -197,6 +197,7 @@ pub async fn list_documents(
                 project: ProjectBrief {
                     id: r.get("project_id"),
                     name: r.get("project_name"),
+                    wbs_code: r.get("wbs_code"),
                 },
                 tags,
                 created_at: r.get("created_at"),
@@ -796,7 +797,7 @@ async fn fetch_document_by_id(
                 d.created_at, d.updated_at,
                 e.id AS author_id, e.name AS author_name,
                 dk.id AS doc_kind_id, dk.code AS doc_kind_code, dk.name AS doc_kind_name,
-                p.id AS project_id, p.name AS project_name
+                p.id AS project_id, p.name AS project_name, p.wbs_code
          FROM documents d
          JOIN employees e ON e.id = d.author_id
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
@@ -834,6 +835,7 @@ async fn fetch_document_by_id(
                 project: ProjectBrief {
                     id: r.get("project_id"),
                     name: r.get("project_name"),
+                    wbs_code: r.get("wbs_code"),
                 },
                 tags,
                 created_at: r.get("created_at"),

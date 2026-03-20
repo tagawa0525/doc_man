@@ -4,7 +4,7 @@ use web_sys::HtmlInputElement;
 
 use crate::api;
 use crate::api::documents::DocumentListParams;
-use crate::api::types::{FlatDepartment, flatten_dept_tree_full};
+use crate::api::types::{flatten_dept_tree_full, FlatDepartment};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::pagination::Pagination;
@@ -38,11 +38,18 @@ fn csv_toggle(csv: &str, key: &str) -> String {
 #[component]
 pub fn DocumentListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
+    let query_map = leptos_router::hooks::use_query_map();
     let page = RwSignal::new(1u32);
     let search_query = RwSignal::new(String::new());
     let project_name = RwSignal::new(String::new());
     let author_name = RwSignal::new(String::new());
     let wbs_code = RwSignal::new(String::new());
+
+    // URLクエリパラメータ ?wbs_code= をリアクティブに同期
+    Effect::new(move || {
+        let wc = query_map.get().get("wbs_code").unwrap_or_default();
+        wbs_code.set(wc);
+    });
     let selected_doc_kind = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
@@ -141,7 +148,12 @@ pub fn DocumentListPage() -> impl IntoView {
     let user_dept_codes = Memo::new(move |_| {
         auth.user
             .get()
-            .map(|u| u.departments.iter().map(|d| d.code.clone()).collect::<Vec<_>>())
+            .map(|u| {
+                u.departments
+                    .iter()
+                    .map(|d| d.code.clone())
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default()
     });
 
@@ -348,7 +360,9 @@ pub fn DocumentListPage() -> impl IntoView {
                 </div>
                 <div class="column">
                     <label class="label is-small">"WBSコード"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_wbs_code />
+                    <input class="input is-small" type="text" placeholder="部分一致..."
+                        prop:value=move || wbs_code.get()
+                        on:input=on_wbs_code />
                 </div>
             </div>
 
@@ -365,7 +379,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                         <thead>
                                             <tr>
                                                 <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th><th>"ステータス"</th>
-                                                <th>"種別"</th><th>"プロジェクト"</th><th>"作成者"</th>
+                                                <th>"種別"</th><th>"プロジェクト"</th><th>"WBSコード"</th><th>"作成者"</th>
                                                 <th>"タグ"</th>
                                             </tr>
                                         </thead>
@@ -380,6 +394,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                                         <td><StatusBadge status=doc.status /></td>
                                                         <td>{doc.doc_kind.name}</td>
                                                         <td>{doc.project.name}</td>
+                                                        <td>{doc.project.wbs_code.unwrap_or_default()}</td>
                                                         <td>{doc.author.name}</td>
                                                         <td>
                                                             <div class="tags">

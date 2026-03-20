@@ -14,6 +14,7 @@ pub struct ProjectListParams {
     pub dept_ids: String,
     pub fiscal_years: String,
     pub manager_name: String,
+    pub wbs_code: String,
 }
 
 pub async fn list_filtered(
@@ -38,6 +39,9 @@ pub async fn list_filtered(
             "&manager_name={}",
             super::encode_query(&params.manager_name)
         );
+    }
+    if !params.wbs_code.is_empty() {
+        let _ = write!(url, "&wbs_code={}", super::encode_query(&params.wbs_code));
     }
     client::get(&url).await
 }

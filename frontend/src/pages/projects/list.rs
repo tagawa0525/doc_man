@@ -40,6 +40,7 @@ pub fn ProjectListPage() -> impl IntoView {
     let page = RwSignal::new(1u32);
     let search_query = RwSignal::new(String::new());
     let manager_name = RwSignal::new(String::new());
+    let wbs_code = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
 
@@ -83,6 +84,7 @@ pub fn ProjectListPage() -> impl IntoView {
         let di = dept_ids.get();
         let fy = fiscal_years.get();
         let mn = manager_name.get();
+        let wc = wbs_code.get();
         async move {
             api::projects::list_filtered(&ProjectListParams {
                 page: p,
@@ -91,6 +93,7 @@ pub fn ProjectListPage() -> impl IntoView {
                 dept_ids: di,
                 fiscal_years: fy,
                 manager_name: mn,
+                wbs_code: wc,
             })
             .await
         }
@@ -122,6 +125,7 @@ pub fn ProjectListPage() -> impl IntoView {
 
     let on_search = make_debounced_handler(search_query);
     let on_manager_name = make_debounced_handler(manager_name);
+    let on_wbs_code = make_debounced_handler(wbs_code);
 
     // ユーザー所属部署のID集合
     let user_dept_ids = Memo::new(move |_| {
@@ -307,6 +311,10 @@ pub fn ProjectListPage() -> impl IntoView {
                     <label class="label is-small">"担当者"</label>
                     <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_manager_name />
                 </div>
+                <div class="column">
+                    <label class="label is-small">"WBSコード"</label>
+                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_wbs_code />
+                </div>
             </div>
 
             <Suspense fallback=move || view! { <Loading /> }>
@@ -321,20 +329,30 @@ pub fn ProjectListPage() -> impl IntoView {
                                     <table class="table is-fullwidth is-hoverable">
                                         <thead>
                                             <tr>
-                                                <th>"名前"</th><th>"ステータス"</th><th>"専門分野"</th>
-                                                <th>"部署"</th><th>"マネージャー"</th>
+                                                <th>"WBSコード"</th><th>"名前"</th><th>"専門分野"</th>
+                                                <th>"マネージャー"</th><th>"ステータス"</th><th>"文書"</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {paginated.data.into_iter().map(|p| {
                                                 let detail_url = format!("/projects/{}", p.id);
+                                                let docs_url = p.wbs_code.as_deref().map(|wc| {
+                                                    format!("/documents?wbs_code={}", crate::api::encode_query(wc))
+                                                });
                                                 view! {
                                                     <tr>
+                                                        <td>{p.wbs_code.unwrap_or_default()}</td>
                                                         <td><a href=detail_url>{p.name}</a></td>
-                                                        <td><span class="tag is-light">{p.status}</span></td>
                                                         <td>{p.discipline.name}</td>
-                                                        <td>{p.discipline.department.name}</td>
                                                         <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
+                                                        <td><span class="tag is-light">{p.status}</span></td>
+                                                        <td>
+                                                            {docs_url.map(|url| view! {
+                                                                <a href=url class="has-text-link">
+                                                                    <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
+                                                                </a>
+                                                            })}
+                                                        </td>
                                                     </tr>
                                                 }
                                             }).collect_view()}

@@ -33,6 +33,7 @@ pub struct AuthorBrief {
 pub struct ProjectBrief {
     pub id: Uuid,
     pub name: String,
+    pub wbs_code: Option<String>,
 }
 
 /// POST リクエスト

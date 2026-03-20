@@ -97,17 +97,17 @@ INSERT INTO document_registers (register_code, doc_kind_id, department_id, file_
      '/files/external/mech');
 
 -- projects (4件、各ステータス)
-INSERT INTO projects (name, status, start_date, end_date, discipline_id, manager_id) VALUES
-    ('新型ポンプ開発', 'active', '2026-01-15', NULL,
+INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_id, manager_id) VALUES
+    ('新型ポンプ開発', 'active', '2026-01-15', NULL, 'DV-2026-001',
      (SELECT id FROM disciplines WHERE code = 'MECH'),
      (SELECT id FROM employees WHERE employee_code = 'PM001')),
-    ('制御盤更新', 'active', '2026-02-01', NULL,
+    ('制御盤更新', 'active', '2026-02-01', NULL, 'IN-2026-001',
      (SELECT id FROM disciplines WHERE code = 'ELEC'),
      (SELECT id FROM employees WHERE employee_code = 'PM002')),
-    ('品質改善活動', 'planning', NULL, NULL,
+    ('品質改善活動', 'planning', NULL, NULL, 'MN-2026-001',
      (SELECT id FROM disciplines WHERE code = 'QA'),
      (SELECT id FROM employees WHERE employee_code = 'PM001')),
-    ('定期点検2025', 'completed', '2025-10-01', '2025-12-20',
+    ('定期点検2025', 'completed', '2025-10-01', '2025-12-20', 'MN-2025-001',
      (SELECT id FROM disciplines WHERE code = 'MAINT'),
      (SELECT id FROM employees WHERE employee_code = 'PM002'));
 
