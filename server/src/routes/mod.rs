@@ -7,6 +7,7 @@ use crate::auth::AuthenticatedUser;
 use crate::handlers::approval_steps;
 use crate::handlers::departments;
 use crate::handlers::disciplines;
+use crate::handlers::distributions;
 use crate::handlers::document_kinds;
 use crate::handlers::document_registers;
 use crate::handlers::documents;
@@ -92,6 +93,10 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/documents/{doc_id}/approval-steps/{step_id}/reject",
             post(approval_steps::reject_step),
+        )
+        .route(
+            "/api/v1/documents/{doc_id}/distributions",
+            get(distributions::list_distributions).post(distributions::create_distributions),
         )
         .route("/api/v1/tags", get(tags::list_tags).post(tags::create_tag))
         .with_state(state)

@@ -4,6 +4,7 @@ use uuid::Uuid;
 pub mod approval_step;
 pub mod department;
 pub mod discipline;
+pub mod distribution;
 pub mod document;
 pub mod document_kind;
 pub mod document_register;
