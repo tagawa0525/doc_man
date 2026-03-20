@@ -34,7 +34,7 @@
 
 | ファイル                                            | 変更内容                                                              |
 | --------------------------------------------------- | --------------------------------------------------------------------- |
-| `frontend/src/api/types.rs` L280                    | `DocumentResponse`の`project`を`NameBrief`→独自`ProjectBrief`型に変更 |
+| `frontend/src/api/types.rs` L280                    | `DocumentResponse`の`project`を`NameBrief`→独自`DocumentProjectBrief`型に変更 |
 | `frontend/src/api/projects.rs` L10-17               | `ProjectListParams`に`wbs_code`フィールド追加                         |
 | `frontend/src/api/projects.rs` L19-43               | `list_filtered`にwbs_codeクエリパラメータ追加                         |
 | `frontend/src/pages/projects/list.rs` L319,328-334  | テーブルにWBSコード列追加                                             |
@@ -106,14 +106,14 @@ pub struct ProjectBrief {
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProjectBrief {
+pub struct DocumentProjectBrief {
     pub id: Uuid,
     pub name: String,
     pub wbs_code: Option<String>,
 }
 ```
 
-`DocumentResponse`の`project`フィールドを`NameBrief`→`ProjectBrief`に変更。`NameBrief`は他エンティティ（employees等）で使われているので変更しない。
+`DocumentResponse`の`project`フィールドを`NameBrief`→`DocumentProjectBrief`に変更。`NameBrief`は他エンティティ（employees等）で使われているので変更しない。
 
 `frontend/src/api/projects.rs` — `ProjectListParams`に`wbs_code: String`追加、`list_filtered`にクエリパラメータ追加。
 
