@@ -111,12 +111,10 @@ pub async fn create_distributions(
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| {
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.code().as_deref() == Some("23503") {
-                    return AppError::InvalidRequest(format!(
-                        "invalid recipient_id: {recipient_id}"
-                    ));
-                }
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.code().as_deref() == Some("23503")
+            {
+                return AppError::InvalidRequest(format!("invalid recipient_id: {recipient_id}"));
             }
             AppError::Database(e)
         })?;

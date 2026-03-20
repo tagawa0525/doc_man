@@ -22,13 +22,13 @@ doc_man には開発環境として Nix flake が整備されているが、Dock
 
 ### 新規作成
 
-| ファイル             | 内容                                                          |
-| -------------------- | ------------------------------------------------------------- |
-| `Containerfile`      | マルチステージビルド（frontend + server + runtime）           |
-| `docker-compose.yml` | PostgreSQL + app サービス（Podman Compose で使用）            |
-| `.containerignore`   | ビルドコンテキストの除外設定                                  |
-| `Justfile`           | 開発・Podman・DB 操作コマンド（`pod-*` プレフィックス）       |
-| `README.md`          | プロジェクト概要と運用方法                                    |
+| ファイル             | 内容                                                    |
+| -------------------- | ------------------------------------------------------- |
+| `Containerfile`      | マルチステージビルド（frontend + server + runtime）     |
+| `docker-compose.yml` | PostgreSQL + app サービス（Podman Compose で使用）      |
+| `.containerignore`   | ビルドコンテキストの除外設定                            |
+| `Justfile`           | 開発・Podman・DB 操作コマンド（`pod-*` プレフィックス） |
+| `README.md`          | プロジェクト概要と運用方法                              |
 
 ## 実装詳細
 
