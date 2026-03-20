@@ -26,25 +26,24 @@ pub fn ProjectListPage() -> impl IntoView {
     let fiscal_year = current_fiscal_year();
     let selected_fiscal_year = RwSignal::new(fiscal_year.to_string());
 
-    // ユーザーの所属部署IDをデフォルト選択
-    let default_dept_ids = auth
-        .user
-        .get_untracked()
-        .map(|u| {
-            u.departments
-                .iter()
-                .map(|d| d.id.to_string())
-                .collect::<Vec<_>>()
-                .join(",")
-        })
-        .unwrap_or_default();
-    let dept_ids = RwSignal::new(default_dept_ids);
+    // dept_ids は初期値空（auth ロード後に Effect で設定）
+    let dept_ids = RwSignal::new(String::new());
+    let dept_ids_initialized = RwSignal::new(false);
 
-    let user_depts = auth
-        .user
-        .get_untracked()
-        .map(|u| u.departments)
-        .unwrap_or_default();
+    Effect::new(move || {
+        if let Some(ref u) = auth.user.get() {
+            if !dept_ids_initialized.get_untracked() {
+                let ids = u
+                    .departments
+                    .iter()
+                    .map(|d| d.id.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                dept_ids.set(ids);
+                dept_ids_initialized.set(true);
+            }
+        }
+    });
 
     let is_admin = auth.role().is_some_and(|r| r.is_admin());
 
@@ -117,35 +116,38 @@ pub fn ProjectListPage() -> impl IntoView {
                 <div class="column is-narrow">
                     <label class="label is-small">"部署"</label>
                     <div class="field is-grouped">
-                        {user_depts.into_iter().map(|d| {
-                            let id_str = d.id.to_string();
-                            let name = d.name.clone();
-                            let id_for_check = id_str.clone();
-                            let id_for_handler = id_str.clone();
-                            view! {
-                                <label class="checkbox mr-3">
-                                    <input
-                                        type="checkbox"
-                                        prop:checked=move || {
-                                            let ids = dept_ids.get();
-                                            ids.split(',').any(|c| c == id_for_check)
-                                        }
-                                        on:change=move |_| {
-                                            let current = dept_ids.get_untracked();
-                                            let mut ids: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
-                                            if ids.contains(&id_for_handler.as_str()) {
-                                                ids.retain(|c| *c != id_for_handler.as_str());
-                                            } else {
-                                                ids.push(&id_for_handler);
+                        {move || {
+                            let depts = auth.user.get().map(|u| u.departments).unwrap_or_default();
+                            depts.into_iter().map(|d| {
+                                let id_str = d.id.to_string();
+                                let name = d.name.clone();
+                                let id_for_check = id_str.clone();
+                                let id_for_handler = id_str.clone();
+                                view! {
+                                    <label class="checkbox mr-3">
+                                        <input
+                                            type="checkbox"
+                                            prop:checked=move || {
+                                                let ids = dept_ids.get();
+                                                ids.split(',').any(|c| c == id_for_check)
                                             }
-                                            page.set(1);
-                                            dept_ids.set(ids.join(","));
-                                        }
-                                    />
-                                    " " {name}
-                                </label>
-                            }
-                        }).collect_view()}
+                                            on:change=move |_| {
+                                                let current = dept_ids.get_untracked();
+                                                let mut ids: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                                if ids.contains(&id_for_handler.as_str()) {
+                                                    ids.retain(|c| *c != id_for_handler.as_str());
+                                                } else {
+                                                    ids.push(&id_for_handler);
+                                                }
+                                                page.set(1);
+                                                dept_ids.set(ids.join(","));
+                                            }
+                                        />
+                                        " " {name}
+                                    </label>
+                                }
+                            }).collect_view()
+                        }}
                     </div>
                 </div>
 

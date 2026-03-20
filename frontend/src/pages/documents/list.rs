@@ -30,26 +30,25 @@ pub fn DocumentListPage() -> impl IntoView {
     let selected_fiscal_year = RwSignal::new(fiscal_year.to_string());
     let selected_doc_kind = RwSignal::new(String::new());
 
-    // ユーザーの所属部署コードをデフォルト選択
-    let default_dept_codes = auth
-        .user
-        .get_untracked()
-        .map(|u| {
-            u.departments
-                .iter()
-                .map(|d| d.code.clone())
-                .collect::<Vec<_>>()
-                .join(",")
-        })
-        .unwrap_or_default();
-    let dept_codes = RwSignal::new(default_dept_codes);
+    // dept_codes は初期値空（auth ロード後に Effect で設定）
+    let dept_codes = RwSignal::new(String::new());
+    let dept_codes_initialized = RwSignal::new(false);
 
-    // 部署チェックボックス用: ユーザーの所属部署リスト
-    let user_depts = auth
-        .user
-        .get_untracked()
-        .map(|u| u.departments)
-        .unwrap_or_default();
+    // auth ロード完了時にデフォルト部署コードを設定
+    Effect::new(move || {
+        if let Some(ref u) = auth.user.get() {
+            if !dept_codes_initialized.get_untracked() {
+                let codes = u
+                    .departments
+                    .iter()
+                    .map(|d| d.code.clone())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                dept_codes.set(codes);
+                dept_codes_initialized.set(true);
+            }
+        }
+    });
 
     let can_create = auth
         .role()
@@ -136,35 +135,38 @@ pub fn DocumentListPage() -> impl IntoView {
                 <div class="column is-narrow">
                     <label class="label is-small">"部署"</label>
                     <div class="field is-grouped">
-                        {user_depts.into_iter().map(|d| {
-                            let code = d.code.clone();
-                            let name = d.name.clone();
-                            let code_for_check = code.clone();
-                            let code_for_handler = code.clone();
-                            view! {
-                                <label class="checkbox mr-3">
-                                    <input
-                                        type="checkbox"
-                                        prop:checked=move || {
-                                            let codes = dept_codes.get();
-                                            codes.split(',').any(|c| c == code_for_check)
-                                        }
-                                        on:change=move |_| {
-                                            let current = dept_codes.get_untracked();
-                                            let mut codes: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
-                                            if codes.contains(&code_for_handler.as_str()) {
-                                                codes.retain(|c| *c != code_for_handler.as_str());
-                                            } else {
-                                                codes.push(&code_for_handler);
+                        {move || {
+                            let depts = auth.user.get().map(|u| u.departments).unwrap_or_default();
+                            depts.into_iter().map(|d| {
+                                let code = d.code.clone();
+                                let name = d.name.clone();
+                                let code_for_check = code.clone();
+                                let code_for_handler = code.clone();
+                                view! {
+                                    <label class="checkbox mr-3">
+                                        <input
+                                            type="checkbox"
+                                            prop:checked=move || {
+                                                let codes = dept_codes.get();
+                                                codes.split(',').any(|c| c == code_for_check)
                                             }
-                                            page.set(1);
-                                            dept_codes.set(codes.join(","));
-                                        }
-                                    />
-                                    " " {name}
-                                </label>
-                            }
-                        }).collect_view()}
+                                            on:change=move |_| {
+                                                let current = dept_codes.get_untracked();
+                                                let mut codes: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                                if codes.contains(&code_for_handler.as_str()) {
+                                                    codes.retain(|c| *c != code_for_handler.as_str());
+                                                } else {
+                                                    codes.push(&code_for_handler);
+                                                }
+                                                page.set(1);
+                                                dept_codes.set(codes.join(","));
+                                            }
+                                        />
+                                        " " {name}
+                                    </label>
+                                }
+                            }).collect_view()
+                        }}
                     </div>
                 </div>
 
