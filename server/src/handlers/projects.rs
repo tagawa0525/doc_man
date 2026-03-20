@@ -49,25 +49,43 @@ pub async fn list_projects(
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
-    let dept_ids: Vec<Uuid> = params
-        .dept_ids
-        .iter()
-        .flat_map(|s| s.split(','))
-        .filter_map(|s| s.trim().parse().ok())
-        .collect();
+    let mut dept_ids: Vec<Uuid> = Vec::new();
+    if let Some(ref raw) = params.dept_ids {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let id: Uuid = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(
+                    "invalid dept_ids parameter: must be comma-separated UUIDs".to_string(),
+                )
+            })?;
+            dept_ids.push(id);
+        }
+    }
 
     let manager_name = params
         .manager_name
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
-    let fiscal_years: Vec<i32> = params
-        .fiscal_years
-        .iter()
-        .flat_map(|s| s.split(','))
-        .filter_map(|s| s.trim().parse().ok())
-        .chain(params.fiscal_year)
-        .collect();
+    let mut fiscal_years: Vec<i32> = Vec::new();
+    if let Some(ref raw) = params.fiscal_years {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let year: i32 = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(format!("invalid fiscal_years value: {trimmed}"))
+            })?;
+            fiscal_years.push(year);
+        }
+    }
+    if let Some(year) = params.fiscal_year {
+        fiscal_years.push(year);
+    }
 
     let fiscal_date_ranges: Vec<(NaiveDate, NaiveDate)> = fiscal_years
         .iter()
