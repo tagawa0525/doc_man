@@ -26,6 +26,7 @@ pub struct DocumentListQuery {
     pub dept_codes: Option<String>,
     pub doc_kind_id: Option<Uuid>,
     pub fiscal_year: Option<i32>,
+    pub fiscal_years: Option<String>,
     pub project_name: Option<String>,
     pub author_name: Option<String>,
     pub wbs_code: Option<String>,
@@ -77,11 +78,23 @@ pub async fn list_documents(
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
-    let fiscal_dates = params.fiscal_year.map(|y| {
-        let start = NaiveDate::from_ymd_opt(y, 4, 1).unwrap();
-        let end = NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap();
-        (start, end)
-    });
+    let fiscal_years: Vec<i32> = params
+        .fiscal_years
+        .iter()
+        .flat_map(|s| s.split(','))
+        .filter_map(|s| s.trim().parse().ok())
+        .chain(params.fiscal_year)
+        .collect();
+
+    let fiscal_date_ranges: Vec<(NaiveDate, NaiveDate)> = fiscal_years
+        .iter()
+        .map(|&y| {
+            (
+                NaiveDate::from_ymd_opt(y, 4, 1).unwrap(),
+                NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap(),
+            )
+        })
+        .collect();
 
     // COUNT クエリ
     let mut count_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
@@ -96,7 +109,7 @@ pub async fn list_documents(
         search.as_deref(),
         &dept_codes,
         params.doc_kind_id,
-        fiscal_dates,
+        &fiscal_date_ranges,
         project_name.as_deref(),
         author_name.as_deref(),
         wbs_code.as_deref(),
@@ -129,7 +142,7 @@ pub async fn list_documents(
         search.as_deref(),
         &dept_codes,
         params.doc_kind_id,
-        fiscal_dates,
+        &fiscal_date_ranges,
         project_name.as_deref(),
         author_name.as_deref(),
         wbs_code.as_deref(),
@@ -198,7 +211,7 @@ fn push_document_filters(
     search: Option<&str>,
     dept_codes: &[String],
     doc_kind_id: Option<Uuid>,
-    fiscal_dates: Option<(NaiveDate, NaiveDate)>,
+    fiscal_date_ranges: &[(NaiveDate, NaiveDate)],
     project_name: Option<&str>,
     author_name: Option<&str>,
     wbs_code: Option<&str>,
@@ -226,11 +239,19 @@ fn push_document_filters(
         qb.push(" AND d.doc_kind_id = ");
         qb.push_bind(kind_id);
     }
-    if let Some((start, end)) = fiscal_dates {
-        qb.push(" AND d.created_at >= ");
-        qb.push_bind(start);
-        qb.push(" AND d.created_at < ");
-        qb.push_bind(end);
+    if !fiscal_date_ranges.is_empty() {
+        qb.push(" AND (");
+        for (i, (start, end)) in fiscal_date_ranges.iter().enumerate() {
+            if i > 0 {
+                qb.push(" OR ");
+            }
+            qb.push("(d.created_at >= ");
+            qb.push_bind(*start);
+            qb.push(" AND d.created_at < ");
+            qb.push_bind(*end);
+            qb.push(")");
+        }
+        qb.push(")");
     }
     if let Some(pn) = project_name {
         qb.push(" AND LOWER(p.name) LIKE '%' || ");

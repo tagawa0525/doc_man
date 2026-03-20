@@ -22,6 +22,7 @@ pub struct ProjectListQuery {
     pub q: Option<String>,
     pub dept_ids: Option<String>,
     pub fiscal_year: Option<i32>,
+    pub fiscal_years: Option<String>,
     pub manager_name: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
@@ -60,11 +61,23 @@ pub async fn list_projects(
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
-    let fiscal_dates = params.fiscal_year.map(|y| {
-        let start = NaiveDate::from_ymd_opt(y, 4, 1).unwrap();
-        let end = NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap();
-        (start, end)
-    });
+    let fiscal_years: Vec<i32> = params
+        .fiscal_years
+        .iter()
+        .flat_map(|s| s.split(','))
+        .filter_map(|s| s.trim().parse().ok())
+        .chain(params.fiscal_year)
+        .collect();
+
+    let fiscal_date_ranges: Vec<(NaiveDate, NaiveDate)> = fiscal_years
+        .iter()
+        .map(|&y| {
+            (
+                NaiveDate::from_ymd_opt(y, 4, 1).unwrap(),
+                NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap(),
+            )
+        })
+        .collect();
 
     // COUNT クエリ
     let mut count_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
@@ -81,7 +94,7 @@ pub async fn list_projects(
         params.wbs_code.as_deref(),
         search.as_deref(),
         &dept_ids,
-        fiscal_dates,
+        &fiscal_date_ranges,
         manager_name.as_deref(),
     );
     let total: i64 = count_qb
@@ -109,7 +122,7 @@ pub async fn list_projects(
         params.wbs_code.as_deref(),
         search.as_deref(),
         &dept_ids,
-        fiscal_dates,
+        &fiscal_date_ranges,
         manager_name.as_deref(),
     );
     data_qb.push(" ORDER BY p.name, p.id LIMIT ");
@@ -162,7 +175,7 @@ fn push_project_filters(
     wbs_code: Option<&str>,
     search: Option<&str>,
     dept_ids: &[Uuid],
-    fiscal_dates: Option<(NaiveDate, NaiveDate)>,
+    fiscal_date_ranges: &[(NaiveDate, NaiveDate)],
     manager_name: Option<&str>,
 ) {
     if let Some(s) = status {
@@ -190,11 +203,19 @@ fn push_project_filters(
         }
         separated.push_unseparated(")");
     }
-    if let Some((start, end)) = fiscal_dates {
-        qb.push(" AND p.created_at >= ");
-        qb.push_bind(start);
-        qb.push(" AND p.created_at < ");
-        qb.push_bind(end);
+    if !fiscal_date_ranges.is_empty() {
+        qb.push(" AND (");
+        for (i, (start, end)) in fiscal_date_ranges.iter().enumerate() {
+            if i > 0 {
+                qb.push(" OR ");
+            }
+            qb.push("(p.created_at >= ");
+            qb.push_bind(*start);
+            qb.push(" AND p.created_at < ");
+            qb.push_bind(*end);
+            qb.push(")");
+        }
+        qb.push(")");
     }
     if let Some(mn) = manager_name {
         qb.push(" AND LOWER(e.name) LIKE '%' || ");
