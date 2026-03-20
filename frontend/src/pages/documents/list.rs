@@ -43,7 +43,6 @@ pub fn DocumentListPage() -> impl IntoView {
     let project_name = RwSignal::new(String::new());
     let author_name = RwSignal::new(String::new());
     let wbs_code = RwSignal::new(String::new());
-    let timer_id = RwSignal::new(0i32);
     let selected_doc_kind = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
@@ -111,10 +110,11 @@ pub fn DocumentListPage() -> impl IntoView {
     });
 
     let make_debounced_handler = |signal: RwSignal<String>| {
+        let tid = RwSignal::new(0i32);
         move |ev: leptos::ev::Event| {
             let value = event_target::<HtmlInputElement>(&ev).value();
             let window = web_sys::window().unwrap();
-            let prev = timer_id.get_untracked();
+            let prev = tid.get_untracked();
             if prev != 0 {
                 window.clear_timeout_with_handle(prev);
             }
@@ -129,7 +129,7 @@ pub fn DocumentListPage() -> impl IntoView {
                 )
                 .unwrap();
             cb.forget();
-            timer_id.set(id);
+            tid.set(id);
         }
     };
 

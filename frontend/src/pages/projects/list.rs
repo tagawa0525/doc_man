@@ -40,7 +40,6 @@ pub fn ProjectListPage() -> impl IntoView {
     let page = RwSignal::new(1u32);
     let search_query = RwSignal::new(String::new());
     let manager_name = RwSignal::new(String::new());
-    let timer_id = RwSignal::new(0i32);
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
 
@@ -98,10 +97,11 @@ pub fn ProjectListPage() -> impl IntoView {
     });
 
     let make_debounced_handler = |signal: RwSignal<String>| {
+        let tid = RwSignal::new(0i32);
         move |ev: leptos::ev::Event| {
             let value = event_target::<HtmlInputElement>(&ev).value();
             let window = web_sys::window().unwrap();
-            let prev = timer_id.get_untracked();
+            let prev = tid.get_untracked();
             if prev != 0 {
                 window.clear_timeout_with_handle(prev);
             }
@@ -116,7 +116,7 @@ pub fn ProjectListPage() -> impl IntoView {
                 )
                 .unwrap();
             cb.forget();
-            timer_id.set(id);
+            tid.set(id);
         }
     };
 
