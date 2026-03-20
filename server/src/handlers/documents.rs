@@ -21,8 +21,15 @@ use crate::state::AppState;
 #[derive(Debug, Deserialize)]
 pub struct DocumentListQuery {
     pub project_id: Option<Uuid>,
+    pub q: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
+}
+
+fn escape_like(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }
 
 /// GET /api/v1/documents
@@ -35,11 +42,18 @@ pub async fn list_documents(
         return Err(AppError::InvalidRequest(e));
     }
 
+    let search = params
+        .q
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
     let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM documents
-         WHERE ($1::uuid IS NULL OR project_id = $1)",
+        "SELECT COUNT(*) FROM documents d
+         WHERE ($1::uuid IS NULL OR d.project_id = $1)
+           AND ($2::text IS NULL OR LOWER(d.title) LIKE '%' || $2 || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || $2 || '%' ESCAPE '\\')",
     )
     .bind(params.project_id)
+    .bind(&search)
     .fetch_one(&state.db)
     .await
     .map_err(AppError::Database)?;
@@ -58,10 +72,12 @@ pub async fn list_documents(
          JOIN projects p ON p.id = d.project_id
          JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
          WHERE ($1::uuid IS NULL OR d.project_id = $1)
+           AND ($2::text IS NULL OR LOWER(d.title) LIKE '%' || $2 || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || $2 || '%' ESCAPE '\\')
          ORDER BY d.created_at DESC
-         LIMIT $2 OFFSET $3",
+         LIMIT $3 OFFSET $4",
     )
     .bind(params.project_id)
+    .bind(&search)
     .bind(params.pagination.limit())
     .bind(params.pagination.offset())
     .fetch_all(&state.db)
