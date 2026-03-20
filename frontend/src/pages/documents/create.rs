@@ -49,6 +49,12 @@ pub fn DocumentCreatePage() -> impl IntoView {
                 saving.set(false);
                 return;
             }
+            let (Ok(doc_kind_id), Ok(project_id)) = (Uuid::parse_str(&dki), Uuid::parse_str(&pi))
+            else {
+                toast.error("文書種別またはプロジェクトの値が不正です");
+                saving.set(false);
+                return;
+            };
             let result = api::documents::create(&CreateDocumentRequest {
                 title,
                 file_path,
@@ -57,8 +63,8 @@ pub fn DocumentCreatePage() -> impl IntoView {
                 } else {
                     Some(confidentiality)
                 },
-                doc_kind_id: Uuid::parse_str(&dki).unwrap(),
-                project_id: Uuid::parse_str(&pi).unwrap(),
+                doc_kind_id,
+                project_id,
                 tags: if tags.is_empty() { None } else { Some(tags) },
             })
             .await;
