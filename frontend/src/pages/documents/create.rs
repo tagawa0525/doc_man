@@ -1,25 +1,15 @@
 use leptos::prelude::*;
-use leptos_router::hooks::use_params_map;
 use uuid::Uuid;
 use web_sys::HtmlInputElement;
 
 use crate::api;
-use crate::api::types::{CreateDocumentRequest, UpdateDocumentRequest};
+use crate::api::types::CreateDocumentRequest;
 use crate::components::form::FormField;
 use crate::components::toast::ToastContext;
 
 #[component]
-pub fn DocumentFormPage() -> impl IntoView {
+pub fn DocumentCreatePage() -> impl IntoView {
     let toast = expect_context::<ToastContext>();
-    let params = use_params_map();
-
-    let doc_id = move || {
-        params
-            .read()
-            .get("id")
-            .and_then(|id| Uuid::parse_str(&id).ok())
-    };
-    let is_edit = move || doc_id().is_some();
 
     let form_title = RwSignal::new(String::new());
     let form_file_path = RwSignal::new(String::new());
@@ -28,28 +18,9 @@ pub fn DocumentFormPage() -> impl IntoView {
     let form_project_id = RwSignal::new(String::new());
     let form_tags = RwSignal::new(String::new());
     let saving = RwSignal::new(false);
-    let loaded = RwSignal::new(false);
 
     let doc_kinds_resource = LocalResource::new(|| async { api::document_kinds::list_all().await });
     let projects_resource = LocalResource::new(|| async { api::projects::list(1, 100).await });
-
-    let _load = Effect::new(move || {
-        if let Some(id) = doc_id() {
-            if !loaded.get_untracked() {
-                leptos::task::spawn_local(async move {
-                    if let Ok(doc) = api::documents::get(id).await {
-                        form_title.set(doc.title);
-                        form_file_path.set(doc.file_path);
-                        form_confidentiality.set(doc.confidentiality);
-                        form_doc_kind_id.set(doc.doc_kind.id.to_string());
-                        form_project_id.set(doc.project.id.to_string());
-                        form_tags.set(doc.tags.join(", "));
-                        loaded.set(true);
-                    }
-                });
-            }
-        }
-    });
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -71,51 +42,40 @@ pub fn DocumentFormPage() -> impl IntoView {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .collect();
-        let eid = doc_id();
 
         leptos::task::spawn_local(async move {
-            let result = if let Some(id) = eid {
-                api::documents::update(
-                    id,
-                    &UpdateDocumentRequest {
-                        title: Some(title),
-                        file_path: Some(file_path),
-                        confidentiality: Some(confidentiality),
-                        tags: Some(tags),
-                        doc_number: None,
-                        frozen_dept_code: None,
-                        status: None,
-                    },
-                )
-                .await
-                .map(|_| ())
-            } else {
-                if dki.is_empty() || pi.is_empty() {
-                    toast.error("文書種別とプロジェクトは必須です");
-                    saving.set(false);
-                    return;
-                }
-                api::documents::create(&CreateDocumentRequest {
-                    title,
-                    file_path,
-                    confidentiality: if confidentiality.is_empty() {
-                        None
-                    } else {
-                        Some(confidentiality)
-                    },
-                    doc_kind_id: Uuid::parse_str(&dki).unwrap(),
-                    project_id: Uuid::parse_str(&pi).unwrap(),
-                    tags: if tags.is_empty() { None } else { Some(tags) },
-                })
-                .await
-                .map(|_| ())
+            if dki.is_empty() || pi.is_empty() {
+                toast.error("文書種別とプロジェクトは必須です");
+                saving.set(false);
+                return;
+            }
+            let (Ok(doc_kind_id), Ok(project_id)) = (Uuid::parse_str(&dki), Uuid::parse_str(&pi))
+            else {
+                toast.error("文書種別またはプロジェクトの値が不正です");
+                saving.set(false);
+                return;
             };
+            let result = api::documents::create(&CreateDocumentRequest {
+                title,
+                file_path,
+                confidentiality: if confidentiality.is_empty() {
+                    None
+                } else {
+                    Some(confidentiality)
+                },
+                doc_kind_id,
+                project_id,
+                tags: if tags.is_empty() { None } else { Some(tags) },
+            })
+            .await;
 
             match result {
-                Ok(()) => {
-                    toast.success("保存しました");
+                Ok(doc) => {
+                    toast.success("作成しました");
                     if let Some(window) = web_sys::window() {
-                        let _ = window.location().set_href("/documents");
+                        let _ = window
+                            .location()
+                            .set_href(&format!("/documents/{}", doc.id));
                     }
                 }
                 Err(e) => toast.error(format!("失敗: {}", e.message)),
@@ -126,7 +86,7 @@ pub fn DocumentFormPage() -> impl IntoView {
 
     view! {
         <div>
-            <h1 class="title">{move || if is_edit() { "文書編集" } else { "文書作成" }}</h1>
+            <h1 class="title">"文書作成"</h1>
             <div class="box">
                 <form on:submit=on_submit>
                     <FormField label="タイトル *">
@@ -183,7 +143,7 @@ pub fn DocumentFormPage() -> impl IntoView {
                             on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_tags.set(t.value()); } />
                     </FormField>
                     <div class="field is-grouped">
-                        <div class="control"><button class="button is-primary" type="submit" prop:disabled=move || saving.get()>"保存"</button></div>
+                        <div class="control"><button class="button is-primary" type="submit" prop:disabled=move || saving.get()>"作成"</button></div>
                         <div class="control"><a href="/documents" class="button">"戻る"</a></div>
                     </div>
                 </form>
