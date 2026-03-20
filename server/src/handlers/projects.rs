@@ -65,6 +65,11 @@ pub async fn list_projects(
         }
     }
 
+    let wbs_code = params
+        .wbs_code
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
     let manager_name = params
         .manager_name
         .filter(|s| !s.is_empty())
@@ -109,7 +114,7 @@ pub async fn list_projects(
         &mut count_qb,
         params.status.as_deref(),
         params.discipline_id,
-        params.wbs_code.as_deref(),
+        wbs_code.as_deref(),
         search.as_deref(),
         &dept_ids,
         &fiscal_date_ranges,
@@ -137,7 +142,7 @@ pub async fn list_projects(
         &mut data_qb,
         params.status.as_deref(),
         params.discipline_id,
-        params.wbs_code.as_deref(),
+        wbs_code.as_deref(),
         search.as_deref(),
         &dept_ids,
         &fiscal_date_ranges,
@@ -205,8 +210,9 @@ fn push_project_filters(
         qb.push_bind(did);
     }
     if let Some(w) = wbs_code {
-        qb.push(" AND p.wbs_code = ");
+        qb.push(" AND LOWER(p.wbs_code) LIKE '%' || ");
         qb.push_bind(w.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
     }
     if let Some(q) = search {
         qb.push(" AND LOWER(p.name) LIKE '%' || ");
