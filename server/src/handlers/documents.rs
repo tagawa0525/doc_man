@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use chrono::NaiveDate;
 use serde::Deserialize;
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -22,6 +23,12 @@ use crate::state::AppState;
 pub struct DocumentListQuery {
     pub project_id: Option<Uuid>,
     pub q: Option<String>,
+    pub dept_codes: Option<String>,
+    pub doc_kind_id: Option<Uuid>,
+    pub fiscal_year: Option<i32>,
+    pub project_name: Option<String>,
+    pub author_name: Option<String>,
+    pub wbs_code: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
 }
@@ -47,18 +54,61 @@ pub async fn list_documents(
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM documents d
-         WHERE ($1::uuid IS NULL OR d.project_id = $1)
-           AND ($2::text IS NULL OR LOWER(d.title) LIKE '%' || $2 || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || $2 || '%' ESCAPE '\\')",
-    )
-    .bind(params.project_id)
-    .bind(&search)
-    .fetch_one(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+    let dept_codes: Vec<String> = params
+        .dept_codes
+        .iter()
+        .flat_map(|s| s.split(','))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
 
-    let rows = sqlx::query(
+    let project_name = params
+        .project_name
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let author_name = params
+        .author_name
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let wbs_code = params
+        .wbs_code
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let fiscal_dates = params.fiscal_year.map(|y| {
+        let start = NaiveDate::from_ymd_opt(y, 4, 1).unwrap();
+        let end = NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap();
+        (start, end)
+    });
+
+    // COUNT クエリ
+    let mut count_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
+        "SELECT COUNT(*) FROM documents d
+         JOIN employees e ON e.id = d.author_id
+         JOIN projects p ON p.id = d.project_id
+         WHERE 1=1",
+    );
+    push_document_filters(
+        &mut count_qb,
+        params.project_id,
+        &search,
+        &dept_codes,
+        params.doc_kind_id,
+        fiscal_dates,
+        &project_name,
+        &author_name,
+        &wbs_code,
+    );
+    let total: i64 = count_qb
+        .build_query_scalar()
+        .fetch_one(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    // データクエリ
+    let mut data_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
         "SELECT d.id, d.doc_number, d.revision, d.title,
                 dr.file_path,
                 d.status, d.confidentiality, d.frozen_dept_code,
@@ -71,18 +121,29 @@ pub async fn list_documents(
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
          JOIN projects p ON p.id = d.project_id
          JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
-         WHERE ($1::uuid IS NULL OR d.project_id = $1)
-           AND ($2::text IS NULL OR LOWER(d.title) LIKE '%' || $2 || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || $2 || '%' ESCAPE '\\')
-         ORDER BY d.created_at DESC
-         LIMIT $3 OFFSET $4",
-    )
-    .bind(params.project_id)
-    .bind(&search)
-    .bind(params.pagination.limit())
-    .bind(params.pagination.offset())
-    .fetch_all(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+         WHERE 1=1",
+    );
+    push_document_filters(
+        &mut data_qb,
+        params.project_id,
+        &search,
+        &dept_codes,
+        params.doc_kind_id,
+        fiscal_dates,
+        &project_name,
+        &author_name,
+        &wbs_code,
+    );
+    data_qb.push(" ORDER BY d.created_at DESC LIMIT ");
+    data_qb.push_bind(params.pagination.limit());
+    data_qb.push(" OFFSET ");
+    data_qb.push_bind(params.pagination.offset());
+
+    let rows = data_qb
+        .build()
+        .fetch_all(&state.db)
+        .await
+        .map_err(AppError::Database)?;
 
     // 全文書IDに対するタグを一括取得（N+1回避）
     let doc_ids: Vec<Uuid> = rows.iter().map(|r| r.get("id")).collect();
@@ -128,6 +189,64 @@ pub async fn list_documents(
         params.pagination.page,
         params.pagination.per_page,
     )))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_document_filters(
+    qb: &mut QueryBuilder<sqlx::Postgres>,
+    project_id: Option<Uuid>,
+    search: &Option<String>,
+    dept_codes: &[String],
+    doc_kind_id: Option<Uuid>,
+    fiscal_dates: Option<(NaiveDate, NaiveDate)>,
+    project_name: &Option<String>,
+    author_name: &Option<String>,
+    wbs_code: &Option<String>,
+) {
+    if let Some(pid) = project_id {
+        qb.push(" AND d.project_id = ");
+        qb.push_bind(pid);
+    }
+    if let Some(ref q) = *search {
+        qb.push(" AND (LOWER(d.title) LIKE '%' || ");
+        qb.push_bind(q.clone());
+        qb.push(" || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || ");
+        qb.push_bind(q.clone());
+        qb.push(" || '%' ESCAPE '\\')");
+    }
+    if !dept_codes.is_empty() {
+        qb.push(" AND d.frozen_dept_code IN (");
+        let mut separated = qb.separated(", ");
+        for code in dept_codes {
+            separated.push_bind(code.clone());
+        }
+        separated.push_unseparated(")");
+    }
+    if let Some(kind_id) = doc_kind_id {
+        qb.push(" AND d.doc_kind_id = ");
+        qb.push_bind(kind_id);
+    }
+    if let Some((start, end)) = fiscal_dates {
+        qb.push(" AND d.created_at >= ");
+        qb.push_bind(start);
+        qb.push(" AND d.created_at < ");
+        qb.push_bind(end);
+    }
+    if let Some(ref pn) = *project_name {
+        qb.push(" AND LOWER(p.name) LIKE '%' || ");
+        qb.push_bind(pn.clone());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if let Some(ref an) = *author_name {
+        qb.push(" AND LOWER(e.name) LIKE '%' || ");
+        qb.push_bind(an.clone());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if let Some(ref wc) = *wbs_code {
+        qb.push(" AND LOWER(p.wbs_code) LIKE '%' || ");
+        qb.push_bind(wc.clone());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
 }
 
 /// POST /api/v1/documents
