@@ -18,8 +18,15 @@ pub struct ProjectListQuery {
     pub status: Option<String>,
     pub discipline_id: Option<Uuid>,
     pub wbs_code: Option<String>,
+    pub q: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
+}
+
+fn escape_like(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }
 
 /// GET /api/v1/projects
@@ -32,15 +39,22 @@ pub async fn list_projects(
         return Err(AppError::InvalidRequest(e));
     }
 
+    let search = params
+        .q
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
     let total: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM projects
          WHERE ($1::text IS NULL OR status = $1)
            AND ($2::uuid IS NULL OR discipline_id = $2)
-           AND ($3::text IS NULL OR wbs_code = $3)",
+           AND ($3::text IS NULL OR wbs_code = $3)
+           AND ($4::text IS NULL OR LOWER(name) LIKE '%' || $4 || '%' ESCAPE '\\')",
     )
     .bind(&params.status)
     .bind(params.discipline_id)
     .bind(&params.wbs_code)
+    .bind(&search)
     .fetch_one(&state.db)
     .await
     .map_err(AppError::Database)?;
@@ -57,12 +71,14 @@ pub async fn list_projects(
          WHERE ($1::text IS NULL OR p.status = $1)
            AND ($2::uuid IS NULL OR p.discipline_id = $2)
            AND ($3::text IS NULL OR p.wbs_code = $3)
+           AND ($4::text IS NULL OR LOWER(p.name) LIKE '%' || $4 || '%' ESCAPE '\\')
          ORDER BY p.name, p.id
-         LIMIT $4 OFFSET $5",
+         LIMIT $5 OFFSET $6",
     )
     .bind(&params.status)
     .bind(params.discipline_id)
     .bind(&params.wbs_code)
+    .bind(&search)
     .bind(params.pagination.limit())
     .bind(params.pagination.offset())
     .fetch_all(&state.db)
