@@ -401,30 +401,52 @@ pub fn DocumentListPage() -> impl IntoView {
                             let total = paginated.meta.total;
                             let cp = paginated.meta.page;
                             let pp = paginated.meta.per_page;
+
+                            // doc_kind ごとにグループ化（出現順を保持）
+                            let mut kind_order: Vec<(String, String)> = Vec::new();
+                            let mut groups: std::collections::HashMap<String, Vec<_>> = std::collections::HashMap::new();
+                            for doc in paginated.data {
+                                let kind_id = doc.doc_kind.id.to_string();
+                                if !groups.contains_key(&kind_id) {
+                                    kind_order.push((kind_id.clone(), doc.doc_kind.name.clone()));
+                                }
+                                groups.entry(kind_id).or_default().push(doc);
+                            }
+
+                            let tables = kind_order.into_iter().map(|(kind_id, kind_name)| {
+                                let docs = groups.remove(&kind_id).unwrap_or_default();
+                                view! {
+                                    <div class="box mb-4">
+                                        <h2 class="subtitle is-6 mb-2">{kind_name}</h2>
+                                        <table class="table is-fullwidth is-hoverable">
+                                            <thead>
+                                                <tr>
+                                                    <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th>
+                                                    <th>"WBSコード"</th><th>"作成者"</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {docs.into_iter().map(|doc| {
+                                                    let detail_url = format!("/documents/{}", doc.id);
+                                                    view! {
+                                                        <tr>
+                                                            <td><span class="has-text-weight-semibold">{doc.doc_number}</span></td>
+                                                            <td>{doc.revision.to_string()}</td>
+                                                            <td><a href=detail_url>{doc.title}</a></td>
+                                                            <td>{doc.project.wbs_code.unwrap_or_default()}</td>
+                                                            <td>{doc.author.name}</td>
+                                                        </tr>
+                                                    }
+                                                }).collect_view()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            }).collect_view();
+
                             view! {
-                                <div class="box">
-                                    <table class="table is-fullwidth is-hoverable">
-                                        <thead>
-                                            <tr>
-                                                <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th>
-                                                <th>"WBSコード"</th><th>"作成者"</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginated.data.into_iter().map(|doc| {
-                                                let detail_url = format!("/documents/{}", doc.id);
-                                                view! {
-                                                    <tr>
-                                                        <td><span class="has-text-weight-semibold">{doc.doc_number}</span></td>
-                                                        <td>{doc.revision.to_string()}</td>
-                                                        <td><a href=detail_url>{doc.title}</a></td>
-                                                        <td>{doc.project.wbs_code.unwrap_or_default()}</td>
-                                                        <td>{doc.author.name}</td>
-                                                    </tr>
-                                                }
-                                            }).collect_view()}
-                                        </tbody>
-                                    </table>
+                                <div>
+                                    {tables}
                                     <Pagination current_page=cp total=total per_page=pp on_page_change=Callback::new(move |p| page.set(p)) />
                                 </div>
                             }.into_any()
