@@ -267,6 +267,13 @@ pub struct UpdateProjectRequest {
 // --- Documents ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentProjectBrief {
+    pub id: Uuid,
+    pub name: String,
+    pub wbs_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentResponse {
     pub id: Uuid,
     pub doc_number: String,
@@ -278,7 +285,7 @@ pub struct DocumentResponse {
     pub frozen_dept_code: String,
     pub author: NameBrief,
     pub doc_kind: CodeBrief,
-    pub project: NameBrief,
+    pub project: DocumentProjectBrief,
     pub tags: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
