@@ -445,7 +445,6 @@ async fn post_document_pm_returns_201(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "title": "テスト文書",
-                        "file_path": "/path/to/file",
                         "doc_kind_id": data.kind,
                         "project_id": data.proj
                     })
@@ -475,7 +474,6 @@ async fn post_document_general_returns_201(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "title": "テスト文書",
-                        "file_path": "/path/to/file",
                         "doc_kind_id": data.kind,
                         "project_id": data.proj
                     })

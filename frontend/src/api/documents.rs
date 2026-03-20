@@ -1,6 +1,7 @@
 use super::client::{self, ApiError};
 use super::types::{
-    CreateDocumentRequest, DocumentResponse, PaginatedResponse, UpdateDocumentRequest,
+    CreateDocumentRequest, DocumentResponse, DocumentRevisionResponse, PaginatedResponse,
+    ReviseDocumentRequest, UpdateDocumentRequest,
 };
 use uuid::Uuid;
 
@@ -39,4 +40,12 @@ pub async fn update(id: Uuid, req: &UpdateDocumentRequest) -> Result<DocumentRes
 
 pub async fn delete(id: Uuid) -> Result<(), ApiError> {
     client::delete(&format!("/api/v1/documents/{id}")).await
+}
+
+pub async fn revise(id: Uuid, req: &ReviseDocumentRequest) -> Result<DocumentResponse, ApiError> {
+    client::post(&format!("/api/v1/documents/{id}/revise"), req).await
+}
+
+pub async fn list_revisions(id: Uuid) -> Result<Vec<DocumentRevisionResponse>, ApiError> {
+    client::get(&format!("/api/v1/documents/{id}/revisions")).await
 }

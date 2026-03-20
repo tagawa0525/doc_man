@@ -278,7 +278,6 @@ pub struct DocumentResponse {
 #[derive(Debug, Clone, Serialize)]
 pub struct CreateDocumentRequest {
     pub title: String,
-    pub file_path: String,
     pub confidentiality: Option<String>,
     pub doc_kind_id: Uuid,
     pub project_id: Uuid,
@@ -291,9 +290,25 @@ pub struct UpdateDocumentRequest {
     pub frozen_dept_code: Option<String>,
     pub status: Option<String>,
     pub title: Option<String>,
-    pub file_path: Option<String>,
     pub confidentiality: Option<String>,
     pub tags: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ReviseDocumentRequest {
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentRevisionResponse {
+    pub id: Uuid,
+    pub document_id: Uuid,
+    pub revision: i32,
+    pub file_path: String,
+    pub reason: Option<String>,
+    pub created_by: NameBrief,
+    pub effective_from: DateTime<Utc>,
+    pub effective_to: Option<DateTime<Utc>>,
 }
 
 // --- Approval Steps ---

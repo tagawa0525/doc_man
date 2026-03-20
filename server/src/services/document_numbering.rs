@@ -161,8 +161,8 @@ mod tests {
         // 既存文書を2件挿入
         for i in 1..=2 {
             sqlx::query(
-                "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
-                 VALUES ($1, 'test', '/path', $2, $3, '設計', $4)",
+                "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
+                 VALUES ($1, 'test', $2, $3, '設計', $4)",
             )
             .bind(format!("内設計-2603{i:03}"))
             .bind(emp_id)
@@ -237,8 +237,8 @@ mod tests {
                 .await
                 .unwrap();
         sqlx::query(
-            "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
-             VALUES ($1, 'test', '/path', $2, $3, '設計', $4)",
+            "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
+             VALUES ($1, 'test', $2, $3, '設計', $4)",
         )
         .bind(&march_num)
         .bind(emp_id)

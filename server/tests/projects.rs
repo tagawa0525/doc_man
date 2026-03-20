@@ -472,8 +472,8 @@ async fn delete_project_with_documents_returns_409(pool: PgPool) {
 
     // 文書を直接挿入
     sqlx::query(
-        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, project_id)
-         VALUES ('内技術-2603001', 'テスト文書', '/path/to/file', $1, $2, '001', $3)",
+        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
+         VALUES ('内技術-2603001', 'テスト文書', $1, $2, '001', $3)",
     )
     .bind(admin.id)
     .bind(kind)

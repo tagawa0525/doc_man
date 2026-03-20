@@ -11,6 +11,9 @@ use crate::models::DocKindBrief;
 use crate::models::document::{
     AuthorBrief, CreateDocumentRequest, DocumentResponse, ProjectBrief, UpdateDocumentRequest,
 };
+use crate::models::document_revision::{
+    CreatedByBrief, DocumentRevisionResponse, ReviseDocumentRequest,
+};
 use crate::pagination::{PaginatedResponse, PaginationParams};
 use crate::services::document_numbering::assign_doc_number;
 use crate::state::AppState;
@@ -42,7 +45,8 @@ pub async fn list_documents(
     .map_err(AppError::Database)?;
 
     let rows = sqlx::query(
-        "SELECT d.id, d.doc_number, d.revision, d.title, d.file_path,
+        "SELECT d.id, d.doc_number, d.revision, d.title,
+                dr.file_path,
                 d.status, d.confidentiality, d.frozen_dept_code,
                 d.created_at, d.updated_at,
                 e.id AS author_id, e.name AS author_name,
@@ -52,6 +56,7 @@ pub async fn list_documents(
          JOIN employees e ON e.id = d.author_id
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
          JOIN projects p ON p.id = d.project_id
+         JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
          WHERE ($1::uuid IS NULL OR d.project_id = $1)
          ORDER BY d.created_at DESC
          LIMIT $2 OFFSET $3",
@@ -164,13 +169,12 @@ pub async fn create_document(
     let confidentiality = req.confidentiality.as_deref().unwrap_or("internal");
 
     let doc_row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, confidentiality, project_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, confidentiality, project_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id",
     )
     .bind(&doc_number)
     .bind(&req.title)
-    .bind(&req.file_path)
     .bind(user.id)
     .bind(req.doc_kind_id)
     .bind(&dept_code)
@@ -192,6 +196,19 @@ pub async fn create_document(
     })?;
 
     let doc_id: Uuid = doc_row.get("id");
+
+    // document_revisions に Rev.0 を作成
+    let file_path = format!("{doc_number}/0");
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, created_by)
+         VALUES ($1, 0, $2, $3)",
+    )
+    .bind(doc_id)
+    .bind(&file_path)
+    .bind(user.id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
 
     // タグの関連付け（重複排除）
     if let Some(ref tag_names) = req.tags {
@@ -275,7 +292,7 @@ pub async fn update_document(
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     let existing = sqlx::query(
-        "SELECT title, file_path, confidentiality, status, revision
+        "SELECT title, confidentiality
          FROM documents WHERE id = $1 FOR UPDATE",
     )
     .bind(id)
@@ -285,55 +302,18 @@ pub async fn update_document(
     .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
 
     let current_title: String = existing.get("title");
-    let current_file_path: String = existing.get("file_path");
     let current_confidentiality: String = existing.get("confidentiality");
-    let current_status: String = existing.get("status");
-    let current_revision: i32 = existing.get("revision");
 
-    let new_title = req.title.unwrap_or(current_title.clone());
-    let new_file_path = req.file_path.unwrap_or(current_file_path.clone());
-    let new_confidentiality = req
-        .confidentiality
-        .unwrap_or(current_confidentiality.clone());
-
-    // タグの変更を実際に比較
-    let tags_changed = if let Some(ref new_tags) = req.tags {
-        let current_tags = fetch_tags(&state.db, id).await?;
-        let mut sorted_new: Vec<&str> = new_tags.iter().map(std::string::String::as_str).collect();
-        sorted_new.sort_unstable();
-        sorted_new.dedup();
-        let mut sorted_current: Vec<&str> = current_tags
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-        sorted_current.sort_unstable();
-        sorted_new != sorted_current
-    } else {
-        false
-    };
-
-    // draft/rejected 状態で内容変更がある場合に revision +1
-    let content_changed = new_title != current_title
-        || new_file_path != current_file_path
-        || new_confidentiality != current_confidentiality
-        || tags_changed;
-
-    let new_revision =
-        if content_changed && (current_status == "draft" || current_status == "rejected") {
-            current_revision + 1
-        } else {
-            current_revision
-        };
+    let new_title = req.title.unwrap_or(current_title);
+    let new_confidentiality = req.confidentiality.unwrap_or(current_confidentiality);
 
     sqlx::query(
         "UPDATE documents
-         SET title = $1, file_path = $2, confidentiality = $3, revision = $4, updated_at = now()
-         WHERE id = $5",
+         SET title = $1, confidentiality = $2, updated_at = now()
+         WHERE id = $3",
     )
     .bind(&new_title)
-    .bind(&new_file_path)
     .bind(&new_confidentiality)
-    .bind(new_revision)
     .bind(id)
     .execute(tx.as_mut())
     .await
@@ -430,16 +410,25 @@ pub async fn delete_document(
         ));
     }
 
+    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
+
+    // document_revisions を先に削除（FK制約のため）
+    sqlx::query("DELETE FROM document_revisions WHERE document_id = $1")
+        .bind(id)
+        .execute(tx.as_mut())
+        .await
+        .map_err(AppError::Database)?;
+
     // document_tags を先に削除（FK制約のため）
     sqlx::query("DELETE FROM document_tags WHERE document_id = $1")
         .bind(id)
-        .execute(&state.db)
+        .execute(tx.as_mut())
         .await
         .map_err(AppError::Database)?;
 
     let result = sqlx::query("DELETE FROM documents WHERE id = $1")
         .bind(id)
-        .execute(&state.db)
+        .execute(tx.as_mut())
         .await
         .map_err(AppError::Database)?;
 
@@ -447,7 +436,141 @@ pub async fn delete_document(
         return Err(AppError::NotFound(format!("document {id} not found")));
     }
 
+    tx.commit().await.map_err(AppError::Database)?;
+
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/documents/{id}/revise
+pub async fn revise_document(
+    user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+    Json(req): Json<ReviseDocumentRequest>,
+) -> Result<Json<DocumentResponse>, AppError> {
+    if user.role == Role::Viewer {
+        return Err(AppError::Forbidden(
+            "viewer role cannot revise documents".to_string(),
+        ));
+    }
+
+    if req.reason.trim().is_empty() {
+        return Err(AppError::InvalidRequest("reason is required".to_string()));
+    }
+
+    let mut tx = state.db.begin().await.map_err(AppError::Database)?;
+
+    let doc =
+        sqlx::query("SELECT status, revision, doc_number FROM documents WHERE id = $1 FOR UPDATE")
+            .bind(id)
+            .fetch_optional(tx.as_mut())
+            .await
+            .map_err(AppError::Database)?
+            .ok_or_else(|| AppError::NotFound(format!("document {id} not found")))?;
+
+    let status: String = doc.get("status");
+    if status != "approved" {
+        return Err(AppError::Unprocessable(
+            "only approved documents can be revised".to_string(),
+        ));
+    }
+
+    let current_revision: i32 = doc.get("revision");
+    let doc_number: String = doc.get("doc_number");
+    let new_revision = current_revision + 1;
+
+    // 旧改訂の effective_to を閉じる
+    sqlx::query(
+        "UPDATE document_revisions SET effective_to = now()
+         WHERE document_id = $1 AND effective_to IS NULL",
+    )
+    .bind(id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
+
+    // 新改訂レコードを作成
+    let file_path = format!("{doc_number}/{new_revision}");
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, reason, created_by)
+         VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(id)
+    .bind(new_revision)
+    .bind(&file_path)
+    .bind(&req.reason)
+    .bind(user.id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
+
+    // documents の revision と status を更新
+    sqlx::query(
+        "UPDATE documents SET revision = $1, status = 'draft', updated_at = now() WHERE id = $2",
+    )
+    .bind(new_revision)
+    .bind(id)
+    .execute(tx.as_mut())
+    .await
+    .map_err(AppError::Database)?;
+
+    tx.commit().await.map_err(AppError::Database)?;
+
+    let doc = fetch_document_by_id(&state, id)
+        .await?
+        .ok_or_else(|| AppError::Internal("failed to fetch revised document".to_string()))?;
+
+    Ok(Json(doc))
+}
+
+/// GET /api/v1/documents/{id}/revisions
+pub async fn list_document_revisions(
+    _user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DocumentRevisionResponse>>, AppError> {
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM documents WHERE id = $1)")
+        .bind(id)
+        .fetch_one(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    if !exists {
+        return Err(AppError::NotFound(format!("document {id} not found")));
+    }
+
+    let rows = sqlx::query(
+        "SELECT dr.id, dr.document_id, dr.revision, dr.file_path, dr.reason,
+                dr.effective_from, dr.effective_to,
+                e.id AS created_by_id, e.name AS created_by_name
+         FROM document_revisions dr
+         JOIN employees e ON e.id = dr.created_by
+         WHERE dr.document_id = $1
+         ORDER BY dr.revision DESC",
+    )
+    .bind(id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(AppError::Database)?;
+
+    let data: Vec<DocumentRevisionResponse> = rows
+        .into_iter()
+        .map(|r| DocumentRevisionResponse {
+            id: r.get("id"),
+            document_id: r.get("document_id"),
+            revision: r.get("revision"),
+            file_path: r.get("file_path"),
+            reason: r.get("reason"),
+            created_by: CreatedByBrief {
+                id: r.get("created_by_id"),
+                name: r.get("created_by_name"),
+            },
+            effective_from: r.get("effective_from"),
+            effective_to: r.get("effective_to"),
+        })
+        .collect();
+
+    Ok(Json(data))
 }
 
 // ──────────────── 内部ヘルパー ────────────────
@@ -502,7 +625,8 @@ async fn fetch_document_by_id(
     id: Uuid,
 ) -> Result<Option<DocumentResponse>, AppError> {
     let row = sqlx::query(
-        "SELECT d.id, d.doc_number, d.revision, d.title, d.file_path,
+        "SELECT d.id, d.doc_number, d.revision, d.title,
+                dr.file_path,
                 d.status, d.confidentiality, d.frozen_dept_code,
                 d.created_at, d.updated_at,
                 e.id AS author_id, e.name AS author_name,
@@ -512,6 +636,7 @@ async fn fetch_document_by_id(
          JOIN employees e ON e.id = d.author_id
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
          JOIN projects p ON p.id = d.project_id
+         JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
          WHERE d.id = $1",
     )
     .bind(id)

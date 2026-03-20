@@ -12,7 +12,6 @@ pub fn DocumentCreatePage() -> impl IntoView {
     let toast = expect_context::<ToastContext>();
 
     let form_title = RwSignal::new(String::new());
-    let form_file_path = RwSignal::new(String::new());
     let form_confidentiality = RwSignal::new("internal".to_string());
     let form_doc_kind_id = RwSignal::new(String::new());
     let form_project_id = RwSignal::new(String::new());
@@ -25,10 +24,9 @@ pub fn DocumentCreatePage() -> impl IntoView {
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         let title = form_title.get_untracked();
-        let file_path = form_file_path.get_untracked();
 
-        if title.is_empty() || file_path.is_empty() {
-            toast.error("タイトルとファイルパスは必須です");
+        if title.is_empty() {
+            toast.error("タイトルは必須です");
             return;
         }
 
@@ -57,7 +55,6 @@ pub fn DocumentCreatePage() -> impl IntoView {
             };
             let result = api::documents::create(&CreateDocumentRequest {
                 title,
-                file_path,
                 confidentiality: if confidentiality.is_empty() {
                     None
                 } else {
@@ -92,10 +89,6 @@ pub fn DocumentCreatePage() -> impl IntoView {
                     <FormField label="タイトル *">
                         <input class="input" type="text" prop:value=move || form_title.get()
                             on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_title.set(t.value()); } />
-                    </FormField>
-                    <FormField label="ファイルパス *">
-                        <input class="input" type="text" prop:value=move || form_file_path.get()
-                            on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_file_path.set(t.value()); } />
                     </FormField>
                     <div class="columns">
                         <div class="column">

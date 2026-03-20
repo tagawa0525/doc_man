@@ -83,6 +83,14 @@ pub fn build_router(state: AppState) -> Router {
                 .delete(documents::delete_document),
         )
         .route(
+            "/api/v1/documents/{id}/revise",
+            post(documents::revise_document),
+        )
+        .route(
+            "/api/v1/documents/{id}/revisions",
+            get(documents::list_document_revisions),
+        )
+        .route(
             "/api/v1/documents/{doc_id}/approval-steps",
             get(approval_steps::list_approval_steps).post(approval_steps::create_approval_route),
         )

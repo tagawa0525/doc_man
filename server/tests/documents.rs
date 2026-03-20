@@ -26,7 +26,6 @@ async fn post_document_assigns_doc_number_and_returns_201(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "title": "テスト文書",
-                        "file_path": "/nas/path/file.dwg",
                         "doc_kind_id": kind,
                         "project_id": proj
                     })
@@ -42,7 +41,9 @@ async fn post_document_assigns_doc_number_and_returns_201(pool: PgPool) {
     let doc_number = body["doc_number"].as_str().unwrap();
     assert!(doc_number.starts_with("内設計-"));
     assert_eq!(body["status"], "draft");
-    assert_eq!(body["revision"], 1);
+    assert_eq!(body["revision"], 0);
+    let file_path = body["file_path"].as_str().unwrap();
+    assert!(file_path.ends_with("/0"));
     assert_eq!(body["title"], "テスト文書");
     assert_eq!(body["author"]["id"], admin.id.to_string());
 }
@@ -68,7 +69,6 @@ async fn post_document_with_tags(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "title": "テスト文書",
-                        "file_path": "/path",
                         "doc_kind_id": kind,
                         "project_id": proj,
                         "tags": ["外形図", "設備"]
@@ -105,7 +105,6 @@ async fn post_document_viewer_returns_403(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "title": "テスト",
-                        "file_path": "/path",
                         "doc_kind_id": kind,
                         "project_id": proj
                     })
@@ -228,7 +227,7 @@ async fn get_document_not_found_returns_404(pool: PgPool) {
 // ── PUT /documents/{id} ─────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
-async fn put_document_updates_title_and_increments_revision(pool: PgPool) {
+async fn put_document_updates_title_without_incrementing_revision(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
     let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
@@ -256,7 +255,7 @@ async fn put_document_updates_title_and_increments_revision(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = helpers::parse_body(response).await;
     assert_eq!(body["title"], "新タイトル");
-    assert_eq!(body["revision"], 2);
+    assert_eq!(body["revision"], 0); // revision は PUT で変わらない
     assert_eq!(body["doc_number"], "内設計-2603001"); // doc_number不変
 }
 
@@ -410,4 +409,177 @@ async fn delete_document_with_distributions_returns_409(pool: PgPool) {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::CONFLICT);
+}
+
+// ── POST /documents/{id}/revise ─────────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn revise_approved_document_creates_new_revision(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    let doc_id =
+        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+
+    // approved 状態にする
+    sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
+        .bind(doc_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/documents/{doc_id}/revise"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({ "reason": "設計変更のため" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["revision"], 1);
+    assert_eq!(body["status"], "draft");
+    let file_path = body["file_path"].as_str().unwrap();
+    assert!(file_path.ends_with("/1"));
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn revise_draft_returns_422(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    let doc_id =
+        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/documents/{doc_id}/revise"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({ "reason": "テスト" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn revise_requires_reason(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    let doc_id =
+        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+
+    sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
+        .bind(doc_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/documents/{doc_id}/revise"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(json!({ "reason": "" }).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn revise_viewer_returns_403(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let viewer = helpers::insert_employee(&pool, "VIEW001", "viewer").await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    let doc_id =
+        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+
+    sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
+        .bind(doc_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/documents/{doc_id}/revise"))
+                .header("Authorization", format!("Bearer {}", viewer.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({ "reason": "テスト" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+// ── GET /documents/{id}/revisions ───────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_revisions_for_new_document_returns_one(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
+    let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
+    let doc_id =
+        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{doc_id}/revisions"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    let revisions = body.as_array().unwrap();
+    assert_eq!(revisions.len(), 1);
+    assert_eq!(revisions[0]["revision"], 0);
+    assert!(revisions[0]["reason"].is_null());
 }

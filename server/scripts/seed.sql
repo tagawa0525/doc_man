@@ -116,112 +116,130 @@ INSERT INTO projects (name, status, start_date, end_date, discipline_id, manager
 --------------------------------------------------------------------------------
 
 -- draft × 4
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2603001', '新型ポンプ設計仕様書',
-     '設計/内設計/26/内設計-2603001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '内'),
      '設計', 'draft', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発')),
     ('仕機設-2603001', '駆動系材料仕様書',
-     '機設/仕機設/26/仕機設-2603001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN002'),
      (SELECT id FROM document_kinds WHERE code = '仕'),
      '機設', 'draft', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発')),
     ('議品管-260301', '品質改善キックオフ議事録',
-     '品管/議品管/26/議品管-260301/',
      (SELECT id FROM employees WHERE employee_code = 'GEN003'),
      (SELECT id FROM document_kinds WHERE code = '議'),
      '品管', 'draft', 'internal',
      (SELECT id FROM projects WHERE name = '品質改善活動')),
     ('外機設-2603001', '外部委託仕様書',
-     '機設/外機設/26/外機設-2603001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '外'),
      '機設', 'draft', 'internal',
      (SELECT id FROM projects WHERE name = '制御盤更新'));
 
 -- under_review × 2
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2602001', '制御盤配線設計書',
-     '設計/内設計/26/内設計-2602001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN002'),
      (SELECT id FROM document_kinds WHERE code = '内'),
      '設計', 'under_review', 'internal',
      (SELECT id FROM projects WHERE name = '制御盤更新')),
     ('仕機設-2602001', '制御盤仕様書',
-     '機設/仕機設/26/仕機設-2602001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '仕'),
      '機設', 'under_review', 'internal',
      (SELECT id FROM projects WHERE name = '制御盤更新'));
 
 -- approved × 3
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2601001', 'ポンプ基本設計書',
-     '設計/内設計/26/内設計-2601001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '内'),
      '設計', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発')),
     ('外機設-2601001', '外部調達仕様書',
-     '機設/外機設/26/外機設-2601001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN002'),
      (SELECT id FROM document_kinds WHERE code = '外'),
      '機設', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発')),
     ('議品管-260201', '品質監査報告書',
-     '品管/議品管/26/議品管-260201/',
      (SELECT id FROM employees WHERE employee_code = 'GEN003'),
      (SELECT id FROM document_kinds WHERE code = '議'),
      '品管', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '品質改善活動'));
 
 -- rejected × 1
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('仕機設-2602002', '部品リスト（初版）',
-     '機設/仕機設/26/仕機設-2602002/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '仕'),
      '機設', 'rejected', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発'));
 
 -- approved × 4 (元circulating/completed)
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2601002', '安全対策マニュアル',
-     '設計/内設計/26/内設計-2601002/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '内'),
      '設計', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発')),
     ('議品管-260101', '定例会議議事録 1月',
-     '品管/議品管/26/議品管-260101/',
      (SELECT id FROM employees WHERE employee_code = 'GEN003'),
      (SELECT id FROM document_kinds WHERE code = '議'),
      '品管', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '品質改善活動')),
     ('外機設-2512001', '定期点検報告書',
-     '機設/外機設/25/外機設-2512001/',
      (SELECT id FROM employees WHERE employee_code = 'GEN002'),
      (SELECT id FROM document_kinds WHERE code = '外'),
      '機設', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '定期点検2025')),
     ('議品管-251201', '点検結果レビュー議事録',
-     '品管/議品管/25/議品管-251201/',
      (SELECT id FROM employees WHERE employee_code = 'GEN003'),
      (SELECT id FROM document_kinds WHERE code = '議'),
      '品管', 'approved', 'internal',
      (SELECT id FROM projects WHERE name = '定期点検2025'));
 
 -- restricted 機密文書 × 1 (draft)
-INSERT INTO documents (doc_number, title, file_path, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
+INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2603002', '機密設計資料',
-     '設計/内設計/26/内設計-2603002/',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
      (SELECT id FROM document_kinds WHERE code = '内'),
      '設計', 'draft', 'restricted',
      (SELECT id FROM projects WHERE name = '新型ポンプ開発'));
+
+-- document_revisions (全15文書の Rev.0)
+INSERT INTO document_revisions (document_id, revision, file_path, created_by, effective_from) VALUES
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2603001'), 0, '内設計-2603001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2603001')),
+    ((SELECT id FROM documents WHERE doc_number = '仕機設-2603001'), 0, '仕機設-2603001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN002'), (SELECT created_at FROM documents WHERE doc_number = '仕機設-2603001')),
+    ((SELECT id FROM documents WHERE doc_number = '議品管-260301'), 0, '議品管-260301/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN003'), (SELECT created_at FROM documents WHERE doc_number = '議品管-260301')),
+    ((SELECT id FROM documents WHERE doc_number = '外機設-2603001'), 0, '外機設-2603001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '外機設-2603001')),
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2602001'), 0, '内設計-2602001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN002'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2602001')),
+    ((SELECT id FROM documents WHERE doc_number = '仕機設-2602001'), 0, '仕機設-2602001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '仕機設-2602001')),
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2601001'), 0, '内設計-2601001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2601001')),
+    ((SELECT id FROM documents WHERE doc_number = '外機設-2601001'), 0, '外機設-2601001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN002'), (SELECT created_at FROM documents WHERE doc_number = '外機設-2601001')),
+    ((SELECT id FROM documents WHERE doc_number = '議品管-260201'), 0, '議品管-260201/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN003'), (SELECT created_at FROM documents WHERE doc_number = '議品管-260201')),
+    ((SELECT id FROM documents WHERE doc_number = '仕機設-2602002'), 0, '仕機設-2602002/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '仕機設-2602002')),
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2601002'), 0, '内設計-2601002/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2601002')),
+    ((SELECT id FROM documents WHERE doc_number = '議品管-260101'), 0, '議品管-260101/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN003'), (SELECT created_at FROM documents WHERE doc_number = '議品管-260101')),
+    ((SELECT id FROM documents WHERE doc_number = '外機設-2512001'), 0, '外機設-2512001/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN002'), (SELECT created_at FROM documents WHERE doc_number = '外機設-2512001')),
+    ((SELECT id FROM documents WHERE doc_number = '議品管-251201'), 0, '議品管-251201/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN003'), (SELECT created_at FROM documents WHERE doc_number = '議品管-251201')),
+    ((SELECT id FROM documents WHERE doc_number = '内設計-2603002'), 0, '内設計-2603002/0',
+     (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2603002'));
 
 --------------------------------------------------------------------------------
 -- Tier 5
