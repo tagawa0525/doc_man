@@ -45,7 +45,8 @@ pub fn DocumentListPage() -> impl IntoView {
     let wbs_code = RwSignal::new(String::new());
     let timer_id = RwSignal::new(0i32);
     let selected_doc_kind = RwSignal::new(String::new());
-    let show_detail = RwSignal::new(false);
+    let show_detail_dept = RwSignal::new(false);
+    let show_detail_year = RwSignal::new(false);
 
     let fy = current_fiscal_year();
     let default_years: Vec<i32> = ((fy - 2)..=(fy + 1)).collect();
@@ -150,23 +151,16 @@ pub fn DocumentListPage() -> impl IntoView {
         <div>
             <div class="level">
                 <div class="level-left"><h1 class="title">"文書一覧"</h1></div>
-                <div class="level-right">
-                    {if can_create {
-                        view! {
-                            <a href="/documents/new" class="button is-primary mr-2">
+                {if can_create {
+                    view! {
+                        <div class="level-right">
+                            <a href="/documents/new" class="button is-primary">
                                 <span class="icon"><i class="fas fa-plus"></i></span>
                                 <span>"新規作成"</span>
                             </a>
-                        }.into_any()
-                    } else { view! { <span></span> }.into_any() }}
-                    <button
-                        class="button is-small is-outlined"
-                        on:click=move |_| show_detail.update(|v| *v = !*v)
-                    >
-                        <span class="icon"><i class=move || if show_detail.get() { "fas fa-chevron-up" } else { "fas fa-chevron-down" }></i></span>
-                        <span>{move || if show_detail.get() { "簡易表示" } else { "詳細フィルタ" }}</span>
-                    </button>
-                </div>
+                        </div>
+                    }.into_any()
+                } else { view! { <div></div> }.into_any() }}
             </div>
 
             // 部署
@@ -177,7 +171,7 @@ pub fn DocumentListPage() -> impl IntoView {
                         Ok(tree) => {
                             let mut flat: Vec<FlatDepartment> = Vec::new();
                             flatten_dept_tree_full(&tree, &mut flat, "");
-                            let detail = show_detail.get();
+                            let detail = show_detail_dept.get();
                             let udc = user_dept_codes.get();
                             flat.into_iter().filter_map(move |d| {
                                 if !detail && !udc.contains(&d.code) {
@@ -203,13 +197,18 @@ pub fn DocumentListPage() -> impl IntoView {
                         Err(_) => view! { <span class="tag is-warning">"部署読込失敗"</span> }.into_any(),
                     })}
                 </Suspense>
+                <a class="is-size-7 has-text-link" style="cursor:pointer; white-space:nowrap;"
+                    on:click=move |_| show_detail_dept.update(|v| *v = !*v)
+                >
+                    {move || if show_detail_dept.get() { "閉じる" } else { "全部署..." }}
+                </a>
             </div>
 
             // 年度
             <div class="is-flex is-align-items-center is-flex-wrap-wrap mb-3" style="gap: 0.25rem 0.5rem;">
                 <span class="has-text-weight-semibold is-size-7">"年度："</span>
                 {move || {
-                    let detail = show_detail.get();
+                    let detail = show_detail_year.get();
                     let dys = default_year_strings.clone();
                     all_years.iter().filter_map(move |&y| {
                         let ys = y.to_string();
@@ -233,6 +232,11 @@ pub fn DocumentListPage() -> impl IntoView {
                         })
                     }).collect_view()
                 }}
+                <a class="is-size-7 has-text-link" style="cursor:pointer; white-space:nowrap;"
+                    on:click=move |_| show_detail_year.update(|v| *v = !*v)
+                >
+                    {move || if show_detail_year.get() { "閉じる" } else { "全年度..." }}
+                </a>
             </div>
 
             // 絞り込み検索
