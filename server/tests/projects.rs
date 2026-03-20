@@ -111,6 +111,60 @@ async fn get_projects_with_wbs_code_filter(pool: PgPool) {
     assert_eq!(body["data"][0]["name"], "プロジェクトA");
 }
 
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_with_wbs_code_partial_match(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    helpers::insert_project_with_wbs(&pool, "プロジェクトA", disc, None, "WBS-001-AAA").await;
+    helpers::insert_project_with_wbs(&pool, "プロジェクトB", disc, None, "WBS-002-BBB").await;
+
+    // 部分一致: "001" → WBS-001-AAA のみヒット
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?wbs_code=001")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["name"], "プロジェクトA");
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_with_wbs_code_case_insensitive(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    helpers::insert_project_with_wbs(&pool, "プロジェクトA", disc, None, "WBS-001-AAA").await;
+    helpers::insert_project_with_wbs(&pool, "プロジェクトB", disc, None, "WBS-002-BBB").await;
+
+    // 大文字小文字無視: "wbs-001" → WBS-001-AAA がヒット
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?wbs_code=wbs-001")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["name"], "プロジェクトA");
+}
+
 // ── GET /projects?q= ────────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
@@ -260,11 +314,19 @@ async fn get_projects_filters_by_fiscal_year(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
 
     helpers::insert_project_with_created_at(
-        &pool, "2025年度PJ", disc, None, "2025-06-15T00:00:00Z",
+        &pool,
+        "2025年度PJ",
+        disc,
+        None,
+        "2025-06-15T00:00:00Z",
     )
     .await;
     helpers::insert_project_with_created_at(
-        &pool, "2024年度PJ", disc, None, "2024-06-15T00:00:00Z",
+        &pool,
+        "2024年度PJ",
+        disc,
+        None,
+        "2024-06-15T00:00:00Z",
     )
     .await;
 
@@ -292,9 +354,30 @@ async fn get_projects_filters_by_multiple_fiscal_years(pool: PgPool) {
     let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
 
-    helpers::insert_project_with_created_at(&pool, "2025年度PJ", disc, None, "2025-06-15T00:00:00Z").await;
-    helpers::insert_project_with_created_at(&pool, "2024年度PJ", disc, None, "2024-06-15T00:00:00Z").await;
-    helpers::insert_project_with_created_at(&pool, "2023年度PJ", disc, None, "2023-06-15T00:00:00Z").await;
+    helpers::insert_project_with_created_at(
+        &pool,
+        "2025年度PJ",
+        disc,
+        None,
+        "2025-06-15T00:00:00Z",
+    )
+    .await;
+    helpers::insert_project_with_created_at(
+        &pool,
+        "2024年度PJ",
+        disc,
+        None,
+        "2024-06-15T00:00:00Z",
+    )
+    .await;
+    helpers::insert_project_with_created_at(
+        &pool,
+        "2023年度PJ",
+        disc,
+        None,
+        "2023-06-15T00:00:00Z",
+    )
+    .await;
 
     let response = app
         .oneshot(
