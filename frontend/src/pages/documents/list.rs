@@ -8,7 +8,6 @@ use crate::api::types::{flatten_dept_tree_full, FlatDepartment};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::pagination::Pagination;
-use crate::components::status_badge::StatusBadge;
 
 fn current_fiscal_year() -> i32 {
     let now = chrono::Utc::now();
@@ -50,7 +49,7 @@ pub fn DocumentListPage() -> impl IntoView {
         let wc = query_map.get().get("wbs_code").unwrap_or_default();
         wbs_code.set(wc);
     });
-    let selected_doc_kind = RwSignal::new(String::new());
+    let selected_doc_kinds = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
 
@@ -95,7 +94,7 @@ pub fn DocumentListPage() -> impl IntoView {
         let p = page.get();
         let q = search_query.get();
         let dc = dept_codes.get();
-        let dk = selected_doc_kind.get();
+        let dk = selected_doc_kinds.get();
         let fy = fiscal_years.get();
         let pn = project_name.get();
         let an = author_name.get();
@@ -106,7 +105,7 @@ pub fn DocumentListPage() -> impl IntoView {
                 per_page: 20,
                 q,
                 dept_codes: dc,
-                doc_kind_id: dk,
+                doc_kind_ids: dk,
                 fiscal_years: fy,
                 project_name: pn,
                 author_name: an,
@@ -318,31 +317,60 @@ pub fn DocumentListPage() -> impl IntoView {
                 </a>
             </div>
 
+            // 文書種別
+            <div class="is-flex is-align-items-center is-flex-wrap-wrap mb-3" style="gap: 0.25rem 0.75rem;">
+                <span class="has-text-weight-semibold is-size-7">"種別："</span>
+                <Suspense fallback=|| ()>
+                    {move || doc_kinds.get().map(|result| match result {
+                        Ok(paginated) => {
+                            let all_ids: Vec<String> = paginated.data.iter().map(|dk| dk.id.to_string()).collect();
+                            let ai = all_ids.clone();
+                            let ai2 = all_ids.clone();
+                            let toggle_all = view! {
+                                <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                                    on:click=move |_| {
+                                        let current = selected_doc_kinds.get_untracked();
+                                        let all_checked = ai.iter().all(|id| csv_contains(&current, id));
+                                        if all_checked {
+                                            selected_doc_kinds.set(String::new());
+                                        } else {
+                                            selected_doc_kinds.set(ai.join(","));
+                                        }
+                                        page.set(1);
+                                    }
+                                >
+                                    {move || {
+                                        let current = selected_doc_kinds.get();
+                                        if !current.is_empty() && ai2.iter().all(|id| csv_contains(&current, id)) { "全解除" } else { "全選択" }
+                                    }}
+                                </a>
+                            };
+                            let checkboxes = paginated.data.into_iter().map(|dk| {
+                                let id = dk.id.to_string();
+                                let id2 = id.clone();
+                                view! {
+                                    <label class="checkbox is-size-7">
+                                        <input
+                                            type="checkbox"
+                                            prop:checked=move || csv_contains(&selected_doc_kinds.get(), &id)
+                                            on:change=move |_| {
+                                                page.set(1);
+                                                selected_doc_kinds.set(csv_toggle(&selected_doc_kinds.get_untracked(), &id2));
+                                            }
+                                        />
+                                        " " {dk.name}
+                                    </label>
+                                }
+                            }).collect_view();
+                            view! { {toggle_all} {checkboxes} }.into_any()
+                        }
+                        Err(_) => view! { <span class="tag is-warning">"種別読込失敗"</span> }.into_any(),
+                    })}
+                </Suspense>
+            </div>
+
             // 絞り込み検索
             <div class="columns is-multiline mb-2">
-                <div class="column is-narrow">
-                    <label class="label is-small">"文書種別"</label>
-                    <div class="select is-small">
-                        <select on:change=move |ev| {
-                            let val = event_target::<web_sys::HtmlSelectElement>(&ev).value();
-                            page.set(1);
-                            selected_doc_kind.set(val);
-                        }>
-                            <option value="">"全て"</option>
-                            <Suspense fallback=|| ()>
-                                {move || doc_kinds.get().map(|result| match result {
-                                    Ok(paginated) => {
-                                        paginated.data.into_iter().map(|dk| {
-                                            let id = dk.id.to_string();
-                                            view! { <option value=id>{dk.name}</option> }
-                                        }).collect_view().into_any()
-                                    }
-                                    Err(_) => view! { <option>"読込失敗"</option> }.into_any(),
-                                })}
-                            </Suspense>
-                        </select>
-                    </div>
-                </div>
                 <div class="column">
                     <label class="label is-small">"タイトル・文書番号"</label>
                     <div class="control has-icons-left">
@@ -378,9 +406,8 @@ pub fn DocumentListPage() -> impl IntoView {
                                     <table class="table is-fullwidth is-hoverable">
                                         <thead>
                                             <tr>
-                                                <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th><th>"ステータス"</th>
-                                                <th>"種別"</th><th>"プロジェクト"</th><th>"WBSコード"</th><th>"作成者"</th>
-                                                <th>"タグ"</th>
+                                                <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th>
+                                                <th>"WBSコード"</th><th>"作成者"</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -391,16 +418,8 @@ pub fn DocumentListPage() -> impl IntoView {
                                                         <td><span class="has-text-weight-semibold">{doc.doc_number}</span></td>
                                                         <td>{doc.revision.to_string()}</td>
                                                         <td><a href=detail_url>{doc.title}</a></td>
-                                                        <td><StatusBadge status=doc.status /></td>
-                                                        <td>{doc.doc_kind.name}</td>
-                                                        <td>{doc.project.name}</td>
                                                         <td>{doc.project.wbs_code.unwrap_or_default()}</td>
                                                         <td>{doc.author.name}</td>
-                                                        <td>
-                                                            <div class="tags">
-                                                                {doc.tags.into_iter().map(|t| view! { <span class="tag is-info is-light">{t}</span> }).collect_view()}
-                                                            </div>
-                                                        </td>
                                                     </tr>
                                                 }
                                             }).collect_view()}
