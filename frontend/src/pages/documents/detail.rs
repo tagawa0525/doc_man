@@ -59,7 +59,7 @@ pub fn DocumentDetailPage() -> impl IntoView {
         let _ = refresh.get();
         async move {
             match id {
-                Some(id) => api::documents::list_revisions(id).await.ok(),
+                Some(id) => Some(api::documents::list_revisions(id).await),
                 None => None,
             }
         }
@@ -350,8 +350,8 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                             <h2 class="subtitle">"改訂履歴"</h2>
                                             <Suspense fallback=move || view! { <Loading /> }>
                                                 {move || {
-                                                    revisions_resource.get().map(|revs| match revs {
-                                                        Some(revisions) if !revisions.is_empty() => {
+                                                    revisions_resource.get().map(|result| match result {
+                                                        Some(Ok(revisions)) if !revisions.is_empty() => {
                                                             view! {
                                                                 <table class="table is-fullwidth is-hoverable is-narrow">
                                                                     <thead>
@@ -381,7 +381,9 @@ pub fn DocumentDetailPage() -> impl IntoView {
                                                                 </table>
                                                             }.into_any()
                                                         }
-                                                        _ => view! { <p class="has-text-grey">"改訂履歴はありません"</p> }.into_any(),
+                                                        Some(Ok(_)) => view! { <p class="has-text-grey">"改訂履歴はありません"</p> }.into_any(),
+                                                        Some(Err(e)) => view! { <p class="has-text-danger">{format!("取得失敗: {}", e.message)}</p> }.into_any(),
+                                                        None => view! { <span></span> }.into_any(),
                                                     })
                                                 }}
                                             </Suspense>
