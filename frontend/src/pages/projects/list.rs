@@ -159,7 +159,38 @@ pub fn ProjectListPage() -> impl IntoView {
                             flatten_dept_tree_full(&tree, &mut flat, "");
                             let detail = show_detail_dept.get();
                             let udi = user_dept_ids.get();
-                            flat.into_iter().filter_map(move |d| {
+                            let visible_ids: Vec<String> = flat.iter()
+                                .filter(|d| detail || udi.contains(&d.id))
+                                .map(|d| d.id.clone())
+                                .collect();
+                            let vi = visible_ids.clone();
+                            let vi2 = visible_ids.clone();
+                            let toggle_all = view! {
+                                <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                                    on:click=move |_| {
+                                        let current = dept_ids.get_untracked();
+                                        let all_checked = vi.iter().all(|id| csv_contains(&current, id));
+                                        if all_checked {
+                                            dept_ids.set(String::new());
+                                        } else {
+                                            let mut items: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                            for id in &vi {
+                                                if !items.contains(&id.as_str()) {
+                                                    items.push(id);
+                                                }
+                                            }
+                                            dept_ids.set(items.join(","));
+                                        }
+                                        page.set(1);
+                                    }
+                                >
+                                    {move || {
+                                        let current = dept_ids.get();
+                                        if vi2.iter().all(|id| csv_contains(&current, id)) { "全解除" } else { "全選択" }
+                                    }}
+                                </a>
+                            };
+                            let checkboxes = flat.into_iter().filter_map(move |d| {
                                 if !detail && !udi.contains(&d.id) {
                                     return None;
                                 }
@@ -178,7 +209,8 @@ pub fn ProjectListPage() -> impl IntoView {
                                         " " {d.label}
                                     </label>
                                 })
-                            }).collect_view().into_any()
+                            }).collect_view();
+                            view! { {toggle_all} {checkboxes} }.into_any()
                         }
                         Err(_) => view! { <span class="tag is-warning">"部署読込失敗"</span> }.into_any(),
                     })}
@@ -196,7 +228,38 @@ pub fn ProjectListPage() -> impl IntoView {
                 {move || {
                     let detail = show_detail_year.get();
                     let dys = default_year_strings.clone();
-                    all_years.iter().filter_map(move |&y| {
+                    let visible_years: Vec<String> = all_years.iter()
+                        .filter(|&&y| detail || dys.contains(&y.to_string()))
+                        .map(i32::to_string)
+                        .collect();
+                    let vy = visible_years.clone();
+                    let vy2 = visible_years.clone();
+                    let toggle_all = view! {
+                        <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                            on:click=move |_| {
+                                let current = fiscal_years.get_untracked();
+                                let all_checked = vy.iter().all(|y| csv_contains(&current, y));
+                                if all_checked {
+                                    fiscal_years.set(String::new());
+                                } else {
+                                    let mut items: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                    for y in &vy {
+                                        if !items.contains(&y.as_str()) {
+                                            items.push(y);
+                                        }
+                                    }
+                                    fiscal_years.set(items.join(","));
+                                }
+                                page.set(1);
+                            }
+                        >
+                            {move || {
+                                let current = fiscal_years.get();
+                                if vy2.iter().all(|y| csv_contains(&current, y)) { "全解除" } else { "全選択" }
+                            }}
+                        </a>
+                    };
+                    let checkboxes = all_years.iter().filter_map(move |&y| {
                         let ys = y.to_string();
                         if !detail && !dys.contains(&ys) {
                             return None;
@@ -216,7 +279,8 @@ pub fn ProjectListPage() -> impl IntoView {
                                 " " {label}
                             </label>
                         })
-                    }).collect_view()
+                    }).collect_view();
+                    view! { {toggle_all} {checkboxes} }
                 }}
                 <a class="is-size-7 has-text-link" style="cursor:pointer; white-space:nowrap;"
                     on:click=move |_| show_detail_year.update(|v| *v = !*v)

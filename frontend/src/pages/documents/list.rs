@@ -173,7 +173,41 @@ pub fn DocumentListPage() -> impl IntoView {
                             flatten_dept_tree_full(&tree, &mut flat, "");
                             let detail = show_detail_dept.get();
                             let udc = user_dept_codes.get();
-                            flat.into_iter().filter_map(move |d| {
+                            // 表示中の部署コード一覧
+                            let visible_codes: Vec<String> = flat.iter()
+                                .filter(|d| detail || udc.contains(&d.code))
+                                .map(|d| d.code.clone())
+                                .collect();
+                            let vc = visible_codes.clone();
+                            let toggle_all = view! {
+                                <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                                    on:click=move |_| {
+                                        let current = dept_codes.get_untracked();
+                                        let all_checked = vc.iter().all(|c| csv_contains(&current, c));
+                                        if all_checked {
+                                            dept_codes.set(String::new());
+                                        } else {
+                                            let mut items: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                            for c in &vc {
+                                                if !items.contains(&c.as_str()) {
+                                                    items.push(c);
+                                                }
+                                            }
+                                            dept_codes.set(items.join(","));
+                                        }
+                                        page.set(1);
+                                    }
+                                >
+                                    {
+                                        let vc2 = visible_codes.clone();
+                                        move || {
+                                            let current = dept_codes.get();
+                                            if vc2.iter().all(|c| csv_contains(&current, c)) { "全解除" } else { "全選択" }
+                                        }
+                                    }
+                                </a>
+                            };
+                            let checkboxes = flat.into_iter().filter_map(move |d| {
                                 if !detail && !udc.contains(&d.code) {
                                     return None;
                                 }
@@ -192,7 +226,8 @@ pub fn DocumentListPage() -> impl IntoView {
                                         " " {d.label}
                                     </label>
                                 })
-                            }).collect_view().into_any()
+                            }).collect_view();
+                            view! { {toggle_all} {checkboxes} }.into_any()
                         }
                         Err(_) => view! { <span class="tag is-warning">"部署読込失敗"</span> }.into_any(),
                     })}
@@ -210,7 +245,38 @@ pub fn DocumentListPage() -> impl IntoView {
                 {move || {
                     let detail = show_detail_year.get();
                     let dys = default_year_strings.clone();
-                    all_years.iter().filter_map(move |&y| {
+                    let visible_years: Vec<String> = all_years.iter()
+                        .filter(|&&y| detail || dys.contains(&y.to_string()))
+                        .map(i32::to_string)
+                        .collect();
+                    let vy = visible_years.clone();
+                    let vy2 = visible_years.clone();
+                    let toggle_all = view! {
+                        <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                            on:click=move |_| {
+                                let current = fiscal_years.get_untracked();
+                                let all_checked = vy.iter().all(|y| csv_contains(&current, y));
+                                if all_checked {
+                                    fiscal_years.set(String::new());
+                                } else {
+                                    let mut items: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                    for y in &vy {
+                                        if !items.contains(&y.as_str()) {
+                                            items.push(y);
+                                        }
+                                    }
+                                    fiscal_years.set(items.join(","));
+                                }
+                                page.set(1);
+                            }
+                        >
+                            {move || {
+                                let current = fiscal_years.get();
+                                if vy2.iter().all(|y| csv_contains(&current, y)) { "全解除" } else { "全選択" }
+                            }}
+                        </a>
+                    };
+                    let checkboxes = all_years.iter().filter_map(move |&y| {
                         let ys = y.to_string();
                         if !detail && !dys.contains(&ys) {
                             return None;
@@ -230,7 +296,8 @@ pub fn DocumentListPage() -> impl IntoView {
                                 " " {label}
                             </label>
                         })
-                    }).collect_view()
+                    }).collect_view();
+                    view! { {toggle_all} {checkboxes} }
                 }}
                 <a class="is-size-7 has-text-link" style="cursor:pointer; white-space:nowrap;"
                     on:click=move |_| show_detail_year.update(|v| *v = !*v)
