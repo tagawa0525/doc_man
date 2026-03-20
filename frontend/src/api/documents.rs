@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use super::client::{self, ApiError};
 use super::types::{
     CreateDocumentRequest, DocumentResponse, DocumentRevisionResponse, PaginatedResponse,
@@ -5,14 +7,72 @@ use super::types::{
 };
 use uuid::Uuid;
 
+#[derive(Default)]
+pub struct DocumentListParams {
+    pub page: u32,
+    pub per_page: u32,
+    pub q: String,
+    pub dept_codes: String,
+    pub doc_kind_id: String,
+    pub fiscal_years: String,
+    pub project_name: String,
+    pub author_name: String,
+    pub wbs_code: String,
+}
+
+pub async fn list_filtered(
+    params: &DocumentListParams,
+) -> Result<PaginatedResponse<DocumentResponse>, ApiError> {
+    let mut url = format!(
+        "/api/v1/documents?page={}&per_page={}",
+        params.page, params.per_page
+    );
+    if !params.q.is_empty() {
+        let _ = write!(url, "&q={}", super::encode_query(&params.q));
+    }
+    if !params.dept_codes.is_empty() {
+        let _ = write!(
+            url,
+            "&dept_codes={}",
+            super::encode_query(&params.dept_codes)
+        );
+    }
+    if !params.doc_kind_id.is_empty() {
+        let _ = write!(url, "&doc_kind_id={}", params.doc_kind_id);
+    }
+    if !params.fiscal_years.is_empty() {
+        let _ = write!(url, "&fiscal_years={}", params.fiscal_years);
+    }
+    if !params.project_name.is_empty() {
+        let _ = write!(
+            url,
+            "&project_name={}",
+            super::encode_query(&params.project_name)
+        );
+    }
+    if !params.author_name.is_empty() {
+        let _ = write!(
+            url,
+            "&author_name={}",
+            super::encode_query(&params.author_name)
+        );
+    }
+    if !params.wbs_code.is_empty() {
+        let _ = write!(url, "&wbs_code={}", super::encode_query(&params.wbs_code));
+    }
+    client::get(&url).await
+}
+
 pub async fn list(
     page: u32,
     per_page: u32,
+    q: &str,
 ) -> Result<PaginatedResponse<DocumentResponse>, ApiError> {
-    client::get(&format!(
-        "/api/v1/documents?page={page}&per_page={per_page}"
-    ))
-    .await
+    let mut url = format!("/api/v1/documents?page={page}&per_page={per_page}");
+    if !q.is_empty() {
+        let _ = write!(url, "&q={}", super::encode_query(q));
+    }
+    client::get(&url).await
 }
 
 pub async fn list_by_project(

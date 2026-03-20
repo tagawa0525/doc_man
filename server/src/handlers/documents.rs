@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use chrono::NaiveDate;
 use serde::Deserialize;
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -21,8 +22,22 @@ use crate::state::AppState;
 #[derive(Debug, Deserialize)]
 pub struct DocumentListQuery {
     pub project_id: Option<Uuid>,
+    pub q: Option<String>,
+    pub dept_codes: Option<String>,
+    pub doc_kind_id: Option<Uuid>,
+    pub fiscal_year: Option<i32>,
+    pub fiscal_years: Option<String>,
+    pub project_name: Option<String>,
+    pub author_name: Option<String>,
+    pub wbs_code: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
+}
+
+fn escape_like(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }
 
 /// GET /api/v1/documents
@@ -35,16 +50,87 @@ pub async fn list_documents(
         return Err(AppError::InvalidRequest(e));
     }
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM documents
-         WHERE ($1::uuid IS NULL OR project_id = $1)",
-    )
-    .bind(params.project_id)
-    .fetch_one(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+    let search = params
+        .q
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
 
-    let rows = sqlx::query(
+    let dept_codes: Vec<String> = params
+        .dept_codes
+        .iter()
+        .flat_map(|s| s.split(','))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let project_name = params
+        .project_name
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let author_name = params
+        .author_name
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let wbs_code = params
+        .wbs_code
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let mut fiscal_years: Vec<i32> = Vec::new();
+    if let Some(ref raw) = params.fiscal_years {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let year: i32 = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(format!("invalid fiscal_years value: {trimmed}"))
+            })?;
+            fiscal_years.push(year);
+        }
+    }
+    if let Some(year) = params.fiscal_year {
+        fiscal_years.push(year);
+    }
+
+    let fiscal_date_ranges: Vec<(NaiveDate, NaiveDate)> = fiscal_years
+        .iter()
+        .map(|&y| {
+            (
+                NaiveDate::from_ymd_opt(y, 4, 1).unwrap(),
+                NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap(),
+            )
+        })
+        .collect();
+
+    // COUNT クエリ
+    let mut count_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
+        "SELECT COUNT(*) FROM documents d
+         JOIN employees e ON e.id = d.author_id
+         JOIN projects p ON p.id = d.project_id
+         WHERE 1=1",
+    );
+    push_document_filters(
+        &mut count_qb,
+        params.project_id,
+        search.as_deref(),
+        &dept_codes,
+        params.doc_kind_id,
+        &fiscal_date_ranges,
+        project_name.as_deref(),
+        author_name.as_deref(),
+        wbs_code.as_deref(),
+    );
+    let total: i64 = count_qb
+        .build_query_scalar()
+        .fetch_one(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    // データクエリ
+    let mut data_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
         "SELECT d.id, d.doc_number, d.revision, d.title,
                 dr.file_path,
                 d.status, d.confidentiality, d.frozen_dept_code,
@@ -57,16 +143,29 @@ pub async fn list_documents(
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
          JOIN projects p ON p.id = d.project_id
          JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
-         WHERE ($1::uuid IS NULL OR d.project_id = $1)
-         ORDER BY d.created_at DESC
-         LIMIT $2 OFFSET $3",
-    )
-    .bind(params.project_id)
-    .bind(params.pagination.limit())
-    .bind(params.pagination.offset())
-    .fetch_all(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+         WHERE 1=1",
+    );
+    push_document_filters(
+        &mut data_qb,
+        params.project_id,
+        search.as_deref(),
+        &dept_codes,
+        params.doc_kind_id,
+        &fiscal_date_ranges,
+        project_name.as_deref(),
+        author_name.as_deref(),
+        wbs_code.as_deref(),
+    );
+    data_qb.push(" ORDER BY d.created_at DESC LIMIT ");
+    data_qb.push_bind(params.pagination.limit());
+    data_qb.push(" OFFSET ");
+    data_qb.push_bind(params.pagination.offset());
+
+    let rows = data_qb
+        .build()
+        .fetch_all(&state.db)
+        .await
+        .map_err(AppError::Database)?;
 
     // 全文書IDに対するタグを一括取得（N+1回避）
     let doc_ids: Vec<Uuid> = rows.iter().map(|r| r.get("id")).collect();
@@ -112,6 +211,72 @@ pub async fn list_documents(
         params.pagination.page,
         params.pagination.per_page,
     )))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_document_filters(
+    qb: &mut QueryBuilder<sqlx::Postgres>,
+    project_id: Option<Uuid>,
+    search: Option<&str>,
+    dept_codes: &[String],
+    doc_kind_id: Option<Uuid>,
+    fiscal_date_ranges: &[(NaiveDate, NaiveDate)],
+    project_name: Option<&str>,
+    author_name: Option<&str>,
+    wbs_code: Option<&str>,
+) {
+    if let Some(pid) = project_id {
+        qb.push(" AND d.project_id = ");
+        qb.push_bind(pid);
+    }
+    if let Some(q) = search {
+        qb.push(" AND (LOWER(d.title) LIKE '%' || ");
+        qb.push_bind(q.to_string());
+        qb.push(" || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || ");
+        qb.push_bind(q.to_string());
+        qb.push(" || '%' ESCAPE '\\')");
+    }
+    if !dept_codes.is_empty() {
+        qb.push(" AND d.frozen_dept_code IN (");
+        let mut separated = qb.separated(", ");
+        for code in dept_codes {
+            separated.push_bind(code.clone());
+        }
+        separated.push_unseparated(")");
+    }
+    if let Some(kind_id) = doc_kind_id {
+        qb.push(" AND d.doc_kind_id = ");
+        qb.push_bind(kind_id);
+    }
+    if !fiscal_date_ranges.is_empty() {
+        qb.push(" AND (");
+        for (i, (start, end)) in fiscal_date_ranges.iter().enumerate() {
+            if i > 0 {
+                qb.push(" OR ");
+            }
+            qb.push("(d.created_at >= ");
+            qb.push_bind(*start);
+            qb.push(" AND d.created_at < ");
+            qb.push_bind(*end);
+            qb.push(")");
+        }
+        qb.push(")");
+    }
+    if let Some(pn) = project_name {
+        qb.push(" AND LOWER(p.name) LIKE '%' || ");
+        qb.push_bind(pn.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if let Some(an) = author_name {
+        qb.push(" AND LOWER(e.name) LIKE '%' || ");
+        qb.push_bind(an.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if let Some(wc) = wbs_code {
+        qb.push(" AND LOWER(p.wbs_code) LIKE '%' || ");
+        qb.push_bind(wc.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
 }
 
 /// POST /api/v1/documents

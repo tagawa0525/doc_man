@@ -211,6 +211,29 @@ pub async fn insert_project_with_status(
     row.get("id")
 }
 
+pub async fn insert_project_with_created_at(
+    pool: &PgPool,
+    name: &str,
+    discipline_id: Uuid,
+    manager_id: Option<Uuid>,
+    created_at: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO projects (name, discipline_id, manager_id, created_at)
+         VALUES ($1, $2, $3, $4::timestamptz)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(discipline_id)
+    .bind(manager_id)
+    .bind(created_at)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    row.get("id")
+}
+
 pub async fn insert_project_with_wbs(
     pool: &PgPool,
     name: &str,
@@ -252,6 +275,91 @@ pub async fn insert_document(
     .bind(author_id)
     .bind(doc_kind_id)
     .bind(project_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let doc_id: Uuid = row.get("id");
+    let file_path = format!("{doc_number}/0");
+
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, created_by)
+         VALUES ($1, 0, $2, $3)",
+    )
+    .bind(doc_id)
+    .bind(&file_path)
+    .bind(author_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    doc_id
+}
+
+pub async fn insert_document_with_dept(
+    pool: &PgPool,
+    doc_number: &str,
+    title: &str,
+    author_id: Uuid,
+    doc_kind_id: Uuid,
+    project_id: Uuid,
+    frozen_dept_code: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id",
+    )
+    .bind(doc_number)
+    .bind(title)
+    .bind(author_id)
+    .bind(doc_kind_id)
+    .bind(frozen_dept_code)
+    .bind(project_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let doc_id: Uuid = row.get("id");
+    let file_path = format!("{doc_number}/0");
+
+    sqlx::query(
+        "INSERT INTO document_revisions (document_id, revision, file_path, created_by)
+         VALUES ($1, 0, $2, $3)",
+    )
+    .bind(doc_id)
+    .bind(&file_path)
+    .bind(author_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    doc_id
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_document_with_created_at(
+    pool: &PgPool,
+    doc_number: &str,
+    title: &str,
+    author_id: Uuid,
+    doc_kind_id: Uuid,
+    project_id: Uuid,
+    frozen_dept_code: &str,
+    created_at: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)
+         RETURNING id",
+    )
+    .bind(doc_number)
+    .bind(title)
+    .bind(author_id)
+    .bind(doc_kind_id)
+    .bind(frozen_dept_code)
+    .bind(project_id)
+    .bind(created_at)
     .fetch_one(pool)
     .await
     .unwrap();

@@ -32,6 +32,7 @@ pub fn LoginPage() -> impl IntoView {
                     auth.user.set(Some(UserInfo {
                         id: me.id,
                         role: Role::from_str(&me.role),
+                        departments: me.departments,
                     }));
                     toast.success("ログインしました");
                     if let Some(window) = web_sys::window() {

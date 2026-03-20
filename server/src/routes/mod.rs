@@ -1,6 +1,8 @@
+use axum::extract::State;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::json;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::AuthenticatedUser;
@@ -115,14 +117,47 @@ async fn health() -> Json<serde_json::Value> {
 }
 
 #[derive(serde::Serialize)]
+struct MeDepartment {
+    id: Uuid,
+    code: String,
+    name: String,
+}
+
+#[derive(serde::Serialize)]
 struct MeResponse {
     id: Uuid,
     role: serde_json::Value,
+    departments: Vec<MeDepartment>,
 }
 
-async fn me(user: AuthenticatedUser) -> Json<MeResponse> {
-    Json(MeResponse {
+async fn me(
+    user: AuthenticatedUser,
+    State(state): State<AppState>,
+) -> Result<Json<MeResponse>, crate::error::AppError> {
+    let rows = sqlx::query(
+        "SELECT d.id, d.code, d.name
+         FROM employee_departments ed
+         JOIN departments d ON d.id = ed.department_id
+         WHERE ed.employee_id = $1 AND ed.effective_to IS NULL
+         ORDER BY d.code",
+    )
+    .bind(user.id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(crate::error::AppError::Database)?;
+
+    let departments = rows
+        .into_iter()
+        .map(|r| MeDepartment {
+            id: r.get("id"),
+            code: r.get("code"),
+            name: r.get("name"),
+        })
+        .collect();
+
+    Ok(Json(MeResponse {
         id: user.id,
         role: json!(user.role),
-    })
+        departments,
+    }))
 }

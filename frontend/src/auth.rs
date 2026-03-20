@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 use crate::api::client;
-use crate::api::types::MeResponse;
+use crate::api::types::{MeDepartment, MeResponse};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Role {
@@ -44,6 +44,7 @@ impl Role {
 pub struct UserInfo {
     pub id: Uuid,
     pub role: Role,
+    pub departments: Vec<MeDepartment>,
 }
 
 #[derive(Debug, Clone, Copy)]

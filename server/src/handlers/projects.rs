@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use chrono::NaiveDate;
 use serde::Deserialize;
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -18,8 +19,19 @@ pub struct ProjectListQuery {
     pub status: Option<String>,
     pub discipline_id: Option<Uuid>,
     pub wbs_code: Option<String>,
+    pub q: Option<String>,
+    pub dept_ids: Option<String>,
+    pub fiscal_year: Option<i32>,
+    pub fiscal_years: Option<String>,
+    pub manager_name: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
+}
+
+fn escape_like(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }
 
 /// GET /api/v1/projects
@@ -32,20 +44,85 @@ pub async fn list_projects(
         return Err(AppError::InvalidRequest(e));
     }
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM projects
-         WHERE ($1::text IS NULL OR status = $1)
-           AND ($2::uuid IS NULL OR discipline_id = $2)
-           AND ($3::text IS NULL OR wbs_code = $3)",
-    )
-    .bind(&params.status)
-    .bind(params.discipline_id)
-    .bind(&params.wbs_code)
-    .fetch_one(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+    let search = params
+        .q
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
 
-    let rows = sqlx::query(
+    let mut dept_ids: Vec<Uuid> = Vec::new();
+    if let Some(ref raw) = params.dept_ids {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let id: Uuid = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(
+                    "invalid dept_ids parameter: must be comma-separated UUIDs".to_string(),
+                )
+            })?;
+            dept_ids.push(id);
+        }
+    }
+
+    let manager_name = params
+        .manager_name
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let mut fiscal_years: Vec<i32> = Vec::new();
+    if let Some(ref raw) = params.fiscal_years {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let year: i32 = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(format!("invalid fiscal_years value: {trimmed}"))
+            })?;
+            fiscal_years.push(year);
+        }
+    }
+    if let Some(year) = params.fiscal_year {
+        fiscal_years.push(year);
+    }
+
+    let fiscal_date_ranges: Vec<(NaiveDate, NaiveDate)> = fiscal_years
+        .iter()
+        .map(|&y| {
+            (
+                NaiveDate::from_ymd_opt(y, 4, 1).unwrap(),
+                NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap(),
+            )
+        })
+        .collect();
+
+    // COUNT クエリ
+    let mut count_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
+        "SELECT COUNT(*) FROM projects p
+         JOIN disciplines di ON di.id = p.discipline_id
+         JOIN departments d ON d.id = di.department_id
+         LEFT JOIN employees e ON e.id = p.manager_id
+         WHERE 1=1",
+    );
+    push_project_filters(
+        &mut count_qb,
+        params.status.as_deref(),
+        params.discipline_id,
+        params.wbs_code.as_deref(),
+        search.as_deref(),
+        &dept_ids,
+        &fiscal_date_ranges,
+        manager_name.as_deref(),
+    );
+    let total: i64 = count_qb
+        .build_query_scalar()
+        .fetch_one(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    // データクエリ
+    let mut data_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
         "SELECT p.id, p.name, p.status, p.start_date, p.end_date, p.wbs_code,
                 di.id as disc_id, di.code as disc_code, di.name as disc_name,
                 d.id as dept_id, d.code as dept_code, d.name as dept_name,
@@ -54,20 +131,28 @@ pub async fn list_projects(
          JOIN disciplines di ON di.id = p.discipline_id
          JOIN departments d ON d.id = di.department_id
          LEFT JOIN employees e ON e.id = p.manager_id
-         WHERE ($1::text IS NULL OR p.status = $1)
-           AND ($2::uuid IS NULL OR p.discipline_id = $2)
-           AND ($3::text IS NULL OR p.wbs_code = $3)
-         ORDER BY p.name, p.id
-         LIMIT $4 OFFSET $5",
-    )
-    .bind(&params.status)
-    .bind(params.discipline_id)
-    .bind(&params.wbs_code)
-    .bind(params.pagination.limit())
-    .bind(params.pagination.offset())
-    .fetch_all(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+         WHERE 1=1",
+    );
+    push_project_filters(
+        &mut data_qb,
+        params.status.as_deref(),
+        params.discipline_id,
+        params.wbs_code.as_deref(),
+        search.as_deref(),
+        &dept_ids,
+        &fiscal_date_ranges,
+        manager_name.as_deref(),
+    );
+    data_qb.push(" ORDER BY p.name, p.id LIMIT ");
+    data_qb.push_bind(params.pagination.limit());
+    data_qb.push(" OFFSET ");
+    data_qb.push_bind(params.pagination.offset());
+
+    let rows = data_qb
+        .build()
+        .fetch_all(&state.db)
+        .await
+        .map_err(AppError::Database)?;
 
     let data: Vec<ProjectResponse> = rows
         .into_iter()
@@ -98,6 +183,63 @@ pub async fn list_projects(
         params.pagination.page,
         params.pagination.per_page,
     )))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_project_filters(
+    qb: &mut QueryBuilder<sqlx::Postgres>,
+    status: Option<&str>,
+    discipline_id: Option<Uuid>,
+    wbs_code: Option<&str>,
+    search: Option<&str>,
+    dept_ids: &[Uuid],
+    fiscal_date_ranges: &[(NaiveDate, NaiveDate)],
+    manager_name: Option<&str>,
+) {
+    if let Some(s) = status {
+        qb.push(" AND p.status = ");
+        qb.push_bind(s.to_string());
+    }
+    if let Some(did) = discipline_id {
+        qb.push(" AND p.discipline_id = ");
+        qb.push_bind(did);
+    }
+    if let Some(w) = wbs_code {
+        qb.push(" AND p.wbs_code = ");
+        qb.push_bind(w.to_string());
+    }
+    if let Some(q) = search {
+        qb.push(" AND LOWER(p.name) LIKE '%' || ");
+        qb.push_bind(q.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if !dept_ids.is_empty() {
+        qb.push(" AND d.id IN (");
+        let mut separated = qb.separated(", ");
+        for id in dept_ids {
+            separated.push_bind(*id);
+        }
+        separated.push_unseparated(")");
+    }
+    if !fiscal_date_ranges.is_empty() {
+        qb.push(" AND (");
+        for (i, (start, end)) in fiscal_date_ranges.iter().enumerate() {
+            if i > 0 {
+                qb.push(" OR ");
+            }
+            qb.push("(p.created_at >= ");
+            qb.push_bind(*start);
+            qb.push(" AND p.created_at < ");
+            qb.push_bind(*end);
+            qb.push(")");
+        }
+        qb.push(")");
+    }
+    if let Some(mn) = manager_name {
+        qb.push(" AND LOWER(e.name) LIKE '%' || ");
+        qb.push_bind(mn.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
 }
 
 /// POST /api/v1/projects

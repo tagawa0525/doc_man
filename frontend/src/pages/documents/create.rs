@@ -19,7 +19,7 @@ pub fn DocumentCreatePage() -> impl IntoView {
     let saving = RwSignal::new(false);
 
     let doc_kinds_resource = LocalResource::new(|| async { api::document_kinds::list_all().await });
-    let projects_resource = LocalResource::new(|| async { api::projects::list(1, 100).await });
+    let projects_resource = LocalResource::new(|| async { api::projects::list(1, 100, "").await });
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();

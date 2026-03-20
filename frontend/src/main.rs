@@ -47,6 +47,7 @@ fn App() -> impl IntoView {
             auth.user.set(Some(UserInfo {
                 id: me.id,
                 role: Role::from_str(&me.role),
+                departments: me.departments,
             }));
         }
         auth.loading.set(false);
