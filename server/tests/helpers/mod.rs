@@ -211,6 +211,29 @@ pub async fn insert_project_with_status(
     row.get("id")
 }
 
+pub async fn insert_project_with_created_at(
+    pool: &PgPool,
+    name: &str,
+    discipline_id: Uuid,
+    manager_id: Option<Uuid>,
+    created_at: &str,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO projects (name, discipline_id, manager_id, created_at)
+         VALUES ($1, $2, $3, $4::timestamptz)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(discipline_id)
+    .bind(manager_id)
+    .bind(created_at)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    row.get("id")
+}
+
 pub async fn insert_project_with_wbs(
     pool: &PgPool,
     name: &str,

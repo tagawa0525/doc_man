@@ -192,6 +192,130 @@ async fn get_projects_with_q_combined_with_status_filter(pool: PgPool) {
     assert_eq!(body["data"][0]["name"], "東京駅前再開発");
 }
 
+// ── GET /projects filters ────────────────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_filters_by_dept_ids(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept_a = helpers::insert_department(&pool, "001", "設計部", None).await;
+    let dept_b = helpers::insert_department(&pool, "002", "製造部", None).await;
+    let disc_a = helpers::insert_discipline(&pool, "MECH", "機械", dept_a).await;
+    let disc_b = helpers::insert_discipline(&pool, "ELEC", "電気", dept_b).await;
+    helpers::insert_project(&pool, "設計PJ", disc_a, None).await;
+    helpers::insert_project(&pool, "製造PJ", disc_b, None).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/projects?dept_ids={dept_a}"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["name"], "設計PJ");
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_filters_by_multiple_dept_ids(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept_a = helpers::insert_department(&pool, "001", "設計部", None).await;
+    let dept_b = helpers::insert_department(&pool, "002", "製造部", None).await;
+    let dept_c = helpers::insert_department(&pool, "003", "品質部", None).await;
+    let disc_a = helpers::insert_discipline(&pool, "MECH", "機械", dept_a).await;
+    let disc_b = helpers::insert_discipline(&pool, "ELEC", "電気", dept_b).await;
+    let disc_c = helpers::insert_discipline(&pool, "QC", "品質管理", dept_c).await;
+    helpers::insert_project(&pool, "設計PJ", disc_a, None).await;
+    helpers::insert_project(&pool, "製造PJ", disc_b, None).await;
+    helpers::insert_project(&pool, "品質PJ", disc_c, None).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/projects?dept_ids={dept_a},{dept_b}"))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 2);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_filters_by_fiscal_year(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+
+    helpers::insert_project_with_created_at(
+        &pool, "2025年度PJ", disc, None, "2025-06-15T00:00:00Z",
+    )
+    .await;
+    helpers::insert_project_with_created_at(
+        &pool, "2024年度PJ", disc, None, "2024-06-15T00:00:00Z",
+    )
+    .await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?fiscal_year=2025")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["name"], "2025年度PJ");
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_filters_by_manager_name(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let pm_a = helpers::insert_employee(&pool, "PM_TANAKA", "project_manager").await;
+    let pm_b = helpers::insert_employee(&pool, "PM_SUZUKI", "project_manager").await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+
+    helpers::insert_project(&pool, "田中PJ", disc, Some(pm_a.id)).await;
+    helpers::insert_project(&pool, "鈴木PJ", disc, Some(pm_b.id)).await;
+    helpers::insert_project(&pool, "無担当PJ", disc, None).await;
+
+    // pm_a の名前は "Test PM_TANAKA"
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?manager_name=PM_TANAKA")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["name"], "田中PJ");
+}
+
 // ── POST /projects ──────────────────────────────────────────────
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
