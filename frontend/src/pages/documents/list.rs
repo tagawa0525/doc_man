@@ -43,15 +43,12 @@ pub fn DocumentListPage() -> impl IntoView {
     let search_query = RwSignal::new(String::new());
     let project_name = RwSignal::new(String::new());
     let author_name = RwSignal::new(String::new());
-    let query_map = leptos_router::hooks::use_query_map();
     let wbs_code = RwSignal::new(String::new());
 
     // URLクエリパラメータ ?wbs_code= をリアクティブに同期
     Effect::new(move || {
         let wc = query_map.get().get("wbs_code").unwrap_or_default();
-        if !wc.is_empty() {
-            wbs_code.set(wc);
-        }
+        wbs_code.set(wc);
     });
     let selected_doc_kind = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
