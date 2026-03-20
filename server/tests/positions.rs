@@ -26,7 +26,7 @@ async fn get_positions_returns_list_sorted_by_sort_order(pool: PgPool) {
 
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = helpers::parse_body(response).await;
-    let data = body["data"].as_array().unwrap();
+    let data = body.as_array().unwrap();
     assert_eq!(data.len(), 7);
     // sort_order 順に返る
     assert_eq!(data[0]["name"], "社長");
@@ -238,9 +238,7 @@ async fn put_position_non_admin_returns_403(pool: PgPool) {
                 .uri(format!("/api/v1/positions/{pos_id}"))
                 .header("Authorization", format!("Bearer {}", general.employee_code))
                 .header("Content-Type", "application/json")
-                .body(axum::body::Body::from(
-                    json!({"name": "変更"}).to_string(),
-                ))
+                .body(axum::body::Body::from(json!({"name": "変更"}).to_string()))
                 .unwrap(),
         )
         .await

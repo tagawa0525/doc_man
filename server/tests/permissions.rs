@@ -52,7 +52,8 @@ async fn post_position_pm_returns_403(pool: PgPool) {
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
-                    json!({"name": "テスト", "default_role": "viewer", "sort_order": 99}).to_string(),
+                    json!({"name": "テスト", "default_role": "viewer", "sort_order": 99})
+                        .to_string(),
                 ))
                 .unwrap(),
         )
@@ -75,9 +76,7 @@ async fn put_position_pm_returns_403(pool: PgPool) {
                 .uri(format!("/api/v1/positions/{pos_id}"))
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
-                .body(axum::body::Body::from(
-                    json!({"name": "変更"}).to_string(),
-                ))
+                .body(axum::body::Body::from(json!({"name": "変更"}).to_string()))
                 .unwrap(),
         )
         .await
