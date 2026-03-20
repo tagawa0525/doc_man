@@ -73,7 +73,7 @@ pub fn ProjectListPage() -> impl IntoView {
         }
     });
 
-    let is_admin = auth.role().is_some_and(|r| r.is_admin());
+    let can_create = auth.role().is_some_and(|r| r.can_manage());
 
     let all_depts = LocalResource::new(|| async { api::departments::list().await });
 
@@ -137,7 +137,7 @@ pub fn ProjectListPage() -> impl IntoView {
         <div>
             <div class="level">
                 <div class="level-left"><h1 class="title">"プロジェクト管理"</h1></div>
-                {if is_admin {
+                {if can_create {
                     view! {
                         <div class="level-right">
                             <a href="/projects/new" class="button is-primary">
