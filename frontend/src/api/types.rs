@@ -53,6 +53,7 @@ pub struct MeDepartment {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MeResponse {
     pub id: Uuid,
+    pub name: String,
     pub role: String,
     pub departments: Vec<MeDepartment>,
 }

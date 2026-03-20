@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
 
-use crate::auth::{AuthContext, Role};
+use crate::auth::AuthContext;
 
 #[component]
 pub fn AppLayout(children: Children) -> impl IntoView {
@@ -69,12 +69,17 @@ pub fn AppLayout(children: Children) -> impl IntoView {
                     <ul class="menu-list">
                         <li>
                             {move || {
-                                let role = auth.role().unwrap_or(Role::Viewer);
-                                view! {
-                                    <span class="px-3 py-2 is-block">
-                                        <span class="tag is-info is-light">{role.display_name()}</span>
-                                    </span>
-                                }
+                                auth.user.get().map(|u| {
+                                    let dept_names: Vec<String> = u.departments.iter().map(|d| d.name.clone()).collect();
+                                    view! {
+                                        <span class="px-3 py-2 is-block">
+                                            <span class="has-text-weight-semibold is-size-7">{u.name}</span>
+                                            <br />
+                                            <span class="tag is-info is-light">{u.role.display_name()}</span>
+                                            <span class="is-size-7 has-text-grey ml-1">{dept_names.join(", ")}</span>
+                                        </span>
+                                    }
+                                })
                             }}
                         </li>
                         <li>
