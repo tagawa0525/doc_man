@@ -125,10 +125,10 @@ pub async fn create_distributions(
 
     // メール送信（stub ではログ出力のみ）
     let doc_info = sqlx::query(
-        "SELECT d.doc_number, d.title, COALESCE(dr.file_path, '') AS file_path, e.name AS author_name
+        "SELECT d.doc_number, d.title, dr.file_path, e.name AS author_name
          FROM documents d
          JOIN employees e ON e.id = $2
-         LEFT JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
+         JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
          WHERE d.id = $1",
     )
     .bind(doc_id)

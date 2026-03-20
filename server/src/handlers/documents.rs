@@ -46,7 +46,7 @@ pub async fn list_documents(
 
     let rows = sqlx::query(
         "SELECT d.id, d.doc_number, d.revision, d.title,
-                COALESCE(dr.file_path, '') AS file_path,
+                dr.file_path,
                 d.status, d.confidentiality, d.frozen_dept_code,
                 d.created_at, d.updated_at,
                 e.id AS author_id, e.name AS author_name,
@@ -56,7 +56,7 @@ pub async fn list_documents(
          JOIN employees e ON e.id = d.author_id
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
          JOIN projects p ON p.id = d.project_id
-         LEFT JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
+         JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
          WHERE ($1::uuid IS NULL OR d.project_id = $1)
          ORDER BY d.created_at DESC
          LIMIT $2 OFFSET $3",
@@ -622,7 +622,7 @@ async fn fetch_document_by_id(
 ) -> Result<Option<DocumentResponse>, AppError> {
     let row = sqlx::query(
         "SELECT d.id, d.doc_number, d.revision, d.title,
-                COALESCE(dr.file_path, '') AS file_path,
+                dr.file_path,
                 d.status, d.confidentiality, d.frozen_dept_code,
                 d.created_at, d.updated_at,
                 e.id AS author_id, e.name AS author_name,
@@ -632,7 +632,7 @@ async fn fetch_document_by_id(
          JOIN employees e ON e.id = d.author_id
          JOIN document_kinds dk ON dk.id = d.doc_kind_id
          JOIN projects p ON p.id = d.project_id
-         LEFT JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
+         JOIN document_revisions dr ON dr.document_id = d.id AND dr.effective_to IS NULL
          WHERE d.id = $1",
     )
     .bind(id)
