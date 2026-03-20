@@ -38,11 +38,21 @@ fn csv_toggle(csv: &str, key: &str) -> String {
 #[component]
 pub fn DocumentListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
+    let query_map = leptos_router::hooks::use_query_map();
     let page = RwSignal::new(1u32);
     let search_query = RwSignal::new(String::new());
     let project_name = RwSignal::new(String::new());
     let author_name = RwSignal::new(String::new());
+    let query_map = leptos_router::hooks::use_query_map();
     let wbs_code = RwSignal::new(String::new());
+
+    // URLクエリパラメータ ?wbs_code= をリアクティブに同期
+    Effect::new(move || {
+        let wc = query_map.get().get("wbs_code").unwrap_or_default();
+        if !wc.is_empty() {
+            wbs_code.set(wc);
+        }
+    });
     let selected_doc_kind = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
@@ -353,7 +363,9 @@ pub fn DocumentListPage() -> impl IntoView {
                 </div>
                 <div class="column">
                     <label class="label is-small">"WBSコード"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_wbs_code />
+                    <input class="input is-small" type="text" placeholder="部分一致..."
+                        prop:value=move || wbs_code.get()
+                        on:input=on_wbs_code />
                 </div>
             </div>
 

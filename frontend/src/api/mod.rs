@@ -3,7 +3,7 @@ use std::fmt::Write;
 pub mod approval_steps;
 
 /// URL クエリパラメータ値のパーセントエンコード
-fn encode_query(s: &str) -> String {
+pub fn encode_query(s: &str) -> String {
     let mut out = String::with_capacity(s.len() * 3);
     for b in s.bytes() {
         match b {

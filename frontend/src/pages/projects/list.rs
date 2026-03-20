@@ -329,21 +329,30 @@ pub fn ProjectListPage() -> impl IntoView {
                                     <table class="table is-fullwidth is-hoverable">
                                         <thead>
                                             <tr>
-                                                <th>"名前"</th><th>"ステータス"</th><th>"専門分野"</th>
-                                                <th>"部署"</th><th>"マネージャー"</th><th>"WBSコード"</th>
+                                                <th>"WBSコード"</th><th>"名前"</th><th>"専門分野"</th>
+                                                <th>"マネージャー"</th><th>"ステータス"</th><th>"文書"</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {paginated.data.into_iter().map(|p| {
                                                 let detail_url = format!("/projects/{}", p.id);
+                                                let docs_url = p.wbs_code.as_deref().map(|wc| {
+                                                    format!("/documents?wbs_code={}", crate::api::encode_query(wc))
+                                                });
                                                 view! {
                                                     <tr>
-                                                        <td><a href=detail_url>{p.name}</a></td>
-                                                        <td><span class="tag is-light">{p.status}</span></td>
-                                                        <td>{p.discipline.name}</td>
-                                                        <td>{p.discipline.department.name}</td>
-                                                        <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
                                                         <td>{p.wbs_code.unwrap_or_default()}</td>
+                                                        <td><a href=detail_url>{p.name}</a></td>
+                                                        <td>{p.discipline.name}</td>
+                                                        <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
+                                                        <td><span class="tag is-light">{p.status}</span></td>
+                                                        <td>
+                                                            {docs_url.map(|url| view! {
+                                                                <a href=url class="has-text-link">
+                                                                    <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
+                                                                </a>
+                                                            })}
+                                                        </td>
                                                     </tr>
                                                 }
                                             }).collect_view()}
