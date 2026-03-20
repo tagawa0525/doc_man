@@ -1,8 +1,9 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use chrono::NaiveDate;
 use serde::Deserialize;
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
@@ -19,6 +20,9 @@ pub struct ProjectListQuery {
     pub discipline_id: Option<Uuid>,
     pub wbs_code: Option<String>,
     pub q: Option<String>,
+    pub dept_ids: Option<String>,
+    pub fiscal_year: Option<i32>,
+    pub manager_name: Option<String>,
     #[serde(flatten)]
     pub pagination: PaginationParams,
 }
@@ -44,22 +48,50 @@ pub async fn list_projects(
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM projects
-         WHERE ($1::text IS NULL OR status = $1)
-           AND ($2::uuid IS NULL OR discipline_id = $2)
-           AND ($3::text IS NULL OR wbs_code = $3)
-           AND ($4::text IS NULL OR LOWER(name) LIKE '%' || $4 || '%' ESCAPE '\\')",
-    )
-    .bind(&params.status)
-    .bind(params.discipline_id)
-    .bind(&params.wbs_code)
-    .bind(&search)
-    .fetch_one(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+    let dept_ids: Vec<Uuid> = params
+        .dept_ids
+        .iter()
+        .flat_map(|s| s.split(','))
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
 
-    let rows = sqlx::query(
+    let manager_name = params
+        .manager_name
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let fiscal_dates = params.fiscal_year.map(|y| {
+        let start = NaiveDate::from_ymd_opt(y, 4, 1).unwrap();
+        let end = NaiveDate::from_ymd_opt(y + 1, 4, 1).unwrap();
+        (start, end)
+    });
+
+    // COUNT クエリ
+    let mut count_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
+        "SELECT COUNT(*) FROM projects p
+         JOIN disciplines di ON di.id = p.discipline_id
+         JOIN departments d ON d.id = di.department_id
+         LEFT JOIN employees e ON e.id = p.manager_id
+         WHERE 1=1",
+    );
+    push_project_filters(
+        &mut count_qb,
+        &params.status,
+        params.discipline_id,
+        &params.wbs_code,
+        &search,
+        &dept_ids,
+        fiscal_dates,
+        &manager_name,
+    );
+    let total: i64 = count_qb
+        .build_query_scalar()
+        .fetch_one(&state.db)
+        .await
+        .map_err(AppError::Database)?;
+
+    // データクエリ
+    let mut data_qb: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
         "SELECT p.id, p.name, p.status, p.start_date, p.end_date, p.wbs_code,
                 di.id as disc_id, di.code as disc_code, di.name as disc_name,
                 d.id as dept_id, d.code as dept_code, d.name as dept_name,
@@ -68,22 +100,28 @@ pub async fn list_projects(
          JOIN disciplines di ON di.id = p.discipline_id
          JOIN departments d ON d.id = di.department_id
          LEFT JOIN employees e ON e.id = p.manager_id
-         WHERE ($1::text IS NULL OR p.status = $1)
-           AND ($2::uuid IS NULL OR p.discipline_id = $2)
-           AND ($3::text IS NULL OR p.wbs_code = $3)
-           AND ($4::text IS NULL OR LOWER(p.name) LIKE '%' || $4 || '%' ESCAPE '\\')
-         ORDER BY p.name, p.id
-         LIMIT $5 OFFSET $6",
-    )
-    .bind(&params.status)
-    .bind(params.discipline_id)
-    .bind(&params.wbs_code)
-    .bind(&search)
-    .bind(params.pagination.limit())
-    .bind(params.pagination.offset())
-    .fetch_all(&state.db)
-    .await
-    .map_err(AppError::Database)?;
+         WHERE 1=1",
+    );
+    push_project_filters(
+        &mut data_qb,
+        &params.status,
+        params.discipline_id,
+        &params.wbs_code,
+        &search,
+        &dept_ids,
+        fiscal_dates,
+        &manager_name,
+    );
+    data_qb.push(" ORDER BY p.name, p.id LIMIT ");
+    data_qb.push_bind(params.pagination.limit());
+    data_qb.push(" OFFSET ");
+    data_qb.push_bind(params.pagination.offset());
+
+    let rows = data_qb
+        .build()
+        .fetch_all(&state.db)
+        .await
+        .map_err(AppError::Database)?;
 
     let data: Vec<ProjectResponse> = rows
         .into_iter()
@@ -114,6 +152,55 @@ pub async fn list_projects(
         params.pagination.page,
         params.pagination.per_page,
     )))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_project_filters(
+    qb: &mut QueryBuilder<sqlx::Postgres>,
+    status: &Option<String>,
+    discipline_id: Option<Uuid>,
+    wbs_code: &Option<String>,
+    search: &Option<String>,
+    dept_ids: &[Uuid],
+    fiscal_dates: Option<(NaiveDate, NaiveDate)>,
+    manager_name: &Option<String>,
+) {
+    if let Some(ref s) = *status {
+        qb.push(" AND p.status = ");
+        qb.push_bind(s.clone());
+    }
+    if let Some(did) = discipline_id {
+        qb.push(" AND p.discipline_id = ");
+        qb.push_bind(did);
+    }
+    if let Some(ref w) = *wbs_code {
+        qb.push(" AND p.wbs_code = ");
+        qb.push_bind(w.clone());
+    }
+    if let Some(ref q) = *search {
+        qb.push(" AND LOWER(p.name) LIKE '%' || ");
+        qb.push_bind(q.clone());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if !dept_ids.is_empty() {
+        qb.push(" AND d.id IN (");
+        let mut separated = qb.separated(", ");
+        for id in dept_ids {
+            separated.push_bind(*id);
+        }
+        separated.push_unseparated(")");
+    }
+    if let Some((start, end)) = fiscal_dates {
+        qb.push(" AND p.created_at >= ");
+        qb.push_bind(start);
+        qb.push(" AND p.created_at < ");
+        qb.push_bind(end);
+    }
+    if let Some(ref mn) = *manager_name {
+        qb.push(" AND LOWER(e.name) LIKE '%' || ");
+        qb.push_bind(mn.clone());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
 }
 
 /// POST /api/v1/projects
