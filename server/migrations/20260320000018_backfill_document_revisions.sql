@@ -7,4 +7,4 @@ WHERE NOT EXISTS (
 );
 
 -- 既存文書の revision を 0 にリセット
-UPDATE documents SET revision = 0 WHERE revision = 1;
+UPDATE documents SET revision = 0 WHERE revision >= 1;
