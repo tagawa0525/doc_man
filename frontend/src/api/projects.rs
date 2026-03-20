@@ -6,6 +6,42 @@ use super::types::{
 };
 use uuid::Uuid;
 
+#[derive(Default)]
+pub struct ProjectListParams {
+    pub page: u32,
+    pub per_page: u32,
+    pub q: String,
+    pub dept_ids: String,
+    pub fiscal_year: String,
+    pub manager_name: String,
+}
+
+pub async fn list_filtered(
+    params: &ProjectListParams,
+) -> Result<PaginatedResponse<ProjectResponse>, ApiError> {
+    let mut url = format!(
+        "/api/v1/projects?page={}&per_page={}",
+        params.page, params.per_page
+    );
+    if !params.q.is_empty() {
+        let _ = write!(url, "&q={}", super::encode_query(&params.q));
+    }
+    if !params.dept_ids.is_empty() {
+        let _ = write!(url, "&dept_ids={}", params.dept_ids);
+    }
+    if !params.fiscal_year.is_empty() {
+        let _ = write!(url, "&fiscal_year={}", params.fiscal_year);
+    }
+    if !params.manager_name.is_empty() {
+        let _ = write!(
+            url,
+            "&manager_name={}",
+            super::encode_query(&params.manager_name)
+        );
+    }
+    client::get(&url).await
+}
+
 pub async fn list(
     page: u32,
     per_page: u32,
