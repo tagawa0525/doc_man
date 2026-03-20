@@ -143,6 +143,7 @@ async fn post_employee_admin_returns_201(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
     let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let pos_id = helpers::get_position_id(&pool, "一般職").await;
 
     let response = app
         .oneshot(
@@ -156,6 +157,7 @@ async fn post_employee_admin_returns_201(pool: PgPool) {
                         "name": "鈴木 花子",
                         "employee_code": "E001",
                         "role": "general",
+                        "position_id": pos_id,
                         "department_id": dept,
                         "effective_from": "2026-04-01"
                     })
@@ -179,6 +181,7 @@ async fn post_employee_non_admin_returns_403(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let general = helpers::insert_general(&pool).await;
     let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let pos_id = helpers::get_position_id(&pool, "一般職").await;
 
     let response = app
         .oneshot(
@@ -192,6 +195,7 @@ async fn post_employee_non_admin_returns_403(pool: PgPool) {
                         "name": "鈴木 花子",
                         "employee_code": "E001",
                         "role": "general",
+                        "position_id": pos_id,
                         "department_id": dept,
                         "effective_from": "2026-04-01"
                     })
@@ -255,6 +259,7 @@ async fn post_employee_with_email_returns_email_in_response(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
     let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let pos_id = helpers::get_position_id(&pool, "一般職").await;
 
     let response = app
         .oneshot(
@@ -269,6 +274,7 @@ async fn post_employee_with_email_returns_email_in_response(pool: PgPool) {
                         "employee_code": "E001",
                         "email": "suzuki@example.com",
                         "role": "general",
+                        "position_id": pos_id,
                         "department_id": dept,
                         "effective_from": "2026-04-01"
                     })
@@ -293,8 +299,9 @@ async fn get_employee_by_id_returns_email(pool: PgPool) {
 
     // email 付きで従業員を直接INSERT
     let row = sqlx::query(
-        "INSERT INTO employees (name, employee_code, email, role, is_active)
-         VALUES ('テスト太郎', 'E001', 'test@example.com', 'general', true)
+        "INSERT INTO employees (name, employee_code, email, role, position_id, is_active)
+         VALUES ('テスト太郎', 'E001', 'test@example.com', 'general',
+                 (SELECT id FROM positions WHERE name = '一般職'), true)
          RETURNING id",
     )
     .fetch_one(&pool)

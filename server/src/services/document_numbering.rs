@@ -119,8 +119,8 @@ mod tests {
 
         // employee + project + doc_kind_id for document insertion
         let emp_id: uuid::Uuid = sqlx::query(
-            "INSERT INTO employees (name, employee_code, role, is_active)
-             VALUES ('Test', 'T001', 'admin', true) RETURNING id",
+            "INSERT INTO employees (name, employee_code, role, position_id, is_active)
+             VALUES ('Test', 'T001', 'admin', (SELECT id FROM positions WHERE name = '課長'), true) RETURNING id",
         )
         .fetch_one(&pool)
         .await
@@ -203,8 +203,8 @@ mod tests {
                 .unwrap();
         // 文書テーブルに保存するため依存データを作成
         let emp_id: uuid::Uuid = sqlx::query(
-            "INSERT INTO employees (name, employee_code, role, is_active)
-             VALUES ('Test', 'T001', 'admin', true) RETURNING id",
+            "INSERT INTO employees (name, employee_code, role, position_id, is_active)
+             VALUES ('Test', 'T001', 'admin', (SELECT id FROM positions WHERE name = '課長'), true) RETURNING id",
         )
         .fetch_one(tx.as_mut())
         .await

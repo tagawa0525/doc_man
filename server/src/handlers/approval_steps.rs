@@ -5,6 +5,7 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
+use crate::authorization;
 use crate::error::AppError;
 use crate::models::approval_step::{
     ApprovalActionRequest, ApprovalStepResponse, ApproverBrief, CreateApprovalRouteRequest,
@@ -64,6 +65,9 @@ pub async fn create_approval_route(
             "admin or project_manager role required".to_string(),
         ));
     }
+
+    let dept_id = authorization::get_document_department_id(&state.db, doc_id).await?;
+    authorization::check_department_access(&user, dept_id)?;
 
     if req.steps.is_empty() {
         return Err(AppError::InvalidRequest(

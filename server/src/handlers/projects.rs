@@ -7,6 +7,7 @@ use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
+use crate::authorization;
 use crate::error::AppError;
 use crate::models::project::{
     CreateProjectRequest, ProjectResponse, ProjectRow, UpdateProjectRequest,
@@ -260,6 +261,9 @@ pub async fn create_project(
         ));
     }
 
+    let dept_id = authorization::get_discipline_department_id(&state.db, req.discipline_id).await?;
+    authorization::check_department_access(&user, dept_id)?;
+
     let status = req.status.as_deref().unwrap_or("planning");
 
     // project_manager が manager_id を省略した場合、自身を設定
@@ -364,6 +368,9 @@ pub async fn update_project(
             ));
         }
     }
+
+    let dept_id = authorization::get_project_department_id(&state.db, id).await?;
+    authorization::check_department_access(&user, dept_id)?;
 
     let current_name: String = existing.get("name");
     let current_status: String = existing.get("status");

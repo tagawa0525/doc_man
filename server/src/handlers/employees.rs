@@ -136,15 +136,16 @@ pub async fn create_employee(
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     let row = sqlx::query(
-        "INSERT INTO employees (name, employee_code, email, ad_account, role)
-         VALUES ($1, $2, $3, $4, $5)
+        "INSERT INTO employees (name, employee_code, email, ad_account, role, position_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id",
     )
     .bind(&req.name)
     .bind(&req.employee_code)
     .bind(&req.email)
     .bind(&req.ad_account)
-    .bind(req.role.as_deref().unwrap_or("general"))
+    .bind(&req.role)
+    .bind(req.position_id)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| match &e {

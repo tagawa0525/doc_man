@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod authorization;
 pub mod error;
 pub mod handlers;
 pub mod models;

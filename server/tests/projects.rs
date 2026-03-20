@@ -468,6 +468,7 @@ async fn post_project_project_manager_returns_201(pool: PgPool) {
     let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
     let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    helpers::assign_department(&pool, pm.id, dept, true).await;
 
     let response = app
         .oneshot(
@@ -633,6 +634,7 @@ async fn put_project_manager_own_project_returns_200(pool: PgPool) {
     let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
     let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    helpers::assign_department(&pool, pm.id, dept, true).await;
     let proj_id = helpers::insert_project(&pool, "PMプロジェクト", disc, Some(pm.id)).await;
 
     let response = app
