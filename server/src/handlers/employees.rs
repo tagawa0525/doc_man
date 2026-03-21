@@ -50,12 +50,15 @@ pub async fn list_employees(
         .map_err(AppError::Database)?;
 
         let rows = sqlx::query(
-            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
+            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.is_active,
+                    COALESCE(e.role, drg.role, p.default_role) AS role,
                     ed.department_id as dept_id, d.name as dept_name
              FROM employees e
+             JOIN positions p ON p.id = e.position_id
              LEFT JOIN employee_departments ed ON ed.employee_id = e.id
                AND ed.effective_to IS NULL AND ed.is_primary = true
              LEFT JOIN departments d ON d.id = ed.department_id
+             LEFT JOIN department_role_grants drg ON drg.department_id = ed.department_id
              WHERE e.is_active = $1 AND ed.department_id = $2
              ORDER BY e.employee_code NULLS LAST, e.id
              LIMIT $3 OFFSET $4",
@@ -77,12 +80,15 @@ pub async fn list_employees(
             .map_err(AppError::Database)?;
 
         let rows = sqlx::query(
-            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
+            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.is_active,
+                    COALESCE(e.role, drg.role, p.default_role) AS role,
                     ed.department_id as dept_id, d.name as dept_name
              FROM employees e
+             JOIN positions p ON p.id = e.position_id
              LEFT JOIN employee_departments ed ON ed.employee_id = e.id
                AND ed.effective_to IS NULL AND ed.is_primary = true
              LEFT JOIN departments d ON d.id = ed.department_id
+             LEFT JOIN department_role_grants drg ON drg.department_id = ed.department_id
              WHERE e.is_active = $1
              ORDER BY e.employee_code NULLS LAST, e.id
              LIMIT $2 OFFSET $3",
