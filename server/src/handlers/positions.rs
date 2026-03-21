@@ -81,10 +81,7 @@ pub async fn create_position(
             }
             _ => {
                 if db_err.code().as_deref() == Some("23514") {
-                    AppError::InvalidRequest(format!(
-                        "invalid default_role '{}'",
-                        req.default_role
-                    ))
+                    AppError::InvalidRequest(format!("invalid default_role '{}'", req.default_role))
                 } else {
                     AppError::Database(e)
                 }
@@ -147,9 +144,7 @@ pub async fn update_position(
             }
             _ => {
                 if db_err.code().as_deref() == Some("23514") {
-                    AppError::InvalidRequest(format!(
-                        "invalid default_role '{new_default_role}'"
-                    ))
+                    AppError::InvalidRequest(format!("invalid default_role '{new_default_role}'"))
                 } else {
                     AppError::Database(e)
                 }

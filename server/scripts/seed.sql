@@ -35,9 +35,9 @@ INSERT INTO departments (code, name, parent_id, effective_from) VALUES
 INSERT INTO employees (name, employee_code, email, role, position_id, is_active) VALUES
     ('管理太郎', 'ADM001', 'kanri@example.com',    'admin',
      (SELECT id FROM positions WHERE name = '社長'),   true),
-    ('山田花子', 'PM001',  'yamada@example.com',   NULL,
+    ('山田花子', 'PM001',  'yamada@example.com',   'project_manager',
      (SELECT id FROM positions WHERE name = '課長'),   true),
-    ('佐藤次郎', 'PM002',  'sato@example.com',    NULL,
+    ('佐藤次郎', 'PM002',  'sato@example.com',    'project_manager',
      (SELECT id FROM positions WHERE name = '課長'),   true),
     ('鈴木一郎', 'GEN001', 'suzuki@example.com',  NULL,
      (SELECT id FROM positions WHERE name = '総合職'), true),
