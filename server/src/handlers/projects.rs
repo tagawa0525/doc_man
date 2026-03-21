@@ -385,6 +385,13 @@ pub async fn update_project(
     let new_end = req.end_date.or(current_end);
     let new_wbs = req.wbs_code.or(current_wbs);
     let new_disc_id = req.discipline_id.unwrap_or(current_disc_id);
+
+    // discipline_id 変更時は移動先部署のスコープもチェック
+    if new_disc_id != current_disc_id {
+        let new_dept_id =
+            authorization::get_discipline_department_id(&state.db, new_disc_id).await?;
+        authorization::check_department_access(&user, new_dept_id)?;
+    }
     let new_manager_id = req.manager_id.or(current_manager_id);
 
     sqlx::query(
