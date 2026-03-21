@@ -32,14 +32,14 @@
 
 ### フロントエンド
 
-| ファイル                                            | 変更内容                                                              |
-| --------------------------------------------------- | --------------------------------------------------------------------- |
+| ファイル                                            | 変更内容                                                                      |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `frontend/src/api/types.rs` L280                    | `DocumentResponse`の`project`を`NameBrief`→独自`DocumentProjectBrief`型に変更 |
-| `frontend/src/api/projects.rs` L10-17               | `ProjectListParams`に`wbs_code`フィールド追加                         |
-| `frontend/src/api/projects.rs` L19-43               | `list_filtered`にwbs_codeクエリパラメータ追加                         |
-| `frontend/src/pages/projects/list.rs` L319,328-334  | テーブルにWBSコード列追加                                             |
-| `frontend/src/pages/projects/list.rs` L292-305      | WBSコード検索フィルタ追加                                             |
-| `frontend/src/pages/documents/list.rs` L367,376-389 | テーブルにWBSコード列追加                                             |
+| `frontend/src/api/projects.rs` L10-17               | `ProjectListParams`に`wbs_code`フィールド追加                                 |
+| `frontend/src/api/projects.rs` L19-43               | `list_filtered`にwbs_codeクエリパラメータ追加                                 |
+| `frontend/src/pages/projects/list.rs` L319,328-334  | テーブルにWBSコード列追加                                                     |
+| `frontend/src/pages/projects/list.rs` L292-305      | WBSコード検索フィルタ追加                                                     |
+| `frontend/src/pages/documents/list.rs` L367,376-389 | テーブルにWBSコード列追加                                                     |
 
 ## 実装手順（TDDサイクル）
 
