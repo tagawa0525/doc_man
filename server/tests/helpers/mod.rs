@@ -37,15 +37,25 @@ pub async fn insert_general(pool: &PgPool) -> TestUser {
     insert_employee(pool, "GEN001", "general").await
 }
 
+/// role 引数は個人上書き（employees.role）として設定される。
+/// position_id はマイグレーション初期データの職位から role に対応するものを自動選択。
 pub async fn insert_employee(pool: &PgPool, code: &str, role: &str) -> TestUser {
+    let position_name = match role {
+        "admin" => "課長",
+        "project_manager" => "総合職",
+        "general" => "一般職",
+        _ => "嘱託",
+    };
+
     let row = sqlx::query(
-        "INSERT INTO employees (name, employee_code, role, is_active)
-         VALUES ($1, $2, $3, true)
+        "INSERT INTO employees (name, employee_code, role, position_id, is_active)
+         VALUES ($1, $2, $3, (SELECT id FROM positions WHERE name = $4), true)
          RETURNING id",
     )
     .bind(format!("Test {code}"))
     .bind(code)
     .bind(role)
+    .bind(position_name)
     .fetch_one(pool)
     .await
     .unwrap();
@@ -78,14 +88,22 @@ pub async fn insert_department(
 }
 
 pub async fn insert_employee_inactive(pool: &PgPool, code: &str, role: &str) -> TestUser {
+    let position_name = match role {
+        "admin" => "課長",
+        "project_manager" => "総合職",
+        "general" => "一般職",
+        _ => "嘱託",
+    };
+
     let row = sqlx::query(
-        "INSERT INTO employees (name, employee_code, role, is_active)
-         VALUES ($1, $2, $3, false)
+        "INSERT INTO employees (name, employee_code, role, position_id, is_active)
+         VALUES ($1, $2, $3, (SELECT id FROM positions WHERE name = $4), false)
          RETURNING id",
     )
     .bind(format!("Test {code}"))
     .bind(code)
     .bind(role)
+    .bind(position_name)
     .fetch_one(pool)
     .await
     .unwrap();
@@ -379,6 +397,37 @@ pub async fn insert_document_with_created_at(
     .unwrap();
 
     doc_id
+}
+
+pub async fn get_position_id(pool: &PgPool, name: &str) -> Uuid {
+    let row = sqlx::query("SELECT id FROM positions WHERE name = $1")
+        .bind(name)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+
+    row.get("id")
+}
+
+pub async fn insert_position(
+    pool: &PgPool,
+    name: &str,
+    default_role: &str,
+    sort_order: i32,
+) -> Uuid {
+    let row = sqlx::query(
+        "INSERT INTO positions (name, default_role, sort_order)
+         VALUES ($1, $2, $3)
+         RETURNING id",
+    )
+    .bind(name)
+    .bind(default_role)
+    .bind(sort_order)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    row.get("id")
 }
 
 pub async fn insert_tag(pool: &PgPool, name: &str) -> Uuid {

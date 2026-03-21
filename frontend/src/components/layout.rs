@@ -18,6 +18,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
         ("/disciplines", "専門分野", "fas fa-microscope", true),
         ("/document-kinds", "文書種別", "fas fa-folder-open", true),
         ("/document-registers", "文書台帳", "fas fa-book", true),
+        ("/positions", "職位", "fas fa-id-badge", true),
         ("/tags", "タグ", "fas fa-tags", false),
     ];
 

@@ -50,12 +50,15 @@ pub async fn list_employees(
         .map_err(AppError::Database)?;
 
         let rows = sqlx::query(
-            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
+            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.is_active,
+                    COALESCE(e.role, drg.role, p.default_role) AS role,
                     ed.department_id as dept_id, d.name as dept_name
              FROM employees e
+             JOIN positions p ON p.id = e.position_id
              LEFT JOIN employee_departments ed ON ed.employee_id = e.id
                AND ed.effective_to IS NULL AND ed.is_primary = true
              LEFT JOIN departments d ON d.id = ed.department_id
+             LEFT JOIN department_role_grants drg ON drg.department_id = ed.department_id
              WHERE e.is_active = $1 AND ed.department_id = $2
              ORDER BY e.employee_code NULLS LAST, e.id
              LIMIT $3 OFFSET $4",
@@ -77,12 +80,15 @@ pub async fn list_employees(
             .map_err(AppError::Database)?;
 
         let rows = sqlx::query(
-            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.role, e.is_active,
+            "SELECT e.id, e.name, e.employee_code, e.email, e.ad_account, e.is_active,
+                    COALESCE(e.role, drg.role, p.default_role) AS role,
                     ed.department_id as dept_id, d.name as dept_name
              FROM employees e
+             JOIN positions p ON p.id = e.position_id
              LEFT JOIN employee_departments ed ON ed.employee_id = e.id
                AND ed.effective_to IS NULL AND ed.is_primary = true
              LEFT JOIN departments d ON d.id = ed.department_id
+             LEFT JOIN department_role_grants drg ON drg.department_id = ed.department_id
              WHERE e.is_active = $1
              ORDER BY e.employee_code NULLS LAST, e.id
              LIMIT $2 OFFSET $3",
@@ -136,15 +142,16 @@ pub async fn create_employee(
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     let row = sqlx::query(
-        "INSERT INTO employees (name, employee_code, email, ad_account, role)
-         VALUES ($1, $2, $3, $4, $5)
+        "INSERT INTO employees (name, employee_code, email, ad_account, role, position_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id",
     )
     .bind(&req.name)
     .bind(&req.employee_code)
     .bind(&req.email)
     .bind(&req.ad_account)
-    .bind(req.role.as_deref().unwrap_or("general"))
+    .bind(&req.role)
+    .bind(req.position_id)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| match &e {

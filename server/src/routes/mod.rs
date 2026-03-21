@@ -14,6 +14,7 @@ use crate::handlers::document_kinds;
 use crate::handlers::document_registers;
 use crate::handlers::documents;
 use crate::handlers::employees;
+use crate::handlers::positions;
 use crate::handlers::projects;
 use crate::handlers::tags;
 use crate::state::AppState;
@@ -107,6 +108,14 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/documents/{doc_id}/distributions",
             get(distributions::list_distributions).post(distributions::create_distributions),
+        )
+        .route(
+            "/api/v1/positions",
+            get(positions::list_positions).post(positions::create_position),
+        )
+        .route(
+            "/api/v1/positions/{id}",
+            get(positions::get_position).put(positions::update_position),
         )
         .route("/api/v1/tags", get(tags::list_tags).post(tags::create_tag))
         .with_state(state)

@@ -23,7 +23,7 @@ async fn setup_master_data(pool: &PgPool) -> MasterData {
     let kind = helpers::insert_document_kind(pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(pool, "テスト", disc, None).await;
     MasterData {
-        _dept: dept,
+        dept,
         disc,
         kind,
         proj,
@@ -31,10 +31,77 @@ async fn setup_master_data(pool: &PgPool) -> MasterData {
 }
 
 struct MasterData {
-    _dept: uuid::Uuid,
+    dept: uuid::Uuid,
     disc: uuid::Uuid,
     kind: uuid::Uuid,
     proj: uuid::Uuid,
+}
+
+// ── positions: admin-only write ──────────────────────────────
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn post_position_pm_returns_403(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/positions")
+                .header("Authorization", format!("Bearer {}", pm.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(
+                    json!({"name": "テスト", "default_role": "viewer", "sort_order": 99})
+                        .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn put_position_pm_returns_403(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
+    let pos_id = helpers::insert_position(&pool, "テストPM職", "general", 50).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/v1/positions/{pos_id}"))
+                .header("Authorization", format!("Bearer {}", pm.employee_code))
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(json!({"name": "変更"}).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_positions_viewer_returns_200_perms(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let viewer = helpers::insert_employee(&pool, "VIEW001", "viewer").await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/positions")
+                .header("Authorization", format!("Bearer {}", viewer.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 // ── admin-only endpoints: project_manager → 403 ─────────────
@@ -92,6 +159,7 @@ async fn post_employee_pm_returns_403(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
     let dept = helpers::insert_department(&pool, "設計", "設計部", None).await;
+    let pos_id = helpers::get_position_id(&pool, "一般職").await;
 
     let response = app
         .oneshot(
@@ -105,6 +173,7 @@ async fn post_employee_pm_returns_403(pool: PgPool) {
                         "name": "テスト社員",
                         "employee_code": "E999",
                         "role": "general",
+                        "position_id": pos_id,
                         "department_id": dept,
                         "effective_from": "2024-01-01"
                     })
@@ -358,6 +427,7 @@ async fn post_approval_steps_pm_returns_201(pool: PgPool) {
     let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
     let approver = helpers::insert_employee(&pool, "APP001", "general").await;
     let data = setup_master_data(&pool).await;
+    helpers::assign_department(&pool, pm.id, data.dept, true).await;
     let doc_id = helpers::insert_document(
         &pool,
         "内設計-2603001",
@@ -434,6 +504,7 @@ async fn post_document_pm_returns_201(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
     let data = setup_master_data(&pool).await;
+    helpers::assign_department(&pool, pm.id, data.dept, true).await;
 
     let response = app
         .oneshot(
@@ -463,6 +534,7 @@ async fn post_document_general_returns_201(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let general = helpers::insert_employee(&pool, "GEN001", "general").await;
     let data = setup_master_data(&pool).await;
+    helpers::assign_department(&pool, general.id, data.dept, true).await;
 
     let response = app
         .oneshot(

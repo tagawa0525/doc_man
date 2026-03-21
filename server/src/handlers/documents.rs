@@ -7,6 +7,7 @@ use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
+use crate::authorization;
 use crate::error::AppError;
 use crate::models::DocKindBrief;
 use crate::models::document::{
@@ -319,6 +320,9 @@ pub async fn create_document(
         ));
     }
 
+    let dept_id = authorization::get_project_department_id(&state.db, req.project_id).await?;
+    authorization::check_department_access(&user, dept_id)?;
+
     // doc_kind の code, seq_digits を取得
     let dk_row = sqlx::query("SELECT code, seq_digits FROM document_kinds WHERE id = $1")
         .bind(req.doc_kind_id)
@@ -464,6 +468,9 @@ pub async fn update_document(
             "viewer role cannot update documents".to_string(),
         ));
     }
+
+    let dept_id = authorization::get_document_department_id(&state.db, id).await?;
+    authorization::check_department_access(&user, dept_id)?;
 
     // 変更不可フィールドのチェック
     if req.doc_number.is_some() {
@@ -646,6 +653,9 @@ pub async fn revise_document(
             "viewer role cannot revise documents".to_string(),
         ));
     }
+
+    let dept_id = authorization::get_document_department_id(&state.db, id).await?;
+    authorization::check_department_access(&user, dept_id)?;
 
     if req.reason.trim().is_empty() {
         return Err(AppError::InvalidRequest("reason is required".to_string()));

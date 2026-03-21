@@ -7,6 +7,7 @@ use sqlx::{QueryBuilder, Row};
 use uuid::Uuid;
 
 use crate::auth::{AuthenticatedUser, Role};
+use crate::authorization;
 use crate::error::AppError;
 use crate::models::project::{
     CreateProjectRequest, ProjectResponse, ProjectRow, UpdateProjectRequest,
@@ -260,6 +261,9 @@ pub async fn create_project(
         ));
     }
 
+    let dept_id = authorization::get_discipline_department_id(&state.db, req.discipline_id).await?;
+    authorization::check_department_access(&user, dept_id)?;
+
     let status = req.status.as_deref().unwrap_or("planning");
 
     // project_manager が manager_id を省略した場合、自身を設定
@@ -365,6 +369,9 @@ pub async fn update_project(
         }
     }
 
+    let dept_id = authorization::get_project_department_id(&state.db, id).await?;
+    authorization::check_department_access(&user, dept_id)?;
+
     let current_name: String = existing.get("name");
     let current_status: String = existing.get("status");
     let current_start: Option<chrono::NaiveDate> = existing.get("start_date");
@@ -378,6 +385,13 @@ pub async fn update_project(
     let new_end = req.end_date.or(current_end);
     let new_wbs = req.wbs_code.or(current_wbs);
     let new_disc_id = req.discipline_id.unwrap_or(current_disc_id);
+
+    // discipline_id 変更時は移動先部署のスコープもチェック
+    if new_disc_id != current_disc_id {
+        let new_dept_id =
+            authorization::get_discipline_department_id(&state.db, new_disc_id).await?;
+        authorization::check_department_access(&user, new_dept_id)?;
+    }
     let new_manager_id = req.manager_id.or(current_manager_id);
 
     sqlx::query(

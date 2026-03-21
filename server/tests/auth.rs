@@ -8,21 +8,11 @@ mod helpers;
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn valid_token_returns_200(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
-
-    sqlx::query(
-        "INSERT INTO employees (name, employee_code, role, is_active) VALUES ($1, $2, $3, $4)",
-    )
-    .bind("Test User")
-    .bind("E001")
-    .bind("general")
-    .bind(true)
-    .execute(&pool)
-    .await
-    .unwrap();
+    let user = helpers::insert_employee(&pool, "E001", "general").await;
 
     let request = Request::builder()
         .uri("/api/v1/me")
-        .header("Authorization", "Bearer E001")
+        .header("Authorization", format!("Bearer {}", user.employee_code))
         .body(axum::body::Body::empty())
         .unwrap();
 
@@ -47,21 +37,11 @@ async fn invalid_token_returns_401(pool: PgPool) {
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn inactive_user_returns_401(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
-
-    sqlx::query(
-        "INSERT INTO employees (name, employee_code, role, is_active) VALUES ($1, $2, $3, $4)",
-    )
-    .bind("Retired User")
-    .bind("E002")
-    .bind("general")
-    .bind(false)
-    .execute(&pool)
-    .await
-    .unwrap();
+    let user = helpers::insert_employee_inactive(&pool, "E002", "general").await;
 
     let request = Request::builder()
         .uri("/api/v1/me")
-        .header("Authorization", "Bearer E002")
+        .header("Authorization", format!("Bearer {}", user.employee_code))
         .body(axum::body::Body::empty())
         .unwrap();
 

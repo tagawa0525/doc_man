@@ -141,6 +141,30 @@ pub struct UpdateEmployeeRequest {
     pub is_active: Option<bool>,
 }
 
+// --- Positions ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PositionResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub default_role: String,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreatePositionRequest {
+    pub name: String,
+    pub default_role: String,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdatePositionRequest {
+    pub name: Option<String>,
+    pub default_role: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
 // --- Disciplines ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

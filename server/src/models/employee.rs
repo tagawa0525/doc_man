@@ -61,6 +61,7 @@ pub struct CreateEmployeeRequest {
     pub email: Option<String>,
     pub ad_account: Option<String>,
     pub role: Option<String>,
+    pub position_id: Uuid,
     pub department_id: Uuid,
     pub effective_from: NaiveDate,
 }

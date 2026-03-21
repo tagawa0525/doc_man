@@ -40,6 +40,14 @@ pub struct AuthenticatedUser {
     pub name: String,
     pub role: Role,
     pub is_active: bool,
+    pub department_ids: Vec<Uuid>,
+}
+
+impl AuthenticatedUser {
+    /// admin はバイパス、それ以外は所属部署に含まれるかチェック
+    pub fn can_access_department(&self, department_id: Uuid) -> bool {
+        self.role == Role::Admin || self.department_ids.contains(&department_id)
+    }
 }
 
 impl<S> axum::extract::FromRequestParts<S> for AuthenticatedUser
@@ -68,7 +76,29 @@ where
             let token = &auth_header[7..];
 
             let row = sqlx::query(
-                "SELECT id, name, role, is_active FROM employees WHERE employee_code = $1",
+                "SELECT
+                    e.id,
+                    e.name,
+                    e.is_active,
+                    COALESCE(
+                        e.role,
+                        drg.role,
+                        p.default_role
+                    ) AS effective_role,
+                    ARRAY(
+                        SELECT ed2.department_id
+                        FROM employee_departments ed2
+                        WHERE ed2.employee_id = e.id AND ed2.effective_to IS NULL
+                    ) AS department_ids
+                 FROM employees e
+                 JOIN positions p ON p.id = e.position_id
+                 LEFT JOIN employee_departments ed
+                     ON ed.employee_id = e.id
+                     AND ed.effective_to IS NULL
+                     AND ed.is_primary = true
+                 LEFT JOIN department_role_grants drg
+                     ON drg.department_id = ed.department_id
+                 WHERE e.employee_code = $1",
             )
             .bind(token)
             .fetch_optional(&app_state.db)
@@ -81,13 +111,15 @@ where
                 return Err(AppError::Unauthorized);
             }
 
-            let role: Role = row.get::<String, _>("role").parse()?;
+            let role: Role = row.get::<String, _>("effective_role").parse()?;
+            let department_ids: Vec<Uuid> = row.get("department_ids");
 
             Ok(AuthenticatedUser {
                 id: row.get("id"),
                 name: row.get("name"),
                 role,
                 is_active,
+                department_ids,
             })
         }
     }

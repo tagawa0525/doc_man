@@ -10,6 +10,7 @@ pub mod document_kind;
 pub mod document_register;
 pub mod document_revision;
 pub mod employee;
+pub mod position;
 pub mod project;
 pub mod tag;
 

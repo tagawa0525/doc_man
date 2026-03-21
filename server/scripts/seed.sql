@@ -7,6 +7,17 @@ BEGIN;
 -- Tier 1: 独立テーブル
 --------------------------------------------------------------------------------
 
+-- positions（マイグレーションで初期データ投入済み、冪等に追加）
+INSERT INTO positions (name, default_role, sort_order) VALUES
+    ('社長',   'admin',           1),
+    ('部長',   'admin',           2),
+    ('課長',   'admin',           3),
+    ('総合職', 'project_manager', 4),
+    ('一般職', 'general',         5),
+    ('嘱託',   'viewer',          6),
+    ('派遣',   'viewer',          7)
+ON CONFLICT (name) DO NOTHING;
+
 -- departments (7件、3階層)
 INSERT INTO departments (code, name, effective_from) VALUES
     ('HQ',   '本社',       '2020-01-01');
@@ -20,15 +31,28 @@ INSERT INTO departments (code, name, parent_id, effective_from) VALUES
     ('電設', '電気設計課', (SELECT id FROM departments WHERE code = '設計'), '2020-01-01');
 
 -- employees (8件、全ロール網羅)
-INSERT INTO employees (name, employee_code, email, role, is_active) VALUES
-    ('管理太郎', 'ADM001', 'kanri@example.com',    'admin',           true),
-    ('山田花子', 'PM001',  'yamada@example.com',   'project_manager', true),
-    ('佐藤次郎', 'PM002',  'sato@example.com',    'project_manager', true),
-    ('鈴木一郎', 'GEN001', 'suzuki@example.com',  'general',         true),
-    ('田中美咲', 'GEN002', 'tanaka@example.com',  'general',         true),
-    ('高橋健太', 'GEN003', 'takahashi@example.com','general',         true),
-    ('中村由紀', 'VW001',  'nakamura@example.com', 'viewer',          true),
-    ('伊藤誠',   'GEN004', 'ito@example.com',     'general',         false);
+-- role は個人上書き（NULL = 職位のデフォルトを使用）
+INSERT INTO employees (name, employee_code, email, role, position_id, is_active) VALUES
+    ('管理太郎', 'ADM001', 'kanri@example.com',    'admin',
+     (SELECT id FROM positions WHERE name = '社長'),   true),
+    ('山田花子', 'PM001',  'yamada@example.com',   'project_manager',
+     (SELECT id FROM positions WHERE name = '課長'),   true),
+    ('佐藤次郎', 'PM002',  'sato@example.com',    'project_manager',
+     (SELECT id FROM positions WHERE name = '課長'),   true),
+    ('鈴木一郎', 'GEN001', 'suzuki@example.com',  NULL,
+     (SELECT id FROM positions WHERE name = '総合職'), true),
+    ('田中美咲', 'GEN002', 'tanaka@example.com',  NULL,
+     (SELECT id FROM positions WHERE name = '総合職'), true),
+    ('高橋健太', 'GEN003', 'takahashi@example.com',NULL,
+     (SELECT id FROM positions WHERE name = '一般職'), true),
+    ('中村由紀', 'VW001',  'nakamura@example.com', NULL,
+     (SELECT id FROM positions WHERE name = '嘱託'),   true),
+    ('伊藤誠',   'GEN004', 'ito@example.com',     NULL,
+     (SELECT id FROM positions WHERE name = '一般職'), false);
+
+-- department_role_grants（管理部に admin を付与）
+INSERT INTO department_role_grants (department_id, role) VALUES
+    ((SELECT id FROM departments WHERE code = '管理'), 'admin');
 
 -- tags (6件)
 INSERT INTO tags (name) VALUES
