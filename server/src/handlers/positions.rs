@@ -79,7 +79,16 @@ pub async fn create_position(
             Some("positions_name_key") => {
                 AppError::Conflict(format!("position '{}' already exists", req.name))
             }
-            _ => AppError::Database(e),
+            _ => {
+                if db_err.code().as_deref() == Some("23514") {
+                    AppError::InvalidRequest(format!(
+                        "invalid default_role '{}'",
+                        req.default_role
+                    ))
+                } else {
+                    AppError::Database(e)
+                }
+            }
         },
         _ => AppError::Database(e),
     })?;
@@ -136,7 +145,15 @@ pub async fn update_position(
             Some("positions_name_key") => {
                 AppError::Conflict(format!("position '{new_name}' already exists"))
             }
-            _ => AppError::Database(e),
+            _ => {
+                if db_err.code().as_deref() == Some("23514") {
+                    AppError::InvalidRequest(format!(
+                        "invalid default_role '{new_default_role}'"
+                    ))
+                } else {
+                    AppError::Database(e)
+                }
+            }
         },
         _ => AppError::Database(e),
     })?;
