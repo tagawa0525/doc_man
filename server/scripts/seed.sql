@@ -1,13 +1,17 @@
 -- シードデータ: 開発・動作確認用
 -- 実行: dm-db-seed (dm-db-reset 後に使用)
 
+\echo 'シードデータ投入開始...'
 BEGIN;
 
+\echo ''
+\echo '[Tier 1] 独立テーブル'
 --------------------------------------------------------------------------------
 -- Tier 1: 独立テーブル
 --------------------------------------------------------------------------------
 
 -- positions（マイグレーションで初期データ投入済み、冪等に追加）
+\echo '  → positions: 職位マスタ (7件)'
 INSERT INTO positions (name, default_role, sort_order) VALUES
     ('社長',   'admin',           1),
     ('部長',   'admin',           2),
@@ -19,6 +23,7 @@ INSERT INTO positions (name, default_role, sort_order) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- departments (7件、3階層)
+\echo '  → departments: 部署 (7件, 3階層: 本社→部→課)'
 INSERT INTO departments (code, name, effective_from) VALUES
     ('HQ',   '本社',       '2020-01-01');
 INSERT INTO departments (code, name, parent_id, effective_from) VALUES
@@ -32,6 +37,7 @@ INSERT INTO departments (code, name, parent_id, effective_from) VALUES
 
 -- employees (8件、全ロール網羅)
 -- role は個人上書き（NULL = 職位のデフォルトを使用）
+\echo '  → employees: 従業員 (8件, admin/PM/general/viewer各ロール)'
 INSERT INTO employees (name, employee_code, email, role, position_id, is_active) VALUES
     ('管理太郎', 'ADM001', 'kanri@example.com',    'admin',
      (SELECT id FROM positions WHERE name = '社長'),   true),
@@ -51,25 +57,31 @@ INSERT INTO employees (name, employee_code, email, role, position_id, is_active)
      (SELECT id FROM positions WHERE name = '一般職'), false);
 
 -- department_role_grants（管理部に admin を付与）
+\echo '  → department_role_grants: 部署ロール付与 (1件, 管理部→admin)'
 INSERT INTO department_role_grants (department_id, role) VALUES
     ((SELECT id FROM departments WHERE code = '管理'), 'admin');
 
 -- tags (6件)
+\echo '  → tags: タグ (6件: 安全/環境/品質/設計変更/緊急/機密)'
 INSERT INTO tags (name) VALUES
     ('安全'), ('環境'), ('品質'), ('設計変更'), ('緊急'), ('機密');
 
 -- document_kinds (4件)
+\echo '  → document_kinds: 文書種別 (4件: 内/外/議/仕)'
 INSERT INTO document_kinds (code, name, seq_digits) VALUES
     ('内', '社内文書', 3),
     ('外', '外部文書', 3),
     ('議', '議事録',   2),
     ('仕', '仕様書',   3);
 
+\echo ''
+\echo '[Tier 2] 従属テーブル (1段目)'
 --------------------------------------------------------------------------------
 -- Tier 2
 --------------------------------------------------------------------------------
 
 -- employee_departments (9件: 佐藤次郎のみ2部署兼務)
+\echo '  → employee_departments: 所属 (9件, PM002が2部署兼務)'
 INSERT INTO employee_departments (employee_id, department_id, is_primary, effective_from) VALUES
     ((SELECT id FROM employees WHERE employee_code = 'ADM001'),
      (SELECT id FROM departments WHERE code = '管理'), true, '2020-04-01'),
@@ -91,17 +103,21 @@ INSERT INTO employee_departments (employee_id, department_id, is_primary, effect
      (SELECT id FROM departments WHERE code = '保全'), true, '2021-04-01');
 
 -- disciplines (4件)
+\echo '  → disciplines: 専門分野 (4件: 機械/電気/品質管理/保全)'
 INSERT INTO disciplines (code, name, department_id) VALUES
     ('MECH',  '機械',     (SELECT id FROM departments WHERE code = '機設')),
     ('ELEC',  '電気',     (SELECT id FROM departments WHERE code = '電設')),
     ('QA',    '品質管理', (SELECT id FROM departments WHERE code = '品管')),
     ('MAINT', '保全',     (SELECT id FROM departments WHERE code = '保全'));
 
+\echo ''
+\echo '[Tier 3] 従属テーブル (2段目)'
 --------------------------------------------------------------------------------
 -- Tier 3
 --------------------------------------------------------------------------------
 
 -- document_registers (4件)
+\echo '  → document_registers: 文書台帳 (4件)'
 INSERT INTO document_registers (register_code, doc_kind_id, department_id, file_server_root) VALUES
     ('内設計',
      (SELECT id FROM document_kinds WHERE code = '内'),
@@ -121,6 +137,7 @@ INSERT INTO document_registers (register_code, doc_kind_id, department_id, file_
      '/files/external/mech');
 
 -- projects (4件、各ステータス)
+\echo '  → projects: プロジェクト (4件: active×2/planning×1/completed×1)'
 INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_id, manager_id) VALUES
     ('新型ポンプ開発', 'active', '2026-01-15', NULL, 'DV-2026-001',
      (SELECT id FROM disciplines WHERE code = 'MECH'),
@@ -135,11 +152,14 @@ INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_i
      (SELECT id FROM disciplines WHERE code = 'MAINT'),
      (SELECT id FROM employees WHERE employee_code = 'PM002'));
 
+\echo ''
+\echo '[Tier 4] 文書・リビジョン'
 --------------------------------------------------------------------------------
 -- Tier 4: documents (15件)
 --------------------------------------------------------------------------------
 
--- draft × 4
+-- draft × 4 (+ restricted 機密文書 (draft) × 1)
+\echo '  → documents: 文書 (15件: draft×5/under_review×2/approved×7/rejected×1)'
 INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2603001', '新型ポンプ設計仕様書',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'),
@@ -233,6 +253,7 @@ INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_co
      (SELECT id FROM projects WHERE name = '新型ポンプ開発'));
 
 -- document_revisions (全15文書の Rev.0)
+\echo '  → document_revisions: リビジョン (15件, 全文書のRev.0)'
 INSERT INTO document_revisions (document_id, revision, file_path, created_by, effective_from) VALUES
     ((SELECT id FROM documents WHERE doc_number = '内設計-2603001'), 0, '内設計-2603001/0',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2603001')),
@@ -265,11 +286,14 @@ INSERT INTO document_revisions (document_id, revision, file_path, created_by, ef
     ((SELECT id FROM documents WHERE doc_number = '内設計-2603002'), 0, '内設計-2603002/0',
      (SELECT id FROM employees WHERE employee_code = 'GEN001'), (SELECT created_at FROM documents WHERE doc_number = '内設計-2603002'));
 
+\echo ''
+\echo '[Tier 5] タグ・承認・配布'
 --------------------------------------------------------------------------------
 -- Tier 5
 --------------------------------------------------------------------------------
 
 -- document_tags (~15件)
+\echo '  → document_tags: 文書タグ紐付け (15件)'
 INSERT INTO document_tags (document_id, tag_id) VALUES
     -- 新型ポンプ設計仕様書: 設計変更
     ((SELECT id FROM documents WHERE doc_number = '内設計-2603001'),
@@ -313,6 +337,7 @@ INSERT INTO document_tags (document_id, tag_id) VALUES
      (SELECT id FROM tags WHERE name = '機密'));
 
 -- approval_steps (~12件)
+\echo '  → approval_steps: 承認ステップ (12件, 承認/保留/却下混在)'
 -- under_review: 内設計-2602001 (3ステップ: 1承認済み, 2-3保留)
 INSERT INTO approval_steps (document_id, route_revision, document_revision, step_order, approver_id, status, approved_at) VALUES
     ((SELECT id FROM documents WHERE doc_number = '内設計-2602001'),
@@ -380,6 +405,7 @@ INSERT INTO approval_steps (document_id, route_revision, document_revision, step
      'rejected', '2026-02-26 14:00:00+09', '材料規格の記載が不足しています。JIS規格番号を追記してください。');
 
 -- distributions (approved文書2件に配布: バッチ2回)
+\echo '  → distributions: 配布記録 (5件, 2文書×複数宛先)'
 -- バッチ1: ポンプ基本設計書を3名に配布 (PM001が実行)
 INSERT INTO distributions (document_id, recipient_id, distributed_at, distributed_by) VALUES
     ((SELECT id FROM documents WHERE doc_number = '内設計-2601001'),
@@ -406,4 +432,6 @@ INSERT INTO distributions (document_id, recipient_id, distributed_at, distribute
      '2026-01-28 14:30:00+09',
      (SELECT id FROM employees WHERE employee_code = 'PM002'));
 
+\echo ''
 COMMIT;
+\echo 'シードデータ投入完了'

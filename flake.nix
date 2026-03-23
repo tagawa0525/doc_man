@@ -24,6 +24,7 @@
           pkgs.sqlx-cli
           pkgs.postgresql
           pkgs.just
+          pkgs.podman-compose
         ];
 
         RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
