@@ -295,14 +295,17 @@ pub fn ProjectListPage() -> impl IntoView {
                 </a>
             </div>
 
-            // 分野
+            // 分野（選択中の部署に紐づく分野をデフォルト表示）
             <div class="is-flex is-align-items-center is-flex-wrap-wrap mb-2" style="gap: 0.25rem 0.75rem;">
                 <span class="has-text-weight-semibold is-size-7">"分野："</span>
                 <Suspense fallback=|| ()>
                     {move || all_disciplines.get().map(|result| match result {
                         Ok(paginated) => {
                             let disciplines = paginated.data;
+                            let detail = show_detail_discipline.get();
+                            let current_dept_ids = dept_ids.get();
                             let visible_ids: Vec<String> = disciplines.iter()
+                                .filter(|d| detail || csv_contains(&current_dept_ids, &d.department.id.to_string()))
                                 .map(|d| d.id.to_string())
                                 .collect();
                             let vi = visible_ids.clone();
@@ -331,10 +334,14 @@ pub fn ProjectListPage() -> impl IntoView {
                                     }}
                                 </a>
                             };
-                            let checkboxes = disciplines.into_iter().map(move |d| {
+                            let checkboxes = disciplines.into_iter().filter_map(move |d| {
+                                let disc_dept_id = d.department.id.to_string();
+                                if !detail && !csv_contains(&current_dept_ids, &disc_dept_id) {
+                                    return None;
+                                }
                                 let id = d.id.to_string();
                                 let id2 = id.clone();
-                                view! {
+                                Some(view! {
                                     <label class="checkbox is-size-7">
                                         <input
                                             type="checkbox"
@@ -345,13 +352,18 @@ pub fn ProjectListPage() -> impl IntoView {
                                         />
                                         " " {d.name}
                                     </label>
-                                }
+                                })
                             }).collect_view();
                             view! { {toggle_all} {checkboxes} }.into_any()
                         }
                         Err(_) => view! { <span class="tag is-warning">"分野読込失敗"</span> }.into_any(),
                     })}
                 </Suspense>
+                <a class="is-size-7 has-text-link" style="cursor:pointer; white-space:nowrap;"
+                    on:click=move |_| show_detail_discipline.update(|v| *v = !*v)
+                >
+                    {move || if show_detail_discipline.get() { "閉じる" } else { "全分野..." }}
+                </a>
             </div>
 
             <div class="box mb-4">
