@@ -293,7 +293,7 @@ INSERT INTO document_revisions (document_id, revision, file_path, created_by, ef
 --------------------------------------------------------------------------------
 
 -- document_tags (~15件)
-\echo '  → document_tags: 文書タグ紐付け (14件)'
+\echo '  → document_tags: 文書タグ紐付け (15件)'
 INSERT INTO document_tags (document_id, tag_id) VALUES
     -- 新型ポンプ設計仕様書: 設計変更
     ((SELECT id FROM documents WHERE doc_number = '内設計-2603001'),
