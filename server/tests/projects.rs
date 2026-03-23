@@ -86,6 +86,55 @@ async fn get_projects_with_discipline_filter(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_with_multiple_discipline_ids(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+    let dept = helpers::insert_department(&pool, "001", "技術部", None).await;
+    let disc_a = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
+    let disc_b = helpers::insert_discipline(&pool, "ELEC", "電気", dept).await;
+    let disc_c = helpers::insert_discipline(&pool, "INST", "計装", dept).await;
+    helpers::insert_project(&pool, "プロジェクトA", disc_a, None).await;
+    helpers::insert_project(&pool, "プロジェクトB", disc_b, None).await;
+    helpers::insert_project(&pool, "プロジェクトC", disc_c, None).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/api/v1/projects?discipline_ids={disc_a},{disc_b}"
+                ))
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = helpers::parse_body(response).await;
+    assert_eq!(body["meta"]["total"], 2);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
+async fn get_projects_with_invalid_discipline_ids_returns_400(pool: PgPool) {
+    let app = helpers::build_test_app(pool.clone());
+    let admin = helpers::insert_admin(&pool).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/projects?discipline_ids=not-a-uuid")
+                .header("Authorization", format!("Bearer {}", admin.employee_code))
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrator = "doc_man::MIGRATOR")]
 async fn get_projects_with_wbs_code_filter(pool: PgPool) {
     let app = helpers::build_test_app(pool.clone());
     let admin = helpers::insert_admin(&pool).await;
