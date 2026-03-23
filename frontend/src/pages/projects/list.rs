@@ -330,7 +330,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                 >
                                     {move || {
                                         let current = discipline_ids.get();
-                                        if vi2.iter().all(|id| csv_contains(&current, id)) { "全解除" } else { "全選択" }
+                                        if !vi2.is_empty() && vi2.iter().all(|id| csv_contains(&current, id)) { "全解除" } else { "全選択" }
                                     }}
                                 </a>
                             };
