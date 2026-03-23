@@ -24,6 +24,8 @@ use crate::state::AppState;
 pub struct DocumentListQuery {
     pub project_id: Option<Uuid>,
     pub q: Option<String>,
+    pub doc_number: Option<String>,
+    pub title: Option<String>,
     pub dept_codes: Option<String>,
     pub doc_kind_id: Option<Uuid>,
     pub doc_kind_ids: Option<String>,
@@ -54,6 +56,16 @@ pub async fn list_documents(
 
     let search = params
         .q
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let doc_number_filter = params
+        .doc_number
+        .filter(|s| !s.is_empty())
+        .map(|s| escape_like(&s).to_lowercase());
+
+    let title_filter = params
+        .title
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
@@ -140,6 +152,8 @@ pub async fn list_documents(
         &mut count_qb,
         params.project_id,
         search.as_deref(),
+        doc_number_filter.as_deref(),
+        title_filter.as_deref(),
         &dept_codes,
         &doc_kind_ids,
         &fiscal_date_ranges,
@@ -173,6 +187,8 @@ pub async fn list_documents(
         &mut data_qb,
         params.project_id,
         search.as_deref(),
+        doc_number_filter.as_deref(),
+        title_filter.as_deref(),
         &dept_codes,
         &doc_kind_ids,
         &fiscal_date_ranges,
@@ -243,6 +259,8 @@ fn push_document_filters(
     qb: &mut QueryBuilder<sqlx::Postgres>,
     project_id: Option<Uuid>,
     search: Option<&str>,
+    doc_number: Option<&str>,
+    title: Option<&str>,
     dept_codes: &[String],
     doc_kind_ids: &[Uuid],
     fiscal_date_ranges: &[(NaiveDate, NaiveDate)],
@@ -260,6 +278,16 @@ fn push_document_filters(
         qb.push(" || '%' ESCAPE '\\' OR LOWER(d.doc_number) LIKE '%' || ");
         qb.push_bind(q.to_string());
         qb.push(" || '%' ESCAPE '\\')");
+    }
+    if let Some(dn) = doc_number {
+        qb.push(" AND LOWER(d.doc_number) LIKE '%' || ");
+        qb.push_bind(dn.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
+    }
+    if let Some(t) = title {
+        qb.push(" AND LOWER(d.title) LIKE '%' || ");
+        qb.push_bind(t.to_string());
+        qb.push(" || '%' ESCAPE '\\'");
     }
     if !dept_codes.is_empty() {
         qb.push(" AND d.frozen_dept_code IN (");

@@ -39,8 +39,8 @@ pub fn DocumentListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
     let query_map = leptos_router::hooks::use_query_map();
     let page = RwSignal::new(1u32);
-    let search_query = RwSignal::new(String::new());
-    let project_name = RwSignal::new(String::new());
+    let doc_number_query = RwSignal::new(String::new());
+    let title_query = RwSignal::new(String::new());
     let author_name = RwSignal::new(String::new());
     let wbs_code = RwSignal::new(String::new());
 
@@ -92,22 +92,22 @@ pub fn DocumentListPage() -> impl IntoView {
 
     let resource = LocalResource::new(move || {
         let p = page.get();
-        let q = search_query.get();
+        let dn = doc_number_query.get();
+        let tq = title_query.get();
         let dc = dept_codes.get();
         let dk = selected_doc_kinds.get();
         let fy = fiscal_years.get();
-        let pn = project_name.get();
         let an = author_name.get();
         let wc = wbs_code.get();
         async move {
             api::documents::list_filtered(&DocumentListParams {
                 page: p,
                 per_page: 20,
-                q,
+                doc_number: dn,
+                title: tq,
                 dept_codes: dc,
                 doc_kind_ids: dk,
                 fiscal_years: fy,
-                project_name: pn,
                 author_name: an,
                 wbs_code: wc,
             })
@@ -139,8 +139,8 @@ pub fn DocumentListPage() -> impl IntoView {
         }
     };
 
-    let on_search = make_debounced_handler(search_query);
-    let on_project_name = make_debounced_handler(project_name);
+    let on_doc_number = make_debounced_handler(doc_number_query);
+    let on_title = make_debounced_handler(title_query);
     let on_author_name = make_debounced_handler(author_name);
     let on_wbs_code = make_debounced_handler(wbs_code);
 
@@ -369,29 +369,35 @@ pub fn DocumentListPage() -> impl IntoView {
                 </Suspense>
             </div>
 
-            // 絞り込み検索
-            <div class="columns is-multiline mb-2">
-                <div class="column">
-                    <label class="label is-small">"タイトル・文書番号"</label>
-                    <div class="control has-icons-left">
-                        <input class="input is-small" type="text" placeholder="検索..." on:input=on_search />
-                        <span class="icon is-left"><i class="fas fa-search"></i></span>
-                    </div>
-                </div>
-                <div class="column">
-                    <label class="label is-small">"プロジェクト名"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_project_name />
-                </div>
-                <div class="column">
-                    <label class="label is-small">"作成者"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_author_name />
-                </div>
-                <div class="column">
-                    <label class="label is-small">"WBSコード"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..."
-                        prop:value=move || wbs_code.get()
-                        on:input=on_wbs_code />
-                </div>
+            <div class="box mb-4">
+                <h2 class="subtitle is-6 mb-2">"検索"</h2>
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th style="width:11em">"文書番号"</th>
+                            <th style="width:3.5em">"Rev."</th>
+                            <th>"タイトル"</th>
+                            <th style="width:9em">"WBSコード"</th>
+                            <th style="width:6em">"作成者"</th>
+                        </tr>
+                        <tr>
+                            <th colspan="2">
+                                <input class="input is-small" type="text" placeholder="文書番号..." on:input=on_doc_number />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="タイトル..." on:input=on_title />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="WBS..."
+                                    prop:value=move || wbs_code.get()
+                                    on:input=on_wbs_code />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="作成者..." on:input=on_author_name />
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
             </div>
 
             <Suspense fallback=move || view! { <Loading /> }>
@@ -421,8 +427,11 @@ pub fn DocumentListPage() -> impl IntoView {
                                         <table class="table is-fullwidth is-hoverable">
                                             <thead>
                                                 <tr>
-                                                    <th>"文書番号"</th><th>"Rev."</th><th>"タイトル"</th>
-                                                    <th>"WBSコード"</th><th>"作成者"</th>
+                                                    <th style="width:11em">"文書番号"</th>
+                                                    <th style="width:3.5em">"Rev."</th>
+                                                    <th>"タイトル"</th>
+                                                    <th style="width:9em">"WBSコード"</th>
+                                                    <th style="width:6em">"作成者"</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
