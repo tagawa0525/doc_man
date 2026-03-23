@@ -30,7 +30,7 @@ RUN mkdir -p server/src && echo "fn main() {}" > server/src/main.rs && \
 COPY server/ server/
 # タイムスタンプを更新してキャッシュを無効化
 RUN touch server/src/main.rs server/src/lib.rs && \
-    cargo build --release -p doc_man
+    cargo build --release --locked -p doc_man
 
 
 # Stage 3: ランタイム
