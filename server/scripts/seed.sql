@@ -4,6 +4,15 @@
 \echo 'シードデータ投入開始...'
 BEGIN;
 
+-- 既存データを削除して冪等にする（CASCADE で依存テーブルも連鎖削除）
+\echo '  → 既存シードデータをクリア'
+TRUNCATE
+    distributions, document_tags, approval_steps, document_revisions,
+    documents, projects, document_registers,
+    disciplines, employee_departments, department_role_grants,
+    tags, employees, departments, positions, document_kinds
+CASCADE;
+
 \echo ''
 \echo '[Tier 1] 独立テーブル'
 --------------------------------------------------------------------------------

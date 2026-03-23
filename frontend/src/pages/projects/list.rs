@@ -298,23 +298,29 @@ pub fn ProjectListPage() -> impl IntoView {
                 </a>
             </div>
 
-            // 絞り込み検索
-            <div class="columns mb-4">
-                <div class="column">
-                    <label class="label is-small">"プロジェクト名"</label>
-                    <div class="control has-icons-left">
-                        <input class="input is-small" type="text" placeholder="検索..." on:input=on_search />
-                        <span class="icon is-left"><i class="fas fa-search"></i></span>
-                    </div>
-                </div>
-                <div class="column">
-                    <label class="label is-small">"担当者"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_manager_name />
-                </div>
-                <div class="column">
-                    <label class="label is-small">"WBSコード"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_wbs_code />
-                </div>
+            <div class="box mb-4">
+                <h2 class="subtitle is-6 mb-2">"検索"</h2>
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th style="width:9em">"WBSコード"</th><th>"名前"</th>
+                            <th style="width:8em">"マネージャー"</th><th style="width:8em">"ステータス"</th><th style="width:4em">"文書"</th>
+                        </tr>
+                        <tr>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="WBS..." on:input=on_wbs_code />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="名前..." on:input=on_search />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="マネージャー..." on:input=on_manager_name />
+                            </th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                </table>
             </div>
 
             <Suspense fallback=move || view! { <Loading /> }>
@@ -324,40 +330,61 @@ pub fn ProjectListPage() -> impl IntoView {
                             let total = paginated.meta.total;
                             let cp = paginated.meta.page;
                             let pp = paginated.meta.per_page;
+
+                            // 専門分野ごとにグループ化（出現順を保持）
+                            let mut discipline_order: Vec<(String, String)> = Vec::new();
+                            let mut groups: std::collections::HashMap<String, Vec<_>> = std::collections::HashMap::new();
+                            for p in paginated.data {
+                                let disc_id = p.discipline.id.to_string();
+                                if !groups.contains_key(&disc_id) {
+                                    discipline_order.push((disc_id.clone(), p.discipline.name.clone()));
+                                }
+                                groups.entry(disc_id).or_default().push(p);
+                            }
+
+                            let tables = discipline_order.into_iter().map(|(disc_id, disc_name)| {
+                                let projects = groups.remove(&disc_id).unwrap_or_default();
+                                view! {
+                                    <div class="box mb-4">
+                                        <h2 class="subtitle is-6 mb-2">{disc_name}</h2>
+                                        <table class="table is-fullwidth is-hoverable">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:9em">"WBSコード"</th><th>"名前"</th>
+                                                    <th style="width:8em">"マネージャー"</th><th style="width:8em">"ステータス"</th><th style="width:4em">"文書"</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {projects.into_iter().map(|p| {
+                                                    let detail_url = format!("/projects/{}", p.id);
+                                                    let docs_url = p.wbs_code.as_deref().map(|wc| {
+                                                        format!("/documents?wbs_code={}", crate::api::encode_query(wc))
+                                                    });
+                                                    view! {
+                                                        <tr>
+                                                            <td>{p.wbs_code.unwrap_or_default()}</td>
+                                                            <td><a href=detail_url>{p.name}</a></td>
+                                                            <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
+                                                            <td><span class="tag is-light">{p.status}</span></td>
+                                                            <td>
+                                                                {docs_url.map(|url| view! {
+                                                                    <a href=url class="has-text-link">
+                                                                        <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
+                                                                    </a>
+                                                                })}
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }).collect_view()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            }).collect_view();
+
                             view! {
-                                <div class="box">
-                                    <table class="table is-fullwidth is-hoverable">
-                                        <thead>
-                                            <tr>
-                                                <th>"WBSコード"</th><th>"名前"</th><th>"専門分野"</th>
-                                                <th>"マネージャー"</th><th>"ステータス"</th><th>"文書"</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginated.data.into_iter().map(|p| {
-                                                let detail_url = format!("/projects/{}", p.id);
-                                                let docs_url = p.wbs_code.as_deref().map(|wc| {
-                                                    format!("/documents?wbs_code={}", crate::api::encode_query(wc))
-                                                });
-                                                view! {
-                                                    <tr>
-                                                        <td>{p.wbs_code.unwrap_or_default()}</td>
-                                                        <td><a href=detail_url>{p.name}</a></td>
-                                                        <td>{p.discipline.name}</td>
-                                                        <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
-                                                        <td><span class="tag is-light">{p.status}</span></td>
-                                                        <td>
-                                                            {docs_url.map(|url| view! {
-                                                                <a href=url class="has-text-link">
-                                                                    <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
-                                                                </a>
-                                                            })}
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            }).collect_view()}
-                                        </tbody>
-                                    </table>
+                                <div>
+                                    {tables}
                                     <Pagination current_page=cp total=total per_page=pp on_page_change=Callback::new(move |p| page.set(p)) />
                                 </div>
                             }.into_any()

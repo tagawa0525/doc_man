@@ -11,9 +11,9 @@ build:
 build-release:
     cargo build --release -p doc_man
 
-# サーバーを起動（localhost:3000）
+# サーバーを起動（localhost:3000、フロントエンド配信なし）
 run:
-    cargo run -p doc_man
+    FRONTEND_DIST_DIR=/dev/null cargo run -p doc_man
 
 # 統合テストを実行
 test:
@@ -30,6 +30,18 @@ fmt:
 # フォーマットチェックのみ
 fmt-check:
     cargo fmt --all -- --check
+
+# バックエンド + フロントエンドを同時起動（DB は devShell で自動起動済み）
+dev:
+    -just dev-stop
+    just run &
+    just frontend-dev &
+    wait
+
+# バックエンド + フロントエンドを停止
+dev-stop:
+    -pkill -f 'target/debug/doc_man'
+    -pkill -f 'trunk serve'
 
 # --- フロントエンド ---
 
@@ -70,13 +82,13 @@ db-reset-seed: db-reset db-seed
 pod-build:
     podman compose build
 
-# コンテナをバックグラウンドで起動
+# コンテナをバックグラウンドで起動（変更があれば自動リビルド）
 pod-up:
-    podman compose up -d
+    podman compose up -d --build
 
 # コンテナを起動してシードデータを投入
 pod-up-seed:
-    podman compose up -d
+    podman compose up -d --build
     podman compose --profile seed run --rm seed
 
 # コンテナを停止

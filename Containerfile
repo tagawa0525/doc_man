@@ -1,5 +1,5 @@
 # Stage 1: フロントエンドビルド（WASM）
-FROM rust:1.93-bookworm AS frontend-builder
+FROM docker.io/library/rust:1.93-bookworm AS frontend-builder
 
 RUN rustup target add wasm32-unknown-unknown && \
     cargo install trunk --locked && \
@@ -14,7 +14,7 @@ RUN cd frontend && trunk build --release
 
 
 # Stage 2: サーバービルド
-FROM rust:1.93-bookworm AS server-builder
+FROM docker.io/library/rust:1.93-bookworm AS server-builder
 
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
@@ -34,7 +34,7 @@ RUN touch server/src/main.rs server/src/lib.rs && \
 
 
 # Stage 3: ランタイム
-FROM debian:bookworm-slim AS runtime
+FROM docker.io/library/debian:bookworm-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
