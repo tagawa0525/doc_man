@@ -46,7 +46,7 @@ pub fn ProjectListPage() -> impl IntoView {
 
     let fy = current_fiscal_year();
     let default_years: Vec<i32> = ((fy - 2)..=(fy + 1)).collect();
-    let all_years: Vec<i32> = ((fy - 5)..=(fy + 1)).rev().collect();
+    let all_years: Vec<i32> = ((fy - 15)..=(fy + 1)).rev().collect();
 
     let fiscal_years = RwSignal::new(
         default_years
