@@ -32,7 +32,11 @@ pub async fn list_filtered(
         let _ = write!(url, "&dept_ids={}", params.dept_ids);
     }
     if !params.discipline_ids.is_empty() {
-        let _ = write!(url, "&discipline_ids={}", params.discipline_ids);
+        let _ = write!(
+            url,
+            "&discipline_ids={}",
+            super::encode_query(&params.discipline_ids)
+        );
     }
     if !params.fiscal_years.is_empty() {
         let _ = write!(url, "&fiscal_years={}", params.fiscal_years);
