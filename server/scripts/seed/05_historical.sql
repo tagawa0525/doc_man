@@ -91,7 +91,7 @@ BEGIN
                         + '10:00'::INTERVAL;
                     v_yymm := to_char(v_doc_created, 'YYMM');
 
-                    v_doc_num := format('%s%s-%sH%03s',
+                    v_doc_num := format('%s%s-%s%03s',
                         v_dk_codes[v_ki], v_disc_depts[v_di],
                         v_yymm, v_seq);
 
