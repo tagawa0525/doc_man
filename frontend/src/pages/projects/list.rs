@@ -7,7 +7,6 @@ use crate::api::projects::ProjectListParams;
 use crate::api::types::{flatten_dept_tree_full, FlatDepartment};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
-use crate::components::pagination::Pagination;
 
 fn current_fiscal_year() -> i32 {
     let now = chrono::Utc::now();
@@ -37,7 +36,6 @@ fn csv_toggle(csv: &str, key: &str) -> String {
 #[component]
 pub fn ProjectListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
-    let page = RwSignal::new(1u32);
     let search_query = RwSignal::new(String::new());
     let manager_name = RwSignal::new(String::new());
     let wbs_code = RwSignal::new(String::new());
@@ -79,7 +77,6 @@ pub fn ProjectListPage() -> impl IntoView {
     let all_depts = LocalResource::new(|| async { api::departments::list().await });
 
     let resource = LocalResource::new(move || {
-        let p = page.get();
         let q = search_query.get();
         let di = dept_ids.get();
         let fy = fiscal_years.get();
@@ -87,8 +84,8 @@ pub fn ProjectListPage() -> impl IntoView {
         let wc = wbs_code.get();
         async move {
             api::projects::list_filtered(&ProjectListParams {
-                page: p,
-                per_page: 20,
+                page: 1,
+                per_page: 1000,
                 q,
                 dept_ids: di,
                 fiscal_years: fy,
@@ -109,7 +106,6 @@ pub fn ProjectListPage() -> impl IntoView {
                 window.clear_timeout_with_handle(prev);
             }
             let cb = Closure::once(move || {
-                page.set(1);
                 signal.set(value);
             });
             let id = window
@@ -190,8 +186,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                             }
                                             dept_ids.set(items.join(","));
                                         }
-                                        page.set(1);
-                                    }
+                                                            }
                                 >
                                     {move || {
                                         let current = dept_ids.get();
@@ -211,8 +206,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                             type="checkbox"
                                             prop:checked=move || csv_contains(&dept_ids.get(), &id)
                                             on:change=move |_| {
-                                                page.set(1);
-                                                dept_ids.set(csv_toggle(&dept_ids.get_untracked(), &id2));
+                                                                                dept_ids.set(csv_toggle(&dept_ids.get_untracked(), &id2));
                                             }
                                         />
                                         " " {d.label}
@@ -259,8 +253,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                     }
                                     fiscal_years.set(items.join(","));
                                 }
-                                page.set(1);
-                            }
+                                            }
                         >
                             {move || {
                                 let current = fiscal_years.get();
@@ -281,8 +274,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                     type="checkbox"
                                     prop:checked=move || csv_contains(&fiscal_years.get(), &ys)
                                     on:change=move |_| {
-                                        page.set(1);
-                                        fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
+                                                                fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
                                     }
                                 />
                                 " " {label}
@@ -327,10 +319,6 @@ pub fn ProjectListPage() -> impl IntoView {
                 {move || {
                     resource.get().map(|result| match result {
                         Ok(paginated) => {
-                            let total = paginated.meta.total;
-                            let cp = paginated.meta.page;
-                            let pp = paginated.meta.per_page;
-
                             // 専門分野ごとにグループ化（出現順を保持）
                             let mut discipline_order: Vec<(String, String)> = Vec::new();
                             let mut groups: std::collections::HashMap<String, Vec<_>> = std::collections::HashMap::new();
@@ -382,12 +370,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                 }
                             }).collect_view();
 
-                            view! {
-                                <div>
-                                    {tables}
-                                    <Pagination current_page=cp total=total per_page=pp on_page_change=Callback::new(move |p| page.set(p)) />
-                                </div>
-                            }.into_any()
+                            tables.into_any()
                         }
                         Err(e) => view! { <div class="notification is-danger">{format!("読み込み失敗: {}", e.message)}</div> }.into_any(),
                     })

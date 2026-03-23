@@ -48,8 +48,8 @@ impl PaginationParams {
         if self.page == 0 {
             return Err("page must be >= 1".to_string());
         }
-        if self.per_page == 0 || self.per_page > 100 {
-            return Err("per_page must be between 1 and 100".to_string());
+        if self.per_page == 0 || self.per_page > 1000 {
+            return Err("per_page must be between 1 and 1000".to_string());
         }
         Ok(())
     }

@@ -7,7 +7,6 @@ use crate::api::documents::DocumentListParams;
 use crate::api::types::{flatten_dept_tree_full, FlatDepartment};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
-use crate::components::pagination::Pagination;
 
 fn current_fiscal_year() -> i32 {
     let now = chrono::Utc::now();
@@ -38,7 +37,6 @@ fn csv_toggle(csv: &str, key: &str) -> String {
 pub fn DocumentListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
     let query_map = leptos_router::hooks::use_query_map();
-    let page = RwSignal::new(1u32);
     let doc_number_query = RwSignal::new(String::new());
     let title_query = RwSignal::new(String::new());
     let author_name = RwSignal::new(String::new());
@@ -91,7 +89,6 @@ pub fn DocumentListPage() -> impl IntoView {
     let all_depts = LocalResource::new(|| async { api::departments::list().await });
 
     let resource = LocalResource::new(move || {
-        let p = page.get();
         let dn = doc_number_query.get();
         let tq = title_query.get();
         let dc = dept_codes.get();
@@ -101,8 +98,8 @@ pub fn DocumentListPage() -> impl IntoView {
         let wc = wbs_code.get();
         async move {
             api::documents::list_filtered(&DocumentListParams {
-                page: p,
-                per_page: 20,
+                page: 1,
+                per_page: 1000,
                 doc_number: dn,
                 title: tq,
                 dept_codes: dc,
@@ -125,7 +122,6 @@ pub fn DocumentListPage() -> impl IntoView {
                 window.clear_timeout_with_handle(prev);
             }
             let cb = Closure::once(move || {
-                page.set(1);
                 signal.set(value);
             });
             let id = window
@@ -206,8 +202,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                             }
                                             dept_codes.set(items.join(","));
                                         }
-                                        page.set(1);
-                                    }
+                                                            }
                                 >
                                     {
                                         let vc2 = visible_codes.clone();
@@ -230,8 +225,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                             type="checkbox"
                                             prop:checked=move || csv_contains(&dept_codes.get(), &code)
                                             on:change=move |_| {
-                                                page.set(1);
-                                                dept_codes.set(csv_toggle(&dept_codes.get_untracked(), &code2));
+                                                                                dept_codes.set(csv_toggle(&dept_codes.get_untracked(), &code2));
                                             }
                                         />
                                         " " {d.label}
@@ -278,8 +272,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                     }
                                     fiscal_years.set(items.join(","));
                                 }
-                                page.set(1);
-                            }
+                                            }
                         >
                             {move || {
                                 let current = fiscal_years.get();
@@ -300,8 +293,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                     type="checkbox"
                                     prop:checked=move || csv_contains(&fiscal_years.get(), &ys)
                                     on:change=move |_| {
-                                        page.set(1);
-                                        fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
+                                                                fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
                                     }
                                 />
                                 " " {label}
@@ -336,8 +328,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                         } else {
                                             selected_doc_kinds.set(ai.join(","));
                                         }
-                                        page.set(1);
-                                    }
+                                                            }
                                 >
                                     {move || {
                                         let current = selected_doc_kinds.get();
@@ -354,8 +345,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                             type="checkbox"
                                             prop:checked=move || csv_contains(&selected_doc_kinds.get(), &id)
                                             on:change=move |_| {
-                                                page.set(1);
-                                                selected_doc_kinds.set(csv_toggle(&selected_doc_kinds.get_untracked(), &id2));
+                                                                                selected_doc_kinds.set(csv_toggle(&selected_doc_kinds.get_untracked(), &id2));
                                             }
                                         />
                                         " " {dk.name}
@@ -404,10 +394,6 @@ pub fn DocumentListPage() -> impl IntoView {
                 {move || {
                     resource.get().map(|result| match result {
                         Ok(paginated) => {
-                            let total = paginated.meta.total;
-                            let cp = paginated.meta.page;
-                            let pp = paginated.meta.per_page;
-
                             // doc_kind ごとにグループ化（出現順を保持）
                             let mut kind_order: Vec<(String, String)> = Vec::new();
                             let mut groups: std::collections::HashMap<String, Vec<_>> = std::collections::HashMap::new();
@@ -453,12 +439,7 @@ pub fn DocumentListPage() -> impl IntoView {
                                 }
                             }).collect_view();
 
-                            view! {
-                                <div>
-                                    {tables}
-                                    <Pagination current_page=cp total=total per_page=pp on_page_change=Callback::new(move |p| page.set(p)) />
-                                </div>
-                            }.into_any()
+                            tables.into_any()
                         }
                         Err(e) => view! { <div class="notification is-danger">{format!("読み込み失敗: {}", e.message)}</div> }.into_any(),
                     })
