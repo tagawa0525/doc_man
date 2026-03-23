@@ -1,8 +1,9 @@
 # Stage 1: フロントエンドビルド（WASM）
-FROM rust:1.85-bookworm AS frontend-builder
+FROM rust:1.93-bookworm AS frontend-builder
 
 RUN rustup target add wasm32-unknown-unknown && \
-    cargo install trunk --locked
+    cargo install trunk --locked && \
+    cargo install wasm-bindgen-cli@0.2.114 --locked
 
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
@@ -13,7 +14,7 @@ RUN cd frontend && trunk build --release
 
 
 # Stage 2: サーバービルド
-FROM rust:1.85-bookworm AS server-builder
+FROM rust:1.93-bookworm AS server-builder
 
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
