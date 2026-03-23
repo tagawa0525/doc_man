@@ -25,7 +25,6 @@ DECLARE
     v_di           INT;  -- discipline index
     v_ki           INT;  -- kind index
     v_ni           INT;  -- doc number within kind (1..2)
-    v_seq          INT;
     v_doc_created  TIMESTAMPTZ;
     v_yymm         TEXT;
 BEGIN
@@ -111,7 +110,7 @@ BEGIN
                                 WHEN '手' THEN '手順書'
                             END,
                             v_ni),
-                        v_author_ids[((v_seq + v_year) % array_length(v_author_ids, 1)) + 1],
+                        v_author_ids[((v_di * 10 + v_ki * 2 + v_ni + v_year) % array_length(v_author_ids, 1)) + 1],
                         v_dk_ids[v_ki],
                         v_disc_depts[v_di],
                         'approved',
@@ -126,7 +125,7 @@ BEGIN
                         effective_from
                     ) VALUES (
                         v_doc_id, 0, v_doc_num || '/0',
-                        v_author_ids[((v_seq + v_year) % array_length(v_author_ids, 1)) + 1],
+                        v_author_ids[((v_di * 10 + v_ki * 2 + v_ni + v_year) % array_length(v_author_ids, 1)) + 1],
                         v_doc_created
                     );
                 END LOOP;
