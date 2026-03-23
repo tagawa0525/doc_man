@@ -18,7 +18,7 @@ use crate::state::AppState;
 #[derive(Debug, Deserialize)]
 pub struct ProjectListQuery {
     pub status: Option<String>,
-    pub discipline_id: Option<Uuid>,
+    pub discipline_ids: Option<String>,
     pub wbs_code: Option<String>,
     pub q: Option<String>,
     pub dept_ids: Option<String>,
@@ -76,6 +76,22 @@ pub async fn list_projects(
         .filter(|s| !s.is_empty())
         .map(|s| escape_like(&s).to_lowercase());
 
+    let mut discipline_ids: Vec<Uuid> = Vec::new();
+    if let Some(ref raw) = params.discipline_ids {
+        for part in raw.split(',') {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let id: Uuid = trimmed.parse().map_err(|_| {
+                AppError::InvalidRequest(
+                    "invalid discipline_ids parameter: must be comma-separated UUIDs".to_string(),
+                )
+            })?;
+            discipline_ids.push(id);
+        }
+    }
+
     let mut fiscal_years: Vec<i32> = Vec::new();
     if let Some(ref raw) = params.fiscal_years {
         for part in raw.split(',') {
@@ -114,7 +130,7 @@ pub async fn list_projects(
     push_project_filters(
         &mut count_qb,
         params.status.as_deref(),
-        params.discipline_id,
+        &discipline_ids,
         wbs_code.as_deref(),
         search.as_deref(),
         &dept_ids,
@@ -142,7 +158,7 @@ pub async fn list_projects(
     push_project_filters(
         &mut data_qb,
         params.status.as_deref(),
-        params.discipline_id,
+        &discipline_ids,
         wbs_code.as_deref(),
         search.as_deref(),
         &dept_ids,
@@ -198,7 +214,7 @@ pub async fn list_projects(
 fn push_project_filters(
     qb: &mut QueryBuilder<sqlx::Postgres>,
     status: Option<&str>,
-    discipline_id: Option<Uuid>,
+    discipline_ids: &[Uuid],
     wbs_code: Option<&str>,
     search: Option<&str>,
     dept_ids: &[Uuid],
@@ -209,9 +225,13 @@ fn push_project_filters(
         qb.push(" AND p.status = ");
         qb.push_bind(s.to_string());
     }
-    if let Some(did) = discipline_id {
-        qb.push(" AND p.discipline_id = ");
-        qb.push_bind(did);
+    if !discipline_ids.is_empty() {
+        qb.push(" AND p.discipline_id IN (");
+        let mut separated = qb.separated(", ");
+        for id in discipline_ids {
+            separated.push_bind(*id);
+        }
+        separated.push_unseparated(")");
     }
     if let Some(w) = wbs_code {
         qb.push(" AND LOWER(p.wbs_code) LIKE '%' || ");

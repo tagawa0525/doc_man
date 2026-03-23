@@ -56,6 +56,8 @@ pub fn ProjectListPage() -> impl IntoView {
 
     let dept_ids = RwSignal::new(String::new());
     let dept_ids_initialized = RwSignal::new(false);
+    let discipline_ids = RwSignal::new(String::new());
+    let show_detail_discipline = RwSignal::new(false);
 
     Effect::new(move || {
         if let Some(ref u) = auth.user.get() {
@@ -75,10 +77,12 @@ pub fn ProjectListPage() -> impl IntoView {
     let can_create = Memo::new(move |_| auth.role().is_some_and(|r| r.can_manage()));
 
     let all_depts = LocalResource::new(|| async { api::departments::list().await });
+    let all_disciplines = LocalResource::new(|| async { api::disciplines::list_all().await });
 
     let resource = LocalResource::new(move || {
         let q = search_query.get();
         let di = dept_ids.get();
+        let disc_ids = discipline_ids.get();
         let fy = fiscal_years.get();
         let mn = manager_name.get();
         let wc = wbs_code.get();
@@ -88,6 +92,7 @@ pub fn ProjectListPage() -> impl IntoView {
                 per_page: 0,
                 q,
                 dept_ids: di,
+                discipline_ids: disc_ids,
                 fiscal_years: fy,
                 manager_name: mn,
                 wbs_code: wc,
@@ -288,6 +293,65 @@ pub fn ProjectListPage() -> impl IntoView {
                 >
                     {move || if show_detail_year.get() { "閉じる" } else { "全年度..." }}
                 </a>
+            </div>
+
+            // 分野
+            <div class="is-flex is-align-items-center is-flex-wrap-wrap mb-2" style="gap: 0.25rem 0.75rem;">
+                <span class="has-text-weight-semibold is-size-7">"分野："</span>
+                <Suspense fallback=|| ()>
+                    {move || all_disciplines.get().map(|result| match result {
+                        Ok(paginated) => {
+                            let disciplines = paginated.data;
+                            let visible_ids: Vec<String> = disciplines.iter()
+                                .map(|d| d.id.to_string())
+                                .collect();
+                            let vi = visible_ids.clone();
+                            let vi2 = visible_ids.clone();
+                            let toggle_all = view! {
+                                <a class="is-size-7 has-text-grey" style="cursor:pointer; white-space:nowrap;"
+                                    on:click=move |_| {
+                                        let current = discipline_ids.get_untracked();
+                                        let all_checked = vi.iter().all(|id| csv_contains(&current, id));
+                                        if all_checked {
+                                            discipline_ids.set(String::new());
+                                        } else {
+                                            let mut items: Vec<&str> = current.split(',').filter(|c| !c.is_empty()).collect();
+                                            for id in &vi {
+                                                if !items.contains(&id.as_str()) {
+                                                    items.push(id);
+                                                }
+                                            }
+                                            discipline_ids.set(items.join(","));
+                                        }
+                                    }
+                                >
+                                    {move || {
+                                        let current = discipline_ids.get();
+                                        if vi2.iter().all(|id| csv_contains(&current, id)) { "全解除" } else { "全選択" }
+                                    }}
+                                </a>
+                            };
+                            let checkboxes = disciplines.into_iter().map(move |d| {
+                                let id = d.id.to_string();
+                                let id2 = id.clone();
+                                view! {
+                                    <label class="checkbox is-size-7">
+                                        <input
+                                            type="checkbox"
+                                            prop:checked=move || csv_contains(&discipline_ids.get(), &id)
+                                            on:change=move |_| {
+                                                discipline_ids.set(csv_toggle(&discipline_ids.get_untracked(), &id2));
+                                            }
+                                        />
+                                        " " {d.name}
+                                    </label>
+                                }
+                            }).collect_view();
+                            view! { {toggle_all} {checkboxes} }.into_any()
+                        }
+                        Err(_) => view! { <span class="tag is-warning">"分野読込失敗"</span> }.into_any(),
+                    })}
+                </Suspense>
             </div>
 
             <div class="box mb-4">

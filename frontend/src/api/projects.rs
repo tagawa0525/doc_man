@@ -12,6 +12,7 @@ pub struct ProjectListParams {
     pub per_page: u32,
     pub q: String,
     pub dept_ids: String,
+    pub discipline_ids: String,
     pub fiscal_years: String,
     pub manager_name: String,
     pub wbs_code: String,
@@ -29,6 +30,9 @@ pub async fn list_filtered(
     }
     if !params.dept_ids.is_empty() {
         let _ = write!(url, "&dept_ids={}", params.dept_ids);
+    }
+    if !params.discipline_ids.is_empty() {
+        let _ = write!(url, "&discipline_ids={}", params.discipline_ids);
     }
     if !params.fiscal_years.is_empty() {
         let _ = write!(url, "&fiscal_years={}", params.fiscal_years);
