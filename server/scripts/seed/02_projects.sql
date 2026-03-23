@@ -1,15 +1,26 @@
 -- 02_projects.sql: 専門分野・文書台帳・プロジェクト
 
 --------------------------------------------------------------------------------
--- disciplines (5件)
+-- disciplines (11件: 各部署2〜3分野)
 --------------------------------------------------------------------------------
-\echo '  → disciplines: 専門分野 (5件)'
+\echo '  → disciplines: 専門分野 (11件)'
 INSERT INTO disciplines (code, name, department_id) VALUES
+    -- 機械設計課 (3分野)
     ('MECH',  '機械',     (SELECT id FROM departments WHERE code = '機設')),
+    ('PIPE',  '配管',     (SELECT id FROM departments WHERE code = '機設')),
+    ('ROTR',  '回転機',   (SELECT id FROM departments WHERE code = '機設')),
+    -- 電気設計課 (2分野)
     ('ELEC',  '電気',     (SELECT id FROM departments WHERE code = '電設')),
+    ('CTRL',  '制御',     (SELECT id FROM departments WHERE code = '電設')),
+    -- 計装設計課 (2分野)
     ('INST',  '計装',     (SELECT id FROM departments WHERE code = '計設')),
+    ('PROC',  'プロセス', (SELECT id FROM departments WHERE code = '計設')),
+    -- 品質管理部 (2分野)
     ('QA',    '品質管理', (SELECT id FROM departments WHERE code = '品管')),
-    ('MAINT', '保全',     (SELECT id FROM departments WHERE code = '保全'));
+    ('INSP',  '検査',     (SELECT id FROM departments WHERE code = '品管')),
+    -- 保全部 (2分野)
+    ('MAINT', '保全',     (SELECT id FROM departments WHERE code = '保全')),
+    ('DIAG',  '診断',     (SELECT id FROM departments WHERE code = '保全'));
 
 --------------------------------------------------------------------------------
 -- document_registers (7件)
