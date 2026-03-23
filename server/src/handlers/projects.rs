@@ -18,6 +18,7 @@ use crate::state::AppState;
 #[derive(Debug, Deserialize)]
 pub struct ProjectListQuery {
     pub status: Option<String>,
+    #[serde(alias = "discipline_id")]
     pub discipline_ids: Option<String>,
     pub wbs_code: Option<String>,
     pub q: Option<String>,
