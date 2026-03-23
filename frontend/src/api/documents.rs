@@ -11,11 +11,11 @@ use uuid::Uuid;
 pub struct DocumentListParams {
     pub page: u32,
     pub per_page: u32,
-    pub q: String,
+    pub doc_number: String,
+    pub title: String,
     pub dept_codes: String,
     pub doc_kind_ids: String,
     pub fiscal_years: String,
-    pub project_name: String,
     pub author_name: String,
     pub wbs_code: String,
 }
@@ -27,8 +27,15 @@ pub async fn list_filtered(
         "/api/v1/documents?page={}&per_page={}",
         params.page, params.per_page
     );
-    if !params.q.is_empty() {
-        let _ = write!(url, "&q={}", super::encode_query(&params.q));
+    if !params.doc_number.is_empty() {
+        let _ = write!(
+            url,
+            "&doc_number={}",
+            super::encode_query(&params.doc_number)
+        );
+    }
+    if !params.title.is_empty() {
+        let _ = write!(url, "&title={}", super::encode_query(&params.title));
     }
     if !params.dept_codes.is_empty() {
         let _ = write!(
@@ -42,13 +49,6 @@ pub async fn list_filtered(
     }
     if !params.fiscal_years.is_empty() {
         let _ = write!(url, "&fiscal_years={}", params.fiscal_years);
-    }
-    if !params.project_name.is_empty() {
-        let _ = write!(
-            url,
-            "&project_name={}",
-            super::encode_query(&params.project_name)
-        );
     }
     if !params.author_name.is_empty() {
         let _ = write!(

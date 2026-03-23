@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17
+    image: docker.io/library/postgres:17
     environment:
       POSTGRES_USER: doc_man
       POSTGRES_PASSWORD: doc_man
@@ -33,7 +33,7 @@ services:
       start_period: 10s
 
   seed:
-    image: postgres:17
+    image: docker.io/library/postgres:17
     command: psql -h db -U doc_man -d doc_man -f /seed/seed.sql
     environment:
       PGPASSWORD: doc_man

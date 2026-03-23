@@ -7,7 +7,6 @@ use crate::api::projects::ProjectListParams;
 use crate::api::types::{flatten_dept_tree_full, FlatDepartment};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
-use crate::components::pagination::Pagination;
 
 fn current_fiscal_year() -> i32 {
     let now = chrono::Utc::now();
@@ -37,7 +36,6 @@ fn csv_toggle(csv: &str, key: &str) -> String {
 #[component]
 pub fn ProjectListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
-    let page = RwSignal::new(1u32);
     let search_query = RwSignal::new(String::new());
     let manager_name = RwSignal::new(String::new());
     let wbs_code = RwSignal::new(String::new());
@@ -46,7 +44,7 @@ pub fn ProjectListPage() -> impl IntoView {
 
     let fy = current_fiscal_year();
     let default_years: Vec<i32> = ((fy - 2)..=(fy + 1)).collect();
-    let all_years: Vec<i32> = ((fy - 5)..=(fy + 1)).rev().collect();
+    let all_years: Vec<i32> = ((fy - 15)..=(fy + 1)).rev().collect();
 
     let fiscal_years = RwSignal::new(
         default_years
@@ -79,7 +77,6 @@ pub fn ProjectListPage() -> impl IntoView {
     let all_depts = LocalResource::new(|| async { api::departments::list().await });
 
     let resource = LocalResource::new(move || {
-        let p = page.get();
         let q = search_query.get();
         let di = dept_ids.get();
         let fy = fiscal_years.get();
@@ -87,8 +84,8 @@ pub fn ProjectListPage() -> impl IntoView {
         let wc = wbs_code.get();
         async move {
             api::projects::list_filtered(&ProjectListParams {
-                page: p,
-                per_page: 20,
+                page: 1,
+                per_page: 0,
                 q,
                 dept_ids: di,
                 fiscal_years: fy,
@@ -109,7 +106,6 @@ pub fn ProjectListPage() -> impl IntoView {
                 window.clear_timeout_with_handle(prev);
             }
             let cb = Closure::once(move || {
-                page.set(1);
                 signal.set(value);
             });
             let id = window
@@ -190,8 +186,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                             }
                                             dept_ids.set(items.join(","));
                                         }
-                                        page.set(1);
-                                    }
+                                                            }
                                 >
                                     {move || {
                                         let current = dept_ids.get();
@@ -211,8 +206,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                             type="checkbox"
                                             prop:checked=move || csv_contains(&dept_ids.get(), &id)
                                             on:change=move |_| {
-                                                page.set(1);
-                                                dept_ids.set(csv_toggle(&dept_ids.get_untracked(), &id2));
+                                                                                dept_ids.set(csv_toggle(&dept_ids.get_untracked(), &id2));
                                             }
                                         />
                                         " " {d.label}
@@ -259,8 +253,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                     }
                                     fiscal_years.set(items.join(","));
                                 }
-                                page.set(1);
-                            }
+                                            }
                         >
                             {move || {
                                 let current = fiscal_years.get();
@@ -281,8 +274,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                     type="checkbox"
                                     prop:checked=move || csv_contains(&fiscal_years.get(), &ys)
                                     on:change=move |_| {
-                                        page.set(1);
-                                        fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
+                                                                fiscal_years.set(csv_toggle(&fiscal_years.get_untracked(), &ys2));
                                     }
                                 />
                                 " " {label}
@@ -298,69 +290,87 @@ pub fn ProjectListPage() -> impl IntoView {
                 </a>
             </div>
 
-            // 絞り込み検索
-            <div class="columns mb-4">
-                <div class="column">
-                    <label class="label is-small">"プロジェクト名"</label>
-                    <div class="control has-icons-left">
-                        <input class="input is-small" type="text" placeholder="検索..." on:input=on_search />
-                        <span class="icon is-left"><i class="fas fa-search"></i></span>
-                    </div>
-                </div>
-                <div class="column">
-                    <label class="label is-small">"担当者"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_manager_name />
-                </div>
-                <div class="column">
-                    <label class="label is-small">"WBSコード"</label>
-                    <input class="input is-small" type="text" placeholder="部分一致..." on:input=on_wbs_code />
-                </div>
+            <div class="box mb-4">
+                <h2 class="subtitle is-6 mb-2">"検索"</h2>
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th style="width:9em">"WBSコード"</th><th>"名前"</th>
+                            <th style="width:8em">"マネージャー"</th><th style="width:8em">"ステータス"</th><th style="width:4em">"文書"</th>
+                        </tr>
+                        <tr>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="WBS..." on:input=on_wbs_code />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="名前..." on:input=on_search />
+                            </th>
+                            <th>
+                                <input class="input is-small" type="text" placeholder="マネージャー..." on:input=on_manager_name />
+                            </th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                </table>
             </div>
 
             <Suspense fallback=move || view! { <Loading /> }>
                 {move || {
                     resource.get().map(|result| match result {
                         Ok(paginated) => {
-                            let total = paginated.meta.total;
-                            let cp = paginated.meta.page;
-                            let pp = paginated.meta.per_page;
-                            view! {
-                                <div class="box">
-                                    <table class="table is-fullwidth is-hoverable">
-                                        <thead>
-                                            <tr>
-                                                <th>"WBSコード"</th><th>"名前"</th><th>"専門分野"</th>
-                                                <th>"マネージャー"</th><th>"ステータス"</th><th>"文書"</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginated.data.into_iter().map(|p| {
-                                                let detail_url = format!("/projects/{}", p.id);
-                                                let docs_url = p.wbs_code.as_deref().map(|wc| {
-                                                    format!("/documents?wbs_code={}", crate::api::encode_query(wc))
-                                                });
-                                                view! {
-                                                    <tr>
-                                                        <td>{p.wbs_code.unwrap_or_default()}</td>
-                                                        <td><a href=detail_url>{p.name}</a></td>
-                                                        <td>{p.discipline.name}</td>
-                                                        <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
-                                                        <td><span class="tag is-light">{p.status}</span></td>
-                                                        <td>
-                                                            {docs_url.map(|url| view! {
-                                                                <a href=url class="has-text-link">
-                                                                    <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
-                                                                </a>
-                                                            })}
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            }).collect_view()}
-                                        </tbody>
-                                    </table>
-                                    <Pagination current_page=cp total=total per_page=pp on_page_change=Callback::new(move |p| page.set(p)) />
-                                </div>
-                            }.into_any()
+                            // 専門分野ごとにグループ化（出現順を保持）
+                            let mut discipline_order: Vec<(String, String)> = Vec::new();
+                            let mut groups: std::collections::HashMap<String, Vec<_>> = std::collections::HashMap::new();
+                            for p in paginated.data {
+                                let disc_id = p.discipline.id.to_string();
+                                if !groups.contains_key(&disc_id) {
+                                    discipline_order.push((disc_id.clone(), p.discipline.name.clone()));
+                                }
+                                groups.entry(disc_id).or_default().push(p);
+                            }
+
+                            let tables = discipline_order.into_iter().map(|(disc_id, disc_name)| {
+                                let projects = groups.remove(&disc_id).unwrap_or_default();
+                                view! {
+                                    <div class="box mb-4">
+                                        <h2 class="subtitle is-6 mb-2">{disc_name}</h2>
+                                        <table class="table is-fullwidth is-hoverable">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:9em">"WBSコード"</th><th>"名前"</th>
+                                                    <th style="width:8em">"マネージャー"</th><th style="width:8em">"ステータス"</th><th style="width:4em">"文書"</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {projects.into_iter().map(|p| {
+                                                    let detail_url = format!("/projects/{}", p.id);
+                                                    let docs_url = p.wbs_code.as_deref().map(|wc| {
+                                                        format!("/documents?wbs_code={}", crate::api::encode_query(wc))
+                                                    });
+                                                    view! {
+                                                        <tr>
+                                                            <td>{p.wbs_code.unwrap_or_default()}</td>
+                                                            <td><a href=detail_url>{p.name}</a></td>
+                                                            <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>
+                                                            <td><span class="tag is-light">{p.status}</span></td>
+                                                            <td>
+                                                                {docs_url.map(|url| view! {
+                                                                    <a href=url class="has-text-link">
+                                                                        <span class="icon is-small"><i class="fas fa-file-alt"></i></span>
+                                                                    </a>
+                                                                })}
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }).collect_view()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            }).collect_view();
+
+                            tables.into_any()
                         }
                         Err(e) => view! { <div class="notification is-danger">{format!("読み込み失敗: {}", e.message)}</div> }.into_any(),
                     })

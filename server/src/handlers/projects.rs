@@ -149,10 +149,13 @@ pub async fn list_projects(
         &fiscal_date_ranges,
         manager_name.as_deref(),
     );
-    data_qb.push(" ORDER BY p.name, p.id LIMIT ");
-    data_qb.push_bind(params.pagination.limit());
-    data_qb.push(" OFFSET ");
-    data_qb.push_bind(params.pagination.offset());
+    data_qb.push(" ORDER BY p.name, p.id");
+    if !params.pagination.is_unpaged() {
+        data_qb.push(" LIMIT ");
+        data_qb.push_bind(params.pagination.limit());
+        data_qb.push(" OFFSET ");
+        data_qb.push_bind(params.pagination.offset());
+    }
 
     let rows = data_qb
         .build()
