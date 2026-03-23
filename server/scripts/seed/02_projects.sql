@@ -60,39 +60,49 @@ INSERT INTO document_registers (register_code, doc_kind_id, department_id, file_
 -- projects (10件: 複数年度・ステータス・分野)
 --------------------------------------------------------------------------------
 \echo '  → projects: プロジェクト (10件)'
-INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_id, manager_id) VALUES
+INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_id, manager_id, created_at) VALUES
     -- 2026 active
     ('新型ポンプ開発', 'active', '2026-01-15', NULL, 'DV-2026-001',
      (SELECT id FROM disciplines WHERE code = 'MECH'),
-     (SELECT id FROM employees WHERE employee_code = 'PM001')),
+     (SELECT id FROM employees WHERE employee_code = 'PM001'),
+     '2026-01-15'),
     ('制御盤更新', 'active', '2026-02-01', NULL, 'IN-2026-001',
      (SELECT id FROM disciplines WHERE code = 'ELEC'),
-     (SELECT id FROM employees WHERE employee_code = 'PM003')),
+     (SELECT id FROM employees WHERE employee_code = 'PM003'),
+     '2026-02-01'),
     ('計装システム刷新', 'active', '2026-01-10', NULL, 'IN-2026-002',
      (SELECT id FROM disciplines WHERE code = 'INST'),
-     (SELECT id FROM employees WHERE employee_code = 'PM001')),
+     (SELECT id FROM employees WHERE employee_code = 'PM001'),
+     '2026-01-10'),
     -- 2026 planning
     ('品質改善活動', 'planning', NULL, NULL, 'MN-2026-001',
      (SELECT id FROM disciplines WHERE code = 'QA'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002')),
+     (SELECT id FROM employees WHERE employee_code = 'PM002'),
+     '2026-01-01'),
     ('予防保全強化', 'planning', NULL, NULL, 'MN-2026-002',
      (SELECT id FROM disciplines WHERE code = 'MAINT'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002')),
+     (SELECT id FROM employees WHERE employee_code = 'PM002'),
+     '2026-01-01'),
     -- 2025 completed
     ('定期点検2025', 'completed', '2025-10-01', '2025-12-20', 'MN-2025-001',
      (SELECT id FROM disciplines WHERE code = 'MAINT'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002')),
+     (SELECT id FROM employees WHERE employee_code = 'PM002'),
+     '2025-10-01'),
     ('配管更新工事', 'completed', '2025-04-01', '2025-09-30', 'DV-2025-001',
      (SELECT id FROM disciplines WHERE code = 'MECH'),
-     (SELECT id FROM employees WHERE employee_code = 'PM001')),
+     (SELECT id FROM employees WHERE employee_code = 'PM001'),
+     '2025-04-01'),
     ('電気設備更新', 'completed', '2025-06-01', '2025-11-30', 'IN-2025-001',
      (SELECT id FROM disciplines WHERE code = 'ELEC'),
-     (SELECT id FROM employees WHERE employee_code = 'PM003')),
+     (SELECT id FROM employees WHERE employee_code = 'PM003'),
+     '2025-06-01'),
     -- 2025 cancelled
     ('省エネ診断', 'cancelled', '2025-07-01', NULL, 'IN-2025-002',
      (SELECT id FROM disciplines WHERE code = 'INST'),
-     (SELECT id FROM employees WHERE employee_code = 'PM001')),
+     (SELECT id FROM employees WHERE employee_code = 'PM001'),
+     '2025-07-01'),
     -- 2024 completed
     ('品質マネジメント体制構築', 'completed', '2024-04-01', '2025-03-31', 'MN-2024-001',
      (SELECT id FROM disciplines WHERE code = 'QA'),
-     (SELECT id FROM employees WHERE employee_code = 'PM002'));
+     (SELECT id FROM employees WHERE employee_code = 'PM002'),
+     '2024-04-01');
