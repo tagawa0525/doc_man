@@ -82,18 +82,18 @@ BEGIN
             RETURNING id INTO v_proj_id;
 
             -- 各文書種別に2文書ずつ
+            -- 分野間は35日間隔で同じ部署の分野が同月に重ならないようにする
+            -- seq は v_ni (1-2) のみ → seq_digits (2-3) に収まる
             FOR v_ki IN 1..array_length(v_dk_ids, 1) LOOP
                 FOR v_ni IN 1..2 LOOP
-                    v_seq := (v_di - 1) * 100 + (v_ki - 1) * 10 + v_ni;
-
                     v_doc_created := v_fy_start
-                        + (((v_di - 1) * 20 + v_ki * 5 + v_ni * 2) || ' days')::INTERVAL
+                        + (((v_di - 1) * 35 + v_ki * 3 + v_ni) || ' days')::INTERVAL
                         + '10:00'::INTERVAL;
                     v_yymm := to_char(v_doc_created, 'YYMM');
 
                     v_doc_num := format('%s%s-%s%03s',
                         v_dk_codes[v_ki], v_disc_depts[v_di],
-                        v_yymm, v_seq);
+                        v_yymm, v_ni);
 
                     INSERT INTO documents (
                         doc_number, title, author_id, doc_kind_id,
