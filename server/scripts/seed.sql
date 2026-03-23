@@ -158,7 +158,7 @@ INSERT INTO projects (name, status, start_date, end_date, wbs_code, discipline_i
 -- Tier 4: documents (15件)
 --------------------------------------------------------------------------------
 
--- draft × 4
+-- draft × 4 (+ restricted 機密文書 (draft) × 1)
 \echo '  → documents: 文書 (15件: draft×5/under_review×2/approved×7/rejected×1)'
 INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, status, confidentiality, project_id) VALUES
     ('内設計-2603001', '新型ポンプ設計仕様書',
