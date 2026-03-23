@@ -13,7 +13,7 @@ build-release:
 
 # サーバーを起動（localhost:3000、フロントエンド配信なし）
 run:
-    FRONTEND_DIST_DIR=/dev/null cargo run -p doc_man
+    FRONTEND_DIST_DIR=/nonexistent cargo run -p doc_man
 
 # 統合テストを実行
 test:

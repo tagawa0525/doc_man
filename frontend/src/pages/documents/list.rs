@@ -99,7 +99,7 @@ pub fn DocumentListPage() -> impl IntoView {
         async move {
             api::documents::list_filtered(&DocumentListParams {
                 page: 1,
-                per_page: 1000,
+                per_page: 0,
                 doc_number: dn,
                 title: tq,
                 dept_codes: dc,

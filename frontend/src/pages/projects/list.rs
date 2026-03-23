@@ -85,7 +85,7 @@ pub fn ProjectListPage() -> impl IntoView {
         async move {
             api::projects::list_filtered(&ProjectListParams {
                 page: 1,
-                per_page: 1000,
+                per_page: 0,
                 q,
                 dept_ids: di,
                 fiscal_years: fy,

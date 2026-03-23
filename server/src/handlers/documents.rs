@@ -196,10 +196,13 @@ pub async fn list_documents(
         author_name.as_deref(),
         wbs_code.as_deref(),
     );
-    data_qb.push(" ORDER BY d.created_at DESC LIMIT ");
-    data_qb.push_bind(params.pagination.limit());
-    data_qb.push(" OFFSET ");
-    data_qb.push_bind(params.pagination.offset());
+    data_qb.push(" ORDER BY d.created_at DESC");
+    if !params.pagination.is_unpaged() {
+        data_qb.push(" LIMIT ");
+        data_qb.push_bind(params.pagination.limit());
+        data_qb.push(" OFFSET ");
+        data_qb.push_bind(params.pagination.offset());
+    }
 
     let rows = data_qb
         .build()
