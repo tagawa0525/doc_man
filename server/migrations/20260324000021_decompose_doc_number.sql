@@ -56,3 +56,12 @@ CREATE INDEX idx_documents_doc_number ON documents(doc_number);
 -- 7. 複合ユニーク制約（採番の一意性保証）
 ALTER TABLE documents ADD CONSTRAINT documents_composite_unique
     UNIQUE (frozen_kind_code, frozen_dept_code, doc_period, doc_seq);
+
+-- 8. document_revisions.file_path を再計算
+--    旧 doc_number と生成列の doc_number が不一致の行（frozen_dept_code の不整合修正）で
+--    file_path が古い doc_number を含んでいるため、生成列の値で再構築する
+UPDATE document_revisions dr SET
+    file_path = d.doc_number || '/' || dr.revision
+FROM documents d
+WHERE d.id = dr.document_id
+  AND dr.file_path <> d.doc_number || '/' || dr.revision;
