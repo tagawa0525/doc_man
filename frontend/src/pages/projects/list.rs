@@ -458,7 +458,12 @@ pub fn ProjectListPage() -> impl IntoView {
                                     Some("fiscal_year") => {
                                         let fy_a = fiscal_year_of(a.start_date);
                                         let fy_b = fiscal_year_of(b.start_date);
-                                        if asc { fy_a.cmp(&fy_b) } else { fy_b.cmp(&fy_a) }
+                                        let ord = fy_a
+                                            .cmp(&fy_b)
+                                            .then_with(|| a.start_date.cmp(&b.start_date))
+                                            .then_with(|| a.wbs_code.cmp(&b.wbs_code))
+                                            .then_with(|| a.name.cmp(&b.name));
+                                        if asc { ord } else { ord.reverse() }
                                     }
                                     _ => {
                                         // デフォルト: 年度 DESC → 同一年度内は start_date ASC
