@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
@@ -33,6 +34,29 @@ fn csv_toggle(csv: &str, key: &str) -> String {
     items.join(",")
 }
 
+fn fiscal_year_of(date: chrono::NaiveDate) -> i32 {
+    if date.month() < 4 {
+        date.year() - 1
+    } else {
+        date.year()
+    }
+}
+
+fn cmp_opt_str(a: Option<&str>, b: Option<&str>, ascending: bool) -> std::cmp::Ordering {
+    match (a, b) {
+        (Some(a), Some(b)) => {
+            if ascending {
+                a.cmp(b)
+            } else {
+                b.cmp(a)
+            }
+        }
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    }
+}
+
 #[component]
 pub fn ProjectListPage() -> impl IntoView {
     let auth = expect_context::<AuthContext>();
@@ -41,6 +65,8 @@ pub fn ProjectListPage() -> impl IntoView {
     let wbs_code = RwSignal::new(String::new());
     let show_detail_dept = RwSignal::new(false);
     let show_detail_year = RwSignal::new(false);
+    let sort_column = RwSignal::new(None::<&'static str>);
+    let sort_ascending = RwSignal::new(true);
 
     let fy = current_fiscal_year();
     let default_years: Vec<i32> = ((fy - 2)..=(fy + 1)).collect();
@@ -393,6 +419,8 @@ pub fn ProjectListPage() -> impl IntoView {
 
             <Suspense fallback=move || view! { <Loading /> }>
                 {move || {
+                    let col = sort_column.get();
+                    let asc = sort_ascending.get();
                     resource.get().map(|result| match result {
                         Ok(paginated) => {
                             // 専門分野ごとにグループ化（出現順を保持）
@@ -407,15 +435,148 @@ pub fn ProjectListPage() -> impl IntoView {
                             }
 
                             let tables = discipline_order.into_iter().map(|(disc_id, disc_name)| {
-                                let projects = groups.remove(&disc_id).unwrap_or_default();
+                                let mut projects = groups.remove(&disc_id).unwrap_or_default();
+                                projects.sort_by(|a, b| match col {
+                                    Some("wbs") => cmp_opt_str(
+                                        a.wbs_code.as_deref(),
+                                        b.wbs_code.as_deref(),
+                                        asc,
+                                    ),
+                                    Some("name") => {
+                                        if asc { a.name.cmp(&b.name) } else { b.name.cmp(&a.name) }
+                                    }
+                                    Some("manager") => cmp_opt_str(
+                                        a.manager.as_ref().map(|m| m.name.as_str()),
+                                        b.manager.as_ref().map(|m| m.name.as_str()),
+                                        asc,
+                                    ),
+                                    Some("status") => {
+                                        if asc { a.status.cmp(&b.status) } else { b.status.cmp(&a.status) }
+                                    }
+                                    _ => {
+                                        // デフォルト: 年度 DESC → 同一年度内は start_date ASC
+                                        let fy_a = a.start_date.map(fiscal_year_of);
+                                        let fy_b = b.start_date.map(fiscal_year_of);
+                                        match (fy_a, fy_b) {
+                                            (Some(fa), Some(fb)) => fb.cmp(&fa)
+                                                .then_with(|| a.start_date.cmp(&b.start_date)),
+                                            (Some(_), None) => std::cmp::Ordering::Less,
+                                            (None, Some(_)) => std::cmp::Ordering::Greater,
+                                            (None, None) => std::cmp::Ordering::Equal,
+                                        }
+                                    }
+                                });
                                 view! {
                                     <div class="box mb-4">
                                         <h2 class="subtitle is-6 mb-2">{disc_name}</h2>
                                         <table class="table is-fullwidth is-hoverable">
                                             <thead>
                                                 <tr>
-                                                    <th style="width:9em">"WBSコード"</th><th>"名前"</th>
-                                                    <th style="width:8em">"マネージャー"</th><th style="width:8em">"ステータス"</th><th style="width:4em">"文書"</th>
+                                                    <th style="width:9em"
+                                                        aria-sort=move || match (sort_column.get(), sort_ascending.get()) {
+                                                            (Some("wbs"), true) => "ascending",
+                                                            (Some("wbs"), false) => "descending",
+                                                            _ => "none",
+                                                        }
+                                                    >
+                                                        <button type="button"
+                                                            style="background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit; text-align:left; width:100%;"
+                                                            on:click=move |_| {
+                                                                if sort_column.get_untracked() == Some("wbs") {
+                                                                    sort_ascending.update(|v| *v = !*v);
+                                                                } else {
+                                                                    sort_column.set(Some("wbs"));
+                                                                    sort_ascending.set(true);
+                                                                }
+                                                            }
+                                                        >
+                                                            "WBSコード"
+                                                            {move || match (sort_column.get(), sort_ascending.get()) {
+                                                                (Some("wbs"), true) => " ▲",
+                                                                (Some("wbs"), false) => " ▼",
+                                                                _ => "",
+                                                            }}
+                                                        </button>
+                                                    </th>
+                                                    <th
+                                                        aria-sort=move || match (sort_column.get(), sort_ascending.get()) {
+                                                            (Some("name"), true) => "ascending",
+                                                            (Some("name"), false) => "descending",
+                                                            _ => "none",
+                                                        }
+                                                    >
+                                                        <button type="button"
+                                                            style="background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit; text-align:left; width:100%;"
+                                                            on:click=move |_| {
+                                                                if sort_column.get_untracked() == Some("name") {
+                                                                    sort_ascending.update(|v| *v = !*v);
+                                                                } else {
+                                                                    sort_column.set(Some("name"));
+                                                                    sort_ascending.set(true);
+                                                                }
+                                                            }
+                                                        >
+                                                            "名前"
+                                                            {move || match (sort_column.get(), sort_ascending.get()) {
+                                                                (Some("name"), true) => " ▲",
+                                                                (Some("name"), false) => " ▼",
+                                                                _ => "",
+                                                            }}
+                                                        </button>
+                                                    </th>
+                                                    <th style="width:8em"
+                                                        aria-sort=move || match (sort_column.get(), sort_ascending.get()) {
+                                                            (Some("manager"), true) => "ascending",
+                                                            (Some("manager"), false) => "descending",
+                                                            _ => "none",
+                                                        }
+                                                    >
+                                                        <button type="button"
+                                                            style="background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit; text-align:left; width:100%;"
+                                                            on:click=move |_| {
+                                                                if sort_column.get_untracked() == Some("manager") {
+                                                                    sort_ascending.update(|v| *v = !*v);
+                                                                } else {
+                                                                    sort_column.set(Some("manager"));
+                                                                    sort_ascending.set(true);
+                                                                }
+                                                            }
+                                                        >
+                                                            "マネージャー"
+                                                            {move || match (sort_column.get(), sort_ascending.get()) {
+                                                                (Some("manager"), true) => " ▲",
+                                                                (Some("manager"), false) => " ▼",
+                                                                _ => "",
+                                                            }}
+                                                        </button>
+                                                    </th>
+                                                    <th style="width:8em"
+                                                        aria-sort=move || match (sort_column.get(), sort_ascending.get()) {
+                                                            (Some("status"), true) => "ascending",
+                                                            (Some("status"), false) => "descending",
+                                                            _ => "none",
+                                                        }
+                                                    >
+                                                        <button type="button"
+                                                            style="background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit; text-align:left; width:100%;"
+                                                            on:click=move |_| {
+                                                                if sort_column.get_untracked() == Some("status") {
+                                                                    sort_ascending.update(|v| *v = !*v);
+                                                                } else {
+                                                                    sort_column.set(Some("status"));
+                                                                    sort_ascending.set(true);
+                                                                }
+                                                            }
+                                                        >
+                                                            "ステータス"
+                                                            {move || match (sort_column.get(), sort_ascending.get()) {
+                                                                (Some("status"), true) => " ▲",
+                                                                (Some("status"), false) => " ▼",
+                                                                _ => "",
+                                                            }}
+                                                        </button>
+                                                    </th>
+                                                    <th style="width:4em">"文書"</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
