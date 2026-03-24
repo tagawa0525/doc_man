@@ -192,8 +192,8 @@ pub async fn insert_project(
     manager_id: Option<Uuid>,
 ) -> Uuid {
     let row = sqlx::query(
-        "INSERT INTO projects (name, discipline_id, manager_id)
-         VALUES ($1, $2, $3)
+        "INSERT INTO projects (name, discipline_id, manager_id, start_date)
+         VALUES ($1, $2, $3, CURRENT_DATE)
          RETURNING id",
     )
     .bind(name)
@@ -214,8 +214,8 @@ pub async fn insert_project_with_status(
     status: &str,
 ) -> Uuid {
     let row = sqlx::query(
-        "INSERT INTO projects (name, discipline_id, manager_id, status)
-         VALUES ($1, $2, $3, $4)
+        "INSERT INTO projects (name, discipline_id, manager_id, status, start_date)
+         VALUES ($1, $2, $3, $4, CURRENT_DATE)
          RETURNING id",
     )
     .bind(name)
@@ -237,8 +237,8 @@ pub async fn insert_project_with_created_at(
     created_at: &str,
 ) -> Uuid {
     let row = sqlx::query(
-        "INSERT INTO projects (name, discipline_id, manager_id, created_at)
-         VALUES ($1, $2, $3, $4::timestamptz)
+        "INSERT INTO projects (name, discipline_id, manager_id, start_date, created_at)
+         VALUES ($1, $2, $3, ($4::timestamptz AT TIME ZONE 'UTC')::date, $4::timestamptz)
          RETURNING id",
     )
     .bind(name)
@@ -260,8 +260,8 @@ pub async fn insert_project_with_wbs(
     wbs_code: &str,
 ) -> Uuid {
     let row = sqlx::query(
-        "INSERT INTO projects (name, discipline_id, manager_id, wbs_code)
-         VALUES ($1, $2, $3, $4)
+        "INSERT INTO projects (name, discipline_id, manager_id, wbs_code, start_date)
+         VALUES ($1, $2, $3, $4, CURRENT_DATE)
          RETURNING id",
     )
     .bind(name)

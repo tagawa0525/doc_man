@@ -258,9 +258,9 @@ fn push_project_filters(
             if i > 0 {
                 qb.push(" OR ");
             }
-            qb.push("(p.created_at >= ");
+            qb.push("(p.start_date >= ");
             qb.push_bind(*start);
-            qb.push(" AND p.created_at < ");
+            qb.push(" AND p.start_date < ");
             qb.push_bind(*end);
             qb.push(")");
         }
@@ -398,14 +398,14 @@ pub async fn update_project(
 
     let current_name: String = existing.get("name");
     let current_status: String = existing.get("status");
-    let current_start: Option<chrono::NaiveDate> = existing.get("start_date");
+    let current_start: chrono::NaiveDate = existing.get("start_date");
     let current_end: Option<chrono::NaiveDate> = existing.get("end_date");
     let current_wbs: Option<String> = existing.get("wbs_code");
     let current_disc_id: Uuid = existing.get("discipline_id");
 
     let new_name = req.name.unwrap_or(current_name);
     let new_status = req.status.unwrap_or(current_status);
-    let new_start = req.start_date.or(current_start);
+    let new_start = req.start_date.unwrap_or(current_start);
     let new_end = req.end_date.or(current_end);
     let new_wbs = req.wbs_code.or(current_wbs);
     let new_disc_id = req.discipline_id.unwrap_or(current_disc_id);

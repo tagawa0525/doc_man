@@ -493,7 +493,8 @@ async fn post_project_admin_returns_201(pool: PgPool) {
                     json!({
                         "name": "新プロジェクト",
                         "discipline_id": disc,
-                        "wbs_code": "P-2026-001"
+                        "wbs_code": "P-2026-001",
+                        "start_date": "2025-04-01"
                     })
                     .to_string(),
                 ))
@@ -527,7 +528,8 @@ async fn post_project_project_manager_returns_201(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "name": "PMプロジェクト",
-                        "discipline_id": disc
+                        "discipline_id": disc,
+                        "start_date": "2025-04-01"
                     })
                     .to_string(),
                 ))
@@ -556,7 +558,8 @@ async fn post_project_general_returns_403(pool: PgPool) {
                 .body(axum::body::Body::from(
                     json!({
                         "name": "テスト",
-                        "discipline_id": disc
+                        "discipline_id": disc,
+                        "start_date": "2025-04-01"
                     })
                     .to_string(),
                 ))
@@ -587,7 +590,8 @@ async fn post_project_duplicate_wbs_code_returns_409(pool: PgPool) {
                     json!({
                         "name": "重複",
                         "discipline_id": disc,
-                        "wbs_code": "P-2026-001"
+                        "wbs_code": "P-2026-001",
+                        "start_date": "2025-04-01"
                     })
                     .to_string(),
                 ))

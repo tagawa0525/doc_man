@@ -397,10 +397,12 @@ pub fn ProjectListPage() -> impl IntoView {
                 <table class="table is-fullwidth">
                     <thead>
                         <tr>
+                            <th style="width:4em">"年度"</th>
                             <th style="width:9em">"WBSコード"</th><th>"名前"</th>
                             <th style="width:8em">"マネージャー"</th><th style="width:8em">"ステータス"</th><th style="width:4em">"文書"</th>
                         </tr>
                         <tr>
+                            <th></th>
                             <th>
                                 <input class="input is-small" type="text" placeholder="WBS..." on:input=on_wbs_code />
                             </th>
@@ -453,17 +455,22 @@ pub fn ProjectListPage() -> impl IntoView {
                                     Some("status") => {
                                         if asc { a.status.cmp(&b.status) } else { b.status.cmp(&a.status) }
                                     }
+                                    Some("fiscal_year") => {
+                                        let fy_a = fiscal_year_of(a.start_date);
+                                        let fy_b = fiscal_year_of(b.start_date);
+                                        let ord = fy_a
+                                            .cmp(&fy_b)
+                                            .then_with(|| a.start_date.cmp(&b.start_date))
+                                            .then_with(|| a.wbs_code.cmp(&b.wbs_code))
+                                            .then_with(|| a.name.cmp(&b.name));
+                                        if asc { ord } else { ord.reverse() }
+                                    }
                                     _ => {
                                         // デフォルト: 年度 DESC → 同一年度内は start_date ASC
-                                        let fy_a = a.start_date.map(fiscal_year_of);
-                                        let fy_b = b.start_date.map(fiscal_year_of);
-                                        match (fy_a, fy_b) {
-                                            (Some(fa), Some(fb)) => fb.cmp(&fa)
-                                                .then_with(|| a.start_date.cmp(&b.start_date)),
-                                            (Some(_), None) => std::cmp::Ordering::Less,
-                                            (None, Some(_)) => std::cmp::Ordering::Greater,
-                                            (None, None) => std::cmp::Ordering::Equal,
-                                        }
+                                        let fy_a = fiscal_year_of(a.start_date);
+                                        let fy_b = fiscal_year_of(b.start_date);
+                                        fy_b.cmp(&fy_a)
+                                            .then_with(|| a.start_date.cmp(&b.start_date))
                                     }
                                 });
                                 view! {
@@ -472,6 +479,32 @@ pub fn ProjectListPage() -> impl IntoView {
                                         <table class="table is-fullwidth is-hoverable">
                                             <thead>
                                                 <tr>
+                                                    <th style="width:4em"
+                                                        aria-sort=move || match (sort_column.get(), sort_ascending.get()) {
+                                                            (Some("fiscal_year"), true) => "ascending",
+                                                            (Some("fiscal_year"), false) => "descending",
+                                                            _ => "none",
+                                                        }
+                                                    >
+                                                        <button type="button"
+                                                            style="background:none; border:none; padding:0; cursor:pointer; font:inherit; color:inherit; text-align:left; width:100%;"
+                                                            on:click=move |_| {
+                                                                if sort_column.get_untracked() == Some("fiscal_year") {
+                                                                    sort_ascending.update(|v| *v = !*v);
+                                                                } else {
+                                                                    sort_column.set(Some("fiscal_year"));
+                                                                    sort_ascending.set(false);
+                                                                }
+                                                            }
+                                                        >
+                                                            "年度"
+                                                            {move || match (sort_column.get(), sort_ascending.get()) {
+                                                                (Some("fiscal_year"), true) => " ▲",
+                                                                (Some("fiscal_year"), false) => " ▼",
+                                                                _ => "",
+                                                            }}
+                                                        </button>
+                                                    </th>
                                                     <th style="width:9em"
                                                         aria-sort=move || match (sort_column.get(), sort_ascending.get()) {
                                                             (Some("wbs"), true) => "ascending",
@@ -587,6 +620,7 @@ pub fn ProjectListPage() -> impl IntoView {
                                                     });
                                                     view! {
                                                         <tr>
+                                                            <td>{fiscal_year_of(p.start_date).to_string()}</td>
                                                             <td>{p.wbs_code.unwrap_or_default()}</td>
                                                             <td><a href=detail_url>{p.name}</a></td>
                                                             <td>{p.manager.map_or_else(|| "-".to_string(), |m| m.name)}</td>

@@ -259,7 +259,7 @@ pub struct ProjectResponse {
     pub id: Uuid,
     pub name: String,
     pub status: String,
-    pub start_date: Option<NaiveDate>,
+    pub start_date: NaiveDate,
     pub end_date: Option<NaiveDate>,
     pub wbs_code: Option<String>,
     pub discipline: ProjectDisciplineBrief,
@@ -270,7 +270,7 @@ pub struct ProjectResponse {
 pub struct CreateProjectRequest {
     pub name: String,
     pub status: Option<String>,
-    pub start_date: Option<NaiveDate>,
+    pub start_date: NaiveDate,
     pub end_date: Option<NaiveDate>,
     pub wbs_code: Option<String>,
     pub discipline_id: Uuid,

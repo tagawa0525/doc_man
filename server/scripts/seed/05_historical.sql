@@ -74,7 +74,7 @@ BEGIN
                 'completed',
                 v_fy_start + ((v_di - 1) * 15 || ' days')::INTERVAL,
                 v_fy_start + ((v_di * 30 + 90) || ' days')::INTERVAL,
-                format('HI-%s-%s', v_year, v_di),
+                format('HI-%s-%s', v_year, lpad(v_di::text, 3, '0')),
                 v_disc_ids[v_di],
                 v_mgr_ids[((v_year + v_di) % 3) + 1],
                 v_fy_start + ((v_di - 1) * 15 || ' days')::INTERVAL + '09:00'::INTERVAL

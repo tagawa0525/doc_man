@@ -147,7 +147,7 @@ mod tests {
         .get("id");
 
         let proj_id: uuid::Uuid = sqlx::query(
-            "INSERT INTO projects (name, discipline_id) VALUES ('テスト', $1) RETURNING id",
+            "INSERT INTO projects (name, discipline_id, start_date) VALUES ('テスト', $1, CURRENT_DATE) RETURNING id",
         )
         .bind(disc_id)
         .fetch_one(&pool)
@@ -230,7 +230,7 @@ mod tests {
         .unwrap()
         .get("id");
         let proj_id: uuid::Uuid = sqlx::query(
-            "INSERT INTO projects (name, discipline_id) VALUES ('テスト', $1) RETURNING id",
+            "INSERT INTO projects (name, discipline_id, start_date) VALUES ('テスト', $1, CURRENT_DATE) RETURNING id",
         )
         .bind(disc_id)
         .fetch_one(tx.as_mut())
