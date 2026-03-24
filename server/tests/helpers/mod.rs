@@ -238,7 +238,7 @@ pub async fn insert_project_with_created_at(
 ) -> Uuid {
     let row = sqlx::query(
         "INSERT INTO projects (name, discipline_id, manager_id, start_date, created_at)
-         VALUES ($1, $2, $3, ($4::timestamptz)::date, $4::timestamptz)
+         VALUES ($1, $2, $3, ($4::timestamptz AT TIME ZONE 'UTC')::date, $4::timestamptz)
          RETURNING id",
     )
     .bind(name)
