@@ -12,14 +12,14 @@
 
 ## ブランチ
 
-現在の `feat/list-sort` とは無関係のスキーマ変更のため、**別ブランチ・別PR** で実施する。
+`feat/decompose-doc-number` ブランチで実施。
 
 ## 新スキーマ
 
 ```sql
 -- 追加カラム
 frozen_kind_code   VARCHAR(5)  NOT NULL  -- document_kinds.code を凍結
-doc_period         TEXT        NOT NULL  -- 'YYMM' or 'YY'（歴史的経緯で文書ごとに異なる）
+doc_period         TEXT        NOT NULL  -- 現在は 4 桁の 'YYMM' を使用（将来の柔軟性を考慮して TEXT 型）
 doc_seq            INT         NOT NULL  -- 連番（整数）
 frozen_seq_digits  SMALLINT    NOT NULL  -- document_kinds.seq_digits を凍結
 
@@ -38,7 +38,7 @@ UNIQUE (frozen_kind_code, frozen_dept_code, doc_period, doc_seq)
 
 ## マイグレーション
 
-**ファイル:** `server/migrations/YYYYMMDD000021_decompose_doc_number.sql`
+**ファイル:** `server/migrations/20260324000021_decompose_doc_number.sql`
 
 ```sql
 -- 1. カラム追加（nullable）
