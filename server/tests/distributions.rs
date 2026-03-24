@@ -30,15 +30,7 @@ async fn get_distributions_returns_empty_array(pool: PgPool) {
     let app = build_test_app(pool.clone());
     let admin = insert_admin(&pool).await;
     let data = setup_master(&pool, &admin).await;
-    let doc_id = insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -65,15 +57,7 @@ async fn post_distributions_creates_records(pool: PgPool) {
     let recipient1 = insert_employee(&pool, "GEN001", "general").await;
     let recipient2 = insert_employee(&pool, "GEN002", "general").await;
     let data = setup_master(&pool, &admin).await;
-    let doc_id = insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -108,15 +92,7 @@ async fn post_distributions_on_draft_returns_201(pool: PgPool) {
     let admin = insert_admin(&pool).await;
     let recipient = insert_employee(&pool, "GEN001", "general").await;
     let data = setup_master(&pool, &admin).await;
-    let doc_id = insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
     // 文書はデフォルトで draft ステータス
 
     let response = app
@@ -146,15 +122,7 @@ async fn post_distributions_viewer_returns_403(pool: PgPool) {
     let viewer = insert_employee(&pool, "VW001", "viewer").await;
     let recipient = insert_employee(&pool, "GEN001", "general").await;
     let data = setup_master(&pool, &admin).await;
-    let doc_id = insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -181,15 +149,7 @@ async fn post_distributions_empty_recipients_returns_400(pool: PgPool) {
     let app = build_test_app(pool.clone());
     let admin = insert_admin(&pool).await;
     let data = setup_master(&pool, &admin).await;
-    let doc_id = insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -214,15 +174,7 @@ async fn post_distributions_allows_redistribution(pool: PgPool) {
     let admin = insert_admin(&pool).await;
     let recipient = insert_employee(&pool, "GEN001", "general").await;
     let data = setup_master(&pool, &admin).await;
-    let doc_id = insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let make_request = || {
         Request::builder()

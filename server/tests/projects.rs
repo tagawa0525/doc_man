@@ -100,9 +100,7 @@ async fn get_projects_with_multiple_discipline_ids(pool: PgPool) {
     let response = app
         .oneshot(
             Request::builder()
-                .uri(format!(
-                    "/api/v1/projects?discipline_ids={disc_a},{disc_b}"
-                ))
+                .uri(format!("/api/v1/projects?discipline_ids={disc_a},{disc_b}"))
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .body(axum::body::Body::empty())
                 .unwrap(),

@@ -418,9 +418,9 @@ pub async fn create_document(
     .await
     .map_err(|e| match &e {
         sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
-            Some("23514") => {
-                AppError::InvalidRequest("invalid document data (check constraint violated)".to_string())
-            }
+            Some("23514") => AppError::InvalidRequest(
+                "invalid document data (check constraint violated)".to_string(),
+            ),
             Some("23503") => {
                 AppError::InvalidRequest("referenced entity does not exist".to_string())
             }

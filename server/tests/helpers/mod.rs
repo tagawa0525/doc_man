@@ -283,8 +283,16 @@ pub async fn insert_document(
     doc_kind_id: Uuid,
     project_id: Uuid,
 ) -> Uuid {
-    insert_document_with_dept(pool, doc_seq, title, author_id, doc_kind_id, project_id, "設計")
-        .await
+    insert_document_with_dept(
+        pool,
+        doc_seq,
+        title,
+        author_id,
+        doc_kind_id,
+        project_id,
+        "設計",
+    )
+    .await
 }
 
 pub async fn insert_document_with_dept(

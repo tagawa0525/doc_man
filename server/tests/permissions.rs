@@ -394,15 +394,8 @@ async fn delete_document_pm_returns_403(pool: PgPool) {
     let admin = helpers::insert_admin(&pool).await;
     let pm = helpers::insert_employee(&pool, "PM001", "project_manager").await;
     let data = setup_master_data(&pool).await;
-    let doc_id = helpers::insert_document(
-        &pool,
-        1,
-        "テスト文書",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id =
+        helpers::insert_document(&pool, 1, "テスト文書", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -428,15 +421,7 @@ async fn post_approval_steps_pm_returns_201(pool: PgPool) {
     let approver = helpers::insert_employee(&pool, "APP001", "general").await;
     let data = setup_master_data(&pool).await;
     helpers::assign_department(&pool, pm.id, data.dept, true).await;
-    let doc_id = helpers::insert_document(
-        &pool,
-        1,
-        "テスト",
-        pm.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = helpers::insert_document(&pool, 1, "テスト", pm.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -466,15 +451,7 @@ async fn post_approval_steps_general_returns_403(pool: PgPool) {
     let general = helpers::insert_employee(&pool, "GEN001", "general").await;
     let approver = helpers::insert_employee(&pool, "APP001", "general").await;
     let data = setup_master_data(&pool).await;
-    let doc_id = helpers::insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = helpers::insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
@@ -567,15 +544,7 @@ async fn put_document_viewer_returns_403(pool: PgPool) {
     let admin = helpers::insert_admin(&pool).await;
     let viewer = helpers::insert_employee(&pool, "VIEW001", "viewer").await;
     let data = setup_master_data(&pool).await;
-    let doc_id = helpers::insert_document(
-        &pool,
-        1,
-        "テスト",
-        admin.id,
-        data.kind,
-        data.proj,
-    )
-    .await;
+    let doc_id = helpers::insert_document(&pool, 1, "テスト", admin.id, data.kind, data.proj).await;
 
     let response = app
         .oneshot(
