@@ -21,6 +21,7 @@ DECLARE
     -- 文書種別
     v_dk_ids       UUID[];
     v_dk_codes     TEXT[];
+    v_dk_digits    INT[];
     -- ループ変数
     v_di           INT;  -- discipline index
     v_ki           INT;  -- kind index
@@ -56,9 +57,9 @@ BEGIN
         ORDER BY employee_code
     );
 
-    v_dk_ids   := ARRAY(SELECT id FROM document_kinds ORDER BY code);
-    v_dk_codes := ARRAY(SELECT code FROM document_kinds ORDER BY code);
-    -- dk ORDER BY code: 外, 仕, 手, 内, 議
+    v_dk_ids    := ARRAY(SELECT id FROM document_kinds ORDER BY code);
+    v_dk_codes  := ARRAY(SELECT code FROM document_kinds ORDER BY code);
+    v_dk_digits := ARRAY(SELECT seq_digits FROM document_kinds ORDER BY code);
 
     FOR v_year IN 2011..2024 LOOP
         v_fy_start := make_date(v_year, 4, 1);
@@ -82,7 +83,6 @@ BEGIN
 
             -- 各文書種別に2文書ずつ
             -- 分野間は35日間隔で同じ部署の分野が同月に重ならないようにする
-            -- seq は v_ni (1-2) のみ → seq_digits (2-3) に収まる
             FOR v_ki IN 1..array_length(v_dk_ids, 1) LOOP
                 FOR v_ni IN 1..2 LOOP
                     v_doc_created := v_fy_start
@@ -90,16 +90,17 @@ BEGIN
                         + '10:00'::INTERVAL;
                     v_yymm := to_char(v_doc_created, 'YYMM');
 
-                    v_doc_num := format('%s%s-%s%03s',
-                        v_dk_codes[v_ki], v_disc_depts[v_di],
-                        v_yymm, v_ni);
-
                     INSERT INTO documents (
-                        doc_number, title, author_id, doc_kind_id,
-                        frozen_dept_code, status, confidentiality,
+                        frozen_kind_code, frozen_dept_code, doc_period, doc_seq, frozen_seq_digits,
+                        title, author_id, doc_kind_id,
+                        status, confidentiality,
                         project_id, created_at
                     ) VALUES (
-                        v_doc_num,
+                        v_dk_codes[v_ki],
+                        v_disc_depts[v_di],
+                        v_yymm,
+                        v_ni,
+                        v_dk_digits[v_ki],
                         format('%s年度 %s %s #%s',
                             v_year, v_disc_names[v_di],
                             CASE v_dk_codes[v_ki]
@@ -112,13 +113,12 @@ BEGIN
                             v_ni),
                         v_author_ids[((v_di * 10 + v_ki * 2 + v_ni + v_year) % array_length(v_author_ids, 1)) + 1],
                         v_dk_ids[v_ki],
-                        v_disc_depts[v_di],
                         'approved',
                         'internal',
                         v_proj_id,
                         v_doc_created
                     )
-                    RETURNING id INTO v_doc_id;
+                    RETURNING id, doc_number INTO v_doc_id, v_doc_num;
 
                     INSERT INTO document_revisions (
                         document_id, revision, file_path, created_by,

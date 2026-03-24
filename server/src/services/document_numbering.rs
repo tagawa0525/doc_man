@@ -2,10 +2,19 @@ use std::hash::{Hash, Hasher};
 
 use crate::error::AppError;
 
+/// 採番結果の構成要素。
+/// 文書番号は DB 生成列が `frozen_kind_code || frozen_dept_code || '-' || doc_period || lpad(doc_seq, frozen_seq_digits, '0')` で組み立てる。
+pub struct DocNumberParts {
+    pub frozen_kind_code: String,
+    pub doc_period: String,
+    pub doc_seq: i32,
+    pub frozen_seq_digits: i32,
+}
+
 /// 文書番号を採番する。
 ///
-/// フォーマット: `{doc_kind_code}{dept_code}-{YYMM}{seq}`
-/// 例: `内設計-2603001`
+/// 同一 `(frozen_kind_code, frozen_dept_code, doc_period)` 内で次の `doc_seq` を決定し、
+/// `DocNumberParts` を返す。
 ///
 /// `tx` はトランザクション内で呼び出す必要がある。
 /// `pg_advisory_xact_lock` でprefix単位の排他ロックを取得し、連番の一意性を保証する。
@@ -15,19 +24,19 @@ pub async fn assign_doc_number(
     dept_code: &str,
     seq_digits: i32,
     registered_at_jst: chrono::NaiveDateTime,
-) -> Result<String, AppError> {
+) -> Result<DocNumberParts, AppError> {
     if !(2..=3).contains(&seq_digits) {
         return Err(AppError::InvalidRequest(format!(
             "seq_digits must be 2 or 3, got {seq_digits}"
         )));
     }
 
-    let yymm = format!(
+    let doc_period = format!(
         "{:02}{:02}",
         registered_at_jst.format("%y"),
         registered_at_jst.format("%m"),
     );
-    let prefix = format!("{doc_kind_code}{dept_code}-{yymm}");
+    let prefix = format!("{doc_kind_code}{dept_code}-{doc_period}");
 
     // prefix をハッシュ化してアドバイザリロックのキーとする
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -40,36 +49,27 @@ pub async fn assign_doc_number(
         .await
         .map_err(AppError::Database)?;
 
-    let last_doc: Option<String> = sqlx::query_scalar(
-        "SELECT doc_number FROM documents
-         WHERE doc_number LIKE $1
-         ORDER BY doc_number DESC
-         LIMIT 1",
+    let max_seq: Option<i32> = sqlx::query_scalar(
+        "SELECT MAX(doc_seq) FROM documents
+         WHERE frozen_kind_code = $1
+           AND frozen_dept_code = $2
+           AND doc_period = $3",
     )
-    .bind(format!("{prefix}%"))
-    .fetch_optional(&mut *tx)
+    .bind(doc_kind_code)
+    .bind(dept_code)
+    .bind(&doc_period)
+    .fetch_one(&mut *tx)
     .await
     .map_err(AppError::Database)?;
 
-    let next_seq = match last_doc {
-        Some(ref last) => {
-            let seq_str = &last[prefix.len()..];
-            let current: i32 = seq_str
-                .parse()
-                .map_err(|_| AppError::Internal("invalid seq in doc_number".to_string()))?;
-            current + 1
-        }
-        None => 1,
-    };
+    let next_seq = max_seq.unwrap_or(0) + 1;
 
-    let doc_number = format!(
-        "{}{:0>width$}",
-        prefix,
-        next_seq,
-        width = seq_digits as usize
-    );
-
-    Ok(doc_number)
+    Ok(DocNumberParts {
+        frozen_kind_code: doc_kind_code.to_string(),
+        doc_period,
+        doc_seq: next_seq,
+        frozen_seq_digits: seq_digits,
+    })
 }
 
 #[cfg(test)]
@@ -110,7 +110,10 @@ mod tests {
             .unwrap();
         tx.commit().await.unwrap();
 
-        assert_eq!(result, "内設計-2603001");
+        assert_eq!(result.frozen_kind_code, "内");
+        assert_eq!(result.doc_period, "2603");
+        assert_eq!(result.doc_seq, 1);
+        assert_eq!(result.frozen_seq_digits, 3);
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
@@ -158,13 +161,16 @@ mod tests {
                 .await
                 .unwrap();
 
-        // 既存文書を2件挿入
+        // 既存文書を2件挿入（複合カラム方式）
         for i in 1..=2 {
             sqlx::query(
-                "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
-                 VALUES ($1, 'test', $2, $3, '設計', $4)",
+                "INSERT INTO documents (
+                    frozen_kind_code, frozen_dept_code, doc_period, doc_seq, frozen_seq_digits,
+                    title, author_id, doc_kind_id, project_id
+                 )
+                 VALUES ('内', '設計', '2603', $1, 3, 'test', $2, $3, $4)",
             )
-            .bind(format!("内設計-2603{i:03}"))
+            .bind(i)
             .bind(emp_id)
             .bind(dk_id)
             .bind(proj_id)
@@ -184,7 +190,7 @@ mod tests {
             .unwrap();
         tx.commit().await.unwrap();
 
-        assert_eq!(result, "内設計-2603003");
+        assert_eq!(result.doc_seq, 3);
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
@@ -197,7 +203,7 @@ mod tests {
             .and_hms_opt(10, 0, 0)
             .unwrap();
         let mut tx = pool.begin().await.unwrap();
-        let march_num =
+        let march_parts =
             assign_doc_number(tx.as_mut(), &kind_code, &dept_code, seq_digits, march_dt)
                 .await
                 .unwrap();
@@ -237,10 +243,17 @@ mod tests {
                 .await
                 .unwrap();
         sqlx::query(
-            "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
-             VALUES ($1, 'test', $2, $3, '設計', $4)",
+            "INSERT INTO documents (
+                frozen_kind_code, frozen_dept_code, doc_period, doc_seq, frozen_seq_digits,
+                title, author_id, doc_kind_id, project_id
+             )
+             VALUES ($1, $2, $3, $4, $5, 'test', $6, $7, $8)",
         )
-        .bind(&march_num)
+        .bind(&march_parts.frozen_kind_code)
+        .bind(&dept_code)
+        .bind(&march_parts.doc_period)
+        .bind(march_parts.doc_seq)
+        .bind(march_parts.frozen_seq_digits)
         .bind(emp_id)
         .bind(dk_id)
         .bind(proj_id)
@@ -249,7 +262,7 @@ mod tests {
         .unwrap();
         tx.commit().await.unwrap();
 
-        // 4月で採番 → 3月のデータがあっても001から始まる
+        // 4月で採番 → 3月のデータがあっても1から始まる
         let april_dt = chrono::NaiveDate::from_ymd_opt(2026, 4, 1)
             .unwrap()
             .and_hms_opt(10, 0, 0)
@@ -260,7 +273,8 @@ mod tests {
             .unwrap();
         tx.commit().await.unwrap();
 
-        assert_eq!(result, "内設計-2604001");
+        assert_eq!(result.doc_period, "2604");
+        assert_eq!(result.doc_seq, 1);
     }
 
     #[sqlx::test(migrator = "crate::MIGRATOR")]
@@ -291,6 +305,9 @@ mod tests {
             .unwrap();
         tx.commit().await.unwrap();
 
-        assert_eq!(result, "議保全-260301");
+        assert_eq!(result.frozen_kind_code, "議");
+        assert_eq!(result.doc_period, "2603");
+        assert_eq!(result.doc_seq, 1);
+        assert_eq!(result.frozen_seq_digits, 2);
     }
 }

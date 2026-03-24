@@ -391,30 +391,36 @@ pub async fn create_document(
     let mut tx = state.db.begin().await.map_err(AppError::Database)?;
 
     // 文書番号の採番
-    let doc_number =
+    let parts =
         assign_doc_number(tx.as_mut(), &doc_kind_code, &dept_code, seq_digits, now_jst).await?;
 
     let confidentiality = req.confidentiality.as_deref().unwrap_or("internal");
 
     let doc_row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, confidentiality, project_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id",
+        "INSERT INTO documents (
+            frozen_kind_code, frozen_dept_code, doc_period, doc_seq, frozen_seq_digits,
+            title, author_id, doc_kind_id, confidentiality, project_id
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING id, doc_number",
     )
-    .bind(&doc_number)
+    .bind(&parts.frozen_kind_code)
+    .bind(&dept_code)
+    .bind(&parts.doc_period)
+    .bind(parts.doc_seq)
+    .bind(parts.frozen_seq_digits)
     .bind(&req.title)
     .bind(user.id)
     .bind(req.doc_kind_id)
-    .bind(&dept_code)
     .bind(confidentiality)
     .bind(req.project_id)
     .fetch_one(tx.as_mut())
     .await
     .map_err(|e| match &e {
         sqlx::Error::Database(db_err) => match db_err.code().as_deref() {
-            Some("23514") => {
-                AppError::InvalidRequest("invalid document data (check constraint violated)".to_string())
-            }
+            Some("23514") => AppError::InvalidRequest(
+                "invalid document data (check constraint violated)".to_string(),
+            ),
             Some("23503") => {
                 AppError::InvalidRequest("referenced entity does not exist".to_string())
             }
@@ -424,6 +430,7 @@ pub async fn create_document(
     })?;
 
     let doc_id: Uuid = doc_row.get("id");
+    let doc_number: String = doc_row.get("doc_number");
 
     // document_revisions に Rev.0 を作成
     let file_path = format!("{doc_number}/0");

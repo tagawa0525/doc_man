@@ -277,68 +277,63 @@ pub async fn insert_project_with_wbs(
 
 pub async fn insert_document(
     pool: &PgPool,
-    doc_number: &str,
+    doc_seq: i32,
     title: &str,
     author_id: Uuid,
     doc_kind_id: Uuid,
     project_id: Uuid,
 ) -> Uuid {
-    let row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
-         VALUES ($1, $2, $3, $4, '設計', $5)
-         RETURNING id",
+    insert_document_with_dept(
+        pool,
+        doc_seq,
+        title,
+        author_id,
+        doc_kind_id,
+        project_id,
+        "設計",
     )
-    .bind(doc_number)
-    .bind(title)
-    .bind(author_id)
-    .bind(doc_kind_id)
-    .bind(project_id)
-    .fetch_one(pool)
     .await
-    .unwrap();
-
-    let doc_id: Uuid = row.get("id");
-    let file_path = format!("{doc_number}/0");
-
-    sqlx::query(
-        "INSERT INTO document_revisions (document_id, revision, file_path, created_by)
-         VALUES ($1, 0, $2, $3)",
-    )
-    .bind(doc_id)
-    .bind(&file_path)
-    .bind(author_id)
-    .execute(pool)
-    .await
-    .unwrap();
-
-    doc_id
 }
 
 pub async fn insert_document_with_dept(
     pool: &PgPool,
-    doc_number: &str,
+    doc_seq: i32,
     title: &str,
     author_id: Uuid,
     doc_kind_id: Uuid,
     project_id: Uuid,
     frozen_dept_code: &str,
 ) -> Uuid {
+    let dk_row = sqlx::query("SELECT code, seq_digits FROM document_kinds WHERE id = $1")
+        .bind(doc_kind_id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let kind_code: String = dk_row.get("code");
+    let seq_digits: i32 = dk_row.get("seq_digits");
+
     let row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id",
+        "INSERT INTO documents (
+            frozen_kind_code, frozen_dept_code, doc_period, doc_seq, frozen_seq_digits,
+            title, author_id, doc_kind_id, project_id
+         )
+         VALUES ($1, $2, '2603', $3, $4, $5, $6, $7, $8)
+         RETURNING id, doc_number",
     )
-    .bind(doc_number)
+    .bind(&kind_code)
+    .bind(frozen_dept_code)
+    .bind(doc_seq)
+    .bind(seq_digits)
     .bind(title)
     .bind(author_id)
     .bind(doc_kind_id)
-    .bind(frozen_dept_code)
     .bind(project_id)
     .fetch_one(pool)
     .await
     .unwrap();
 
     let doc_id: Uuid = row.get("id");
+    let doc_number: String = row.get("doc_number");
     let file_path = format!("{doc_number}/0");
 
     sqlx::query(
@@ -358,7 +353,7 @@ pub async fn insert_document_with_dept(
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_document_with_created_at(
     pool: &PgPool,
-    doc_number: &str,
+    doc_seq: i32,
     title: &str,
     author_id: Uuid,
     doc_kind_id: Uuid,
@@ -366,16 +361,29 @@ pub async fn insert_document_with_created_at(
     frozen_dept_code: &str,
     created_at: &str,
 ) -> Uuid {
+    let dk_row = sqlx::query("SELECT code, seq_digits FROM document_kinds WHERE id = $1")
+        .bind(doc_kind_id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let kind_code: String = dk_row.get("code");
+    let seq_digits: i32 = dk_row.get("seq_digits");
+
     let row = sqlx::query(
-        "INSERT INTO documents (doc_number, title, author_id, doc_kind_id, frozen_dept_code, project_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)
-         RETURNING id",
+        "INSERT INTO documents (
+            frozen_kind_code, frozen_dept_code, doc_period, doc_seq, frozen_seq_digits,
+            title, author_id, doc_kind_id, project_id, created_at
+         )
+         VALUES ($1, $2, '2603', $3, $4, $5, $6, $7, $8, $9::timestamptz)
+         RETURNING id, doc_number",
     )
-    .bind(doc_number)
+    .bind(&kind_code)
+    .bind(frozen_dept_code)
+    .bind(doc_seq)
+    .bind(seq_digits)
     .bind(title)
     .bind(author_id)
     .bind(doc_kind_id)
-    .bind(frozen_dept_code)
     .bind(project_id)
     .bind(created_at)
     .fetch_one(pool)
@@ -383,6 +391,7 @@ pub async fn insert_document_with_created_at(
     .unwrap();
 
     let doc_id: Uuid = row.get("id");
+    let doc_number: String = row.get("doc_number");
     let file_path = format!("{doc_number}/0");
 
     sqlx::query(
