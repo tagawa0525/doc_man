@@ -61,8 +61,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                     if let Ok(p) = api::projects::get(id).await {
                         form_name.set(p.name);
                         form_status.set(p.status);
-                        form_start_date
-                            .set(p.start_date.map(|d| d.to_string()).unwrap_or_default());
+                        form_start_date.set(p.start_date.to_string());
                         form_end_date.set(p.end_date.map(|d| d.to_string()).unwrap_or_default());
                         form_wbs_code.set(p.wbs_code.unwrap_or_default());
                         form_discipline_id.set(p.discipline.id.to_string());
@@ -126,6 +125,11 @@ pub fn ProjectFormPage() -> impl IntoView {
                     saving.set(false);
                     return;
                 }
+                let Some(start_date) = parse_date(&sd) else {
+                    toast.error("開始日は必須です");
+                    saving.set(false);
+                    return;
+                };
                 api::projects::create(&CreateProjectRequest {
                     name,
                     status: if status.is_empty() {
@@ -133,7 +137,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                     } else {
                         Some(status)
                     },
-                    start_date: parse_date(&sd),
+                    start_date,
                     end_date: parse_date(&ed),
                     wbs_code: if wbs.is_empty() { None } else { Some(wbs) },
                     discipline_id: Uuid::parse_str(&did).unwrap(),
@@ -198,7 +202,7 @@ pub fn ProjectFormPage() -> impl IntoView {
                     </div>
                     <div class="columns">
                         <div class="column">
-                            <FormField label="開始日">
+                            <FormField label="開始日 *">
                                 <input class="input" type="date" prop:value=move || form_start_date.get()
                                     on:input=move |ev| { let t: HtmlInputElement = event_target(&ev); form_start_date.set(t.value()); } />
                             </FormField>
