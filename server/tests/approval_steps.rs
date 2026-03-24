@@ -16,7 +16,7 @@ async fn get_approval_steps_returns_empty_array(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト文書", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト文書", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -47,7 +47,7 @@ async fn post_approval_steps_sets_route_and_changes_status(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト文書", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト文書", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -99,7 +99,7 @@ async fn post_approval_steps_viewer_returns_403(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -134,7 +134,7 @@ async fn post_approval_steps_on_approved_doc_returns_422(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     // ステータスを approved に変更
     sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
@@ -178,7 +178,7 @@ async fn approve_step_returns_200(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
     let step_id = helpers::insert_approval_step(&pool, doc_id, 1, 1, 1, approver.id).await;
 
     // ステータスを under_review に変更
@@ -225,7 +225,7 @@ async fn approve_last_step_changes_doc_to_approved(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     // 1ステップのみの承認ルート
     let step_id = helpers::insert_approval_step(&pool, doc_id, 1, 1, 1, approver.id).await;
@@ -277,7 +277,7 @@ async fn approve_by_non_approver_returns_403(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
     let step_id = helpers::insert_approval_step(&pool, doc_id, 1, 1, 1, approver.id).await;
 
     sqlx::query("UPDATE documents SET status = 'under_review' WHERE id = $1")
@@ -317,7 +317,7 @@ async fn approve_non_active_step_returns_422(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     // 2ステップの承認ルート
     helpers::insert_approval_step(&pool, doc_id, 1, 1, 1, approver1.id).await;
@@ -366,7 +366,7 @@ async fn reject_step_changes_doc_to_rejected(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let step1_id = helpers::insert_approval_step(&pool, doc_id, 1, 1, 1, approver1.id).await;
     helpers::insert_approval_step(&pool, doc_id, 1, 1, 2, approver2.id).await;
@@ -432,7 +432,7 @@ async fn reject_by_non_approver_returns_403(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
     let step_id = helpers::insert_approval_step(&pool, doc_id, 1, 1, 1, approver.id).await;
 
     sqlx::query("UPDATE documents SET status = 'under_review' WHERE id = $1")

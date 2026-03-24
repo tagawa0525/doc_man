@@ -32,7 +32,7 @@ async fn get_distributions_returns_empty_array(pool: PgPool) {
     let data = setup_master(&pool, &admin).await;
     let doc_id = insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
@@ -67,7 +67,7 @@ async fn post_distributions_creates_records(pool: PgPool) {
     let data = setup_master(&pool, &admin).await;
     let doc_id = insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
@@ -110,7 +110,7 @@ async fn post_distributions_on_draft_returns_201(pool: PgPool) {
     let data = setup_master(&pool, &admin).await;
     let doc_id = insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
@@ -148,7 +148,7 @@ async fn post_distributions_viewer_returns_403(pool: PgPool) {
     let data = setup_master(&pool, &admin).await;
     let doc_id = insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
@@ -183,7 +183,7 @@ async fn post_distributions_empty_recipients_returns_400(pool: PgPool) {
     let data = setup_master(&pool, &admin).await;
     let doc_id = insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
@@ -216,7 +216,7 @@ async fn post_distributions_allows_redistribution(pool: PgPool) {
     let data = setup_master(&pool, &admin).await;
     let doc_id = insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,

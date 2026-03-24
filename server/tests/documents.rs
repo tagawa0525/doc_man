@@ -16,11 +16,11 @@ async fn get_documents_filters_by_dept_codes(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
 
-    helpers::insert_document_with_dept(&pool, "DOC-001", "設計文書", admin.id, kind, proj, "設計")
+    helpers::insert_document_with_dept(&pool, 1, "設計文書", admin.id, kind, proj, "設計")
         .await;
-    helpers::insert_document_with_dept(&pool, "DOC-002", "製造文書", admin.id, kind, proj, "製造")
+    helpers::insert_document_with_dept(&pool, 1, "製造文書", admin.id, kind, proj, "製造")
         .await;
-    helpers::insert_document_with_dept(&pool, "DOC-003", "品質文書", admin.id, kind, proj, "品質")
+    helpers::insert_document_with_dept(&pool, 1, "品質文書", admin.id, kind, proj, "品質")
         .await;
 
     let response = app
@@ -49,8 +49,8 @@ async fn get_documents_filters_by_doc_kind_id(pool: PgPool) {
     let kind_b = helpers::insert_document_kind(&pool, "外", "社外", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
 
-    helpers::insert_document(&pool, "DOC-001", "社内文書", admin.id, kind_a, proj).await;
-    helpers::insert_document(&pool, "DOC-002", "社外文書", admin.id, kind_b, proj).await;
+    helpers::insert_document(&pool, 1, "社内文書", admin.id, kind_a, proj).await;
+    helpers::insert_document(&pool, 1, "社外文書", admin.id, kind_b, proj).await;
 
     let response = app
         .oneshot(
@@ -80,9 +80,9 @@ async fn get_documents_filters_by_multiple_doc_kind_ids(pool: PgPool) {
     let kind_c = helpers::insert_document_kind(&pool, "議", "議事録", 2).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
 
-    helpers::insert_document(&pool, "DOC-001", "社内文書", admin.id, kind_a, proj).await;
-    helpers::insert_document(&pool, "DOC-002", "社外文書", admin.id, kind_b, proj).await;
-    helpers::insert_document(&pool, "DOC-003", "議事録", admin.id, kind_c, proj).await;
+    helpers::insert_document(&pool, 1, "社内文書", admin.id, kind_a, proj).await;
+    helpers::insert_document(&pool, 1, "社外文書", admin.id, kind_b, proj).await;
+    helpers::insert_document(&pool, 1, "議事録", admin.id, kind_c, proj).await;
 
     // doc_kind_ids=kind_a,kind_b → 2件
     let response = app
@@ -132,7 +132,7 @@ async fn get_documents_filters_by_fiscal_year(pool: PgPool) {
     // 2025年度 (2025-04-01 〜 2026-03-31)
     helpers::insert_document_with_created_at(
         &pool,
-        "DOC-001",
+        1,
         "2025年度文書",
         admin.id,
         kind,
@@ -144,7 +144,7 @@ async fn get_documents_filters_by_fiscal_year(pool: PgPool) {
     // 2024年度
     helpers::insert_document_with_created_at(
         &pool,
-        "DOC-002",
+        2,
         "2024年度文書",
         admin.id,
         kind,
@@ -182,7 +182,7 @@ async fn get_documents_filters_by_multiple_fiscal_years(pool: PgPool) {
 
     helpers::insert_document_with_created_at(
         &pool,
-        "DOC-001",
+        1,
         "2025年度文書",
         admin.id,
         kind,
@@ -193,7 +193,7 @@ async fn get_documents_filters_by_multiple_fiscal_years(pool: PgPool) {
     .await;
     helpers::insert_document_with_created_at(
         &pool,
-        "DOC-002",
+        2,
         "2024年度文書",
         admin.id,
         kind,
@@ -204,7 +204,7 @@ async fn get_documents_filters_by_multiple_fiscal_years(pool: PgPool) {
     .await;
     helpers::insert_document_with_created_at(
         &pool,
-        "DOC-003",
+        3,
         "2023年度文書",
         admin.id,
         kind,
@@ -241,8 +241,8 @@ async fn get_documents_filters_by_project_name(pool: PgPool) {
     let proj_a = helpers::insert_project(&pool, "火力発電プロジェクト", disc, None).await;
     let proj_b = helpers::insert_project(&pool, "水力発電プロジェクト", disc, None).await;
 
-    helpers::insert_document(&pool, "DOC-001", "文書A", admin.id, kind, proj_a).await;
-    helpers::insert_document(&pool, "DOC-002", "文書B", admin.id, kind, proj_b).await;
+    helpers::insert_document(&pool, 1, "文書A", admin.id, kind, proj_a).await;
+    helpers::insert_document(&pool, 2, "文書B", admin.id, kind, proj_b).await;
 
     let response = app
         .oneshot(
@@ -271,8 +271,8 @@ async fn get_documents_filters_by_author_name(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
 
-    helpers::insert_document(&pool, "DOC-001", "文書A", admin.id, kind, proj).await;
-    helpers::insert_document(&pool, "DOC-002", "文書B", other.id, kind, proj).await;
+    helpers::insert_document(&pool, 1, "文書A", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 2, "文書B", other.id, kind, proj).await;
 
     // "OTHER001" の名前は "Test OTHER001"
     let response = app
@@ -302,8 +302,8 @@ async fn get_documents_filters_by_wbs_code(pool: PgPool) {
     let proj_a = helpers::insert_project_with_wbs(&pool, "PJ-A", disc, None, "WBS-001-A").await;
     let proj_b = helpers::insert_project_with_wbs(&pool, "PJ-B", disc, None, "WBS-002-B").await;
 
-    helpers::insert_document(&pool, "DOC-001", "文書A", admin.id, kind, proj_a).await;
-    helpers::insert_document(&pool, "DOC-002", "文書B", admin.id, kind, proj_b).await;
+    helpers::insert_document(&pool, 1, "文書A", admin.id, kind, proj_a).await;
+    helpers::insert_document(&pool, 2, "文書B", admin.id, kind, proj_b).await;
 
     let response = app
         .oneshot(
@@ -334,7 +334,7 @@ async fn get_documents_combines_multiple_filters(pool: PgPool) {
 
     helpers::insert_document_with_dept(
         &pool,
-        "DOC-001",
+        1,
         "設計社内",
         admin.id,
         kind_a,
@@ -344,7 +344,7 @@ async fn get_documents_combines_multiple_filters(pool: PgPool) {
     .await;
     helpers::insert_document_with_dept(
         &pool,
-        "DOC-002",
+        1,
         "設計社外",
         admin.id,
         kind_b,
@@ -354,7 +354,7 @@ async fn get_documents_combines_multiple_filters(pool: PgPool) {
     .await;
     helpers::insert_document_with_dept(
         &pool,
-        "DOC-003",
+        1,
         "製造社内",
         admin.id,
         kind_a,
@@ -363,7 +363,7 @@ async fn get_documents_combines_multiple_filters(pool: PgPool) {
     )
     .await;
 
-    // dept_codes=設計 AND doc_kind_id=kind_a → DOC-001のみ
+    // dept_codes=設計 AND doc_kind_id=kind_a → 内設計-2603001のみ
     let response = app
         .oneshot(
             Request::builder()
@@ -506,7 +506,7 @@ async fn get_documents_returns_paginated_list(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
-    helpers::insert_document(&pool, "内設計-2603001", "テスト1", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 1, "テスト1", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -534,8 +534,8 @@ async fn get_documents_with_project_filter(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj_a = helpers::insert_project(&pool, "プロジェクトA", disc, None).await;
     let proj_b = helpers::insert_project(&pool, "プロジェクトB", disc, None).await;
-    helpers::insert_document(&pool, "内設計-2603001", "文書A", admin.id, kind, proj_a).await;
-    helpers::insert_document(&pool, "内設計-2603002", "文書B", admin.id, kind, proj_b).await;
+    helpers::insert_document(&pool, 1, "文書A", admin.id, kind, proj_a).await;
+    helpers::insert_document(&pool, 2, "文書B", admin.id, kind, proj_b).await;
 
     let response = app
         .oneshot(
@@ -564,17 +564,9 @@ async fn get_documents_with_q_filters_by_title(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
-    helpers::insert_document(&pool, "内設計-2603001", "配管設計書", admin.id, kind, proj).await;
-    helpers::insert_document(&pool, "内設計-2603002", "電気回路図", admin.id, kind, proj).await;
-    helpers::insert_document(
-        &pool,
-        "内設計-2603003",
-        "配管施工要領",
-        admin.id,
-        kind,
-        proj,
-    )
-    .await;
+    helpers::insert_document(&pool, 1, "配管設計書", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 2, "電気回路図", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 3, "配管施工要領", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -600,8 +592,8 @@ async fn get_documents_with_q_filters_by_doc_number(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
-    helpers::insert_document(&pool, "内設計-2603001", "文書A", admin.id, kind, proj).await;
-    helpers::insert_document(&pool, "内設計-2603002", "文書B", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 1, "文書A", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 2, "文書B", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -628,8 +620,8 @@ async fn get_documents_with_q_is_case_insensitive(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
-    helpers::insert_document(&pool, "ABC-001", "Design Report", admin.id, kind, proj).await;
-    helpers::insert_document(&pool, "DEF-002", "Test Plan", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 1, "Design Report", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 2, "Test Plan", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -645,7 +637,7 @@ async fn get_documents_with_q_is_case_insensitive(pool: PgPool) {
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value = helpers::parse_body(response).await;
     assert_eq!(body["meta"]["total"], 1);
-    assert_eq!(body["data"][0]["doc_number"], "ABC-001");
+    assert_eq!(body["data"][0]["doc_number"], "内設計-2603001");
 }
 
 #[sqlx::test(migrator = "doc_man::MIGRATOR")]
@@ -656,16 +648,8 @@ async fn get_documents_with_q_escapes_like_wildcards(pool: PgPool) {
     let disc = helpers::insert_discipline(&pool, "MECH", "機械", dept).await;
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
-    helpers::insert_document(
-        &pool,
-        "内設計-2603001",
-        "100%完了報告",
-        admin.id,
-        kind,
-        proj,
-    )
-    .await;
-    helpers::insert_document(&pool, "内設計-2603002", "通常文書", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 1, "100%完了報告", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 2, "通常文書", admin.id, kind, proj).await;
 
     // q=100% — % はリテラルとして扱われるべき
     let response = app
@@ -695,7 +679,7 @@ async fn get_documents_list_includes_project_wbs_code(pool: PgPool) {
     let proj =
         helpers::insert_project_with_wbs(&pool, "WBS付きPJ", disc, None, "WBS-TEST-001").await;
 
-    helpers::insert_document(&pool, "DOC-001", "テスト文書", admin.id, kind, proj).await;
+    helpers::insert_document(&pool, 1, "テスト文書", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -725,7 +709,7 @@ async fn get_document_by_id_includes_project_wbs_code(pool: PgPool) {
     let proj =
         helpers::insert_project_with_wbs(&pool, "WBS付きPJ", disc, None, "WBS-DETAIL-001").await;
     let doc_id =
-        helpers::insert_document(&pool, "DOC-001", "テスト文書", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト文書", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -752,7 +736,7 @@ async fn get_document_by_id_returns_200(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト文書", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト文書", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -800,7 +784,7 @@ async fn put_document_updates_title_without_incrementing_revision(pool: PgPool) 
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "旧タイトル", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "旧タイトル", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -833,7 +817,7 @@ async fn put_document_doc_number_change_returns_422(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -862,7 +846,7 @@ async fn put_document_status_change_returns_422(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -893,7 +877,7 @@ async fn delete_document_admin_returns_204(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "削除対象", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "削除対象", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -920,7 +904,7 @@ async fn delete_document_non_admin_returns_403(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -947,7 +931,7 @@ async fn delete_document_with_distributions_returns_409(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     // 配布レコードを直接挿入
     sqlx::query(
@@ -987,7 +971,7 @@ async fn revise_approved_document_creates_new_revision(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     // approved 状態にする
     sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
@@ -1028,7 +1012,7 @@ async fn revise_draft_returns_422(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(
@@ -1057,7 +1041,7 @@ async fn revise_requires_reason(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
         .bind(doc_id)
@@ -1091,7 +1075,7 @@ async fn revise_viewer_returns_403(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     sqlx::query("UPDATE documents SET status = 'approved' WHERE id = $1")
         .bind(doc_id)
@@ -1128,7 +1112,7 @@ async fn get_revisions_for_new_document_returns_one(pool: PgPool) {
     let kind = helpers::insert_document_kind(&pool, "内", "社内", 3).await;
     let proj = helpers::insert_project(&pool, "テスト", disc, None).await;
     let doc_id =
-        helpers::insert_document(&pool, "内設計-2603001", "テスト", admin.id, kind, proj).await;
+        helpers::insert_document(&pool, 1, "テスト", admin.id, kind, proj).await;
 
     let response = app
         .oneshot(

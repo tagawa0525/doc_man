@@ -396,7 +396,7 @@ async fn delete_document_pm_returns_403(pool: PgPool) {
     let data = setup_master_data(&pool).await;
     let doc_id = helpers::insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト文書",
         admin.id,
         data.kind,
@@ -430,7 +430,7 @@ async fn post_approval_steps_pm_returns_201(pool: PgPool) {
     helpers::assign_department(&pool, pm.id, data.dept, true).await;
     let doc_id = helpers::insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         pm.id,
         data.kind,
@@ -468,7 +468,7 @@ async fn post_approval_steps_general_returns_403(pool: PgPool) {
     let data = setup_master_data(&pool).await;
     let doc_id = helpers::insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
@@ -569,7 +569,7 @@ async fn put_document_viewer_returns_403(pool: PgPool) {
     let data = setup_master_data(&pool).await;
     let doc_id = helpers::insert_document(
         &pool,
-        "内設計-2603001",
+        1,
         "テスト",
         admin.id,
         data.kind,
