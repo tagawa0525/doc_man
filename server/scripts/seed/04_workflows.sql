@@ -99,10 +99,10 @@ INSERT INTO approval_steps (document_id, route_revision, document_revision, step
 
 -- under_review: 計装フロー図 (2ステップ: 全保留)
 INSERT INTO approval_steps (document_id, route_revision, document_revision, step_order, approver_id, status, approved_at) VALUES
-    ((SELECT id FROM documents WHERE doc_number = '仕機設-2601001'),
+    ((SELECT id FROM documents WHERE doc_number = '仕計設-2601001'),
      1, 0, 1, (SELECT id FROM employees WHERE employee_code = 'PM001'),
      'pending', NULL),
-    ((SELECT id FROM documents WHERE doc_number = '仕機設-2601001'),
+    ((SELECT id FROM documents WHERE doc_number = '仕計設-2601001'),
      1, 0, 2, (SELECT id FROM employees WHERE employee_code = 'MGR001'),
      'pending', NULL);
 
