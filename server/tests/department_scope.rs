@@ -23,7 +23,7 @@ async fn pm_can_create_project_in_own_department(pool: PgPool) {
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
-                    json!({"name": "自部署プロジェクト", "discipline_id": disc}).to_string(),
+                    json!({"name": "自部署プロジェクト", "discipline_id": disc, "start_date": "2025-04-01"}).to_string(),
                 ))
                 .unwrap(),
         )
@@ -50,7 +50,7 @@ async fn pm_cannot_create_project_in_other_department(pool: PgPool) {
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
-                    json!({"name": "他部署プロジェクト", "discipline_id": other_disc}).to_string(),
+                    json!({"name": "他部署プロジェクト", "discipline_id": other_disc, "start_date": "2025-04-01"}).to_string(),
                 ))
                 .unwrap(),
         )
@@ -76,7 +76,7 @@ async fn admin_can_create_project_in_any_department(pool: PgPool) {
                 .header("Authorization", format!("Bearer {}", admin.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
-                    json!({"name": "管理者プロジェクト", "discipline_id": disc}).to_string(),
+                    json!({"name": "管理者プロジェクト", "discipline_id": disc, "start_date": "2025-04-01"}).to_string(),
                 ))
                 .unwrap(),
         )
@@ -170,7 +170,7 @@ async fn user_with_multiple_departments_can_access_both(pool: PgPool) {
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
-                    json!({"name": "設計プロジェクト", "discipline_id": disc_a}).to_string(),
+                    json!({"name": "設計プロジェクト", "discipline_id": disc_a, "start_date": "2025-04-01"}).to_string(),
                 ))
                 .unwrap(),
         )
@@ -188,7 +188,7 @@ async fn user_with_multiple_departments_can_access_both(pool: PgPool) {
                 .header("Authorization", format!("Bearer {}", pm.employee_code))
                 .header("Content-Type", "application/json")
                 .body(axum::body::Body::from(
-                    json!({"name": "品管プロジェクト", "discipline_id": disc_b}).to_string(),
+                    json!({"name": "品管プロジェクト", "discipline_id": disc_b, "start_date": "2025-04-01"}).to_string(),
                 ))
                 .unwrap(),
         )
